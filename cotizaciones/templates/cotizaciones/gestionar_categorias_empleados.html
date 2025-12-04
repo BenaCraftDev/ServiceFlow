@@ -1,0 +1,1050 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Categorías de Empleados - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+      {% csrf_token %}
+      
+      <!-- Alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">Gestión de Categorías de Empleados</h1>
+        </div>
+        <div class="actions-right">
+          <button type="button" class="btn" onclick="mostrarModal('modal-asignar')">
+            ➕ Asignar
+          </button>
+          <button type="button" class="btn" onclick="mostrarModal('modal-categoria')">
+            ➕ Nueva Categoría
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Categorías -->
+      <div class="table-wrap">
+        <table id="tabla-categorias">
+          <thead>
+            <tr>
+              <th>Categoría</th>
+              <th>Empleados Asignados</th>
+              <th>Orden</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for categoria in categorias %}
+            <tr>
+              <td>
+                <strong>{{ categoria.nombre }}</strong>
+                <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+                  {{ categoria.descripcion|truncatewords:15 }}
+                </div>
+              </td>
+              <td>
+                <span class="pill enviada">{{ categoria.empleados.count }} empleados</span>
+              </td>
+              <td>{{ categoria.orden }}</td>
+              <td>
+                <span class="pill {% if categoria.activo %}activo{% else %}inactivo{% endif %}">
+                  {% if categoria.activo %}Activa{% else %}Inactiva{% endif %}
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn small secondary" 
+                          onclick="verEmpleadosCategoria({{ categoria.id }})" title="Ver empleados">
+                    👥
+                  </button>
+                  <button type="button" class="btn small secondary" 
+                          onclick="editarCategoria({{ categoria.id }})" title="Editar">
+                    ✏️
+                  </button>
+                  <button type="button" class="btn small danger" 
+                          onclick="eliminarCategoria({{ categoria.id }})" title="Eliminar">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                No hay categorías registradas aún.
+                <br><br>
+                <button type="button" class="btn" onclick="mostrarModal('modal-categoria')">
+                  Crear Primera Categoría
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Asignaciones Actuales -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2 style="margin: 0; color: var(--azul-700);">📋 Últimas 10 Asignaciones</h2>
+        <button type="button" class="btn secondary" onclick="abrirModalHistorialAsignaciones()">
+          📜 Ver Historial Completo
+        </button>
+      </div>
+      <div class="table-wrap" id="tabla-asignaciones-recientes">
+        <table>
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Categoría</th>
+              <th>Fecha Asignación</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asignacion in asignaciones_actuales|slice:":10" %}
+            <tr>
+              <td><strong>{{ asignacion.empleado.nombre_completo }}</strong></td>
+              <td>
+                <span class="pill enviada">{{ asignacion.categoria.nombre }}</span>
+              </td>
+              <td>{{ asignacion.fecha_asignacion|date:"d/m/Y" }}</td>
+              <td>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn small danger" 
+                          onclick="eliminarAsignacion({{ asignacion.id }})" title="Remover">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                No hay empleados asignados a categorías.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Categorías Existentes -->
+      <div class="card">
+        <h3>🏷️ Categorías de Empleados</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+          {% for categoria in categorias %}
+          <div style="background: var(--azul-100); padding: 12px; border-radius: 8px; border: 1px solid var(--azul-300);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <strong style="color: var(--azul-700);">{{ categoria.nombre }}</strong>
+              <span class="badge">{{ categoria.empleados.count }} empleados</span>
+            </div>
+            {% if categoria.descripcion %}
+            <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+              {{ categoria.descripcion|truncatewords:10 }}
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div style="text-align: center; color: var(--gris-600);">
+            No hay categorías creadas aún.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Estadísticas -->
+      <div class="card">
+        <h3>📊 Estadísticas de Categorías</h3>
+        <div class="cards" style="margin: 0;">
+          <div class="card" id="kpi-total-categorias" style="margin: 0; cursor: pointer;">
+            <h4>Total Categorías</h4>
+            <div class="kpi">{{ categorias|length }}</div>
+            <div class="muted">Disponibles</div>
+          </div>
+          <div class="card" id="kpi-empleados" style="margin: 0; cursor: pointer;">
+            <h4>Empleados</h4>
+            <div class="kpi">{{ total_empleados|default:0 }}</div>
+            <div class="muted">Disponibles</div>
+          </div>
+          <div class="card" id="kpi-asignaciones" style="margin: 0; cursor: pointer;">
+            <h4>Asignaciones</h4>
+            <div class="kpi">{{ asignaciones_actuales|length }}</div>
+            <div class="muted">Activas</div>
+          </div>
+          <div class="card" id="kpi-activas" style="margin: 0; cursor: pointer;">
+            <h4>Activas</h4>
+            <div class="kpi">{{ categorias_activas|default:categorias|length }}</div>
+            <div class="muted">En uso</div>
+          </div>
+        </div>
+      </div>
+    
+      <!-- Modal Nueva Categoría -->
+      <div id="modal-categoria" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-categoria-titulo">Nueva Categoría</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-categoria')">&times;</button>
+          </div>
+          
+          <form id="form-categoria">
+            {% csrf_token %}
+            <input type="hidden" id="categoria-id" value="">
+            
+            <div class="form-group">
+              <label for="categoria-nombre">Nombre de la Categoría *</label>
+              <input type="text" id="categoria-nombre" required 
+                    placeholder="Ej: Técnicos Eléctricos, Mecánicos">
+            </div>
+            
+            <div class="form-group">
+              <label for="categoria-descripcion">Descripción</label>
+              <textarea id="categoria-descripcion" rows="3"
+                        placeholder="Descripción detallada de la categoría"></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="categoria-orden">Orden de Visualización</label>
+                <input type="number" id="categoria-orden" min="0" value="0"
+                      placeholder="0 = Primera, 1 = Segunda, etc.">
+              </div>
+              <div class="form-group">
+                <label>&nbsp;</label>
+                <div></div>
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="categoria-activa" checked> 
+                Categoría Activa
+              </label>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModal('modal-categoria')">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Guardar Categoría
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+  
+      <!-- Modal Asignar Empleado a Categoría -->
+      <div id="modal-asignar" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>➕ Asignar Empleado a Categoría</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-asignar')">&times;</button>
+          </div>
+          
+          <form id="form-asignar">
+            {% csrf_token %}
+            
+            <div class="form-group">
+              <label for="asignar-empleado">Empleado *</label>
+              <select id="asignar-empleado" required>
+                <option value="">-- Seleccionar empleado --</option>
+                {% for empleado in empleados_disponibles %}
+                <option value="{{ empleado.id }}">{{ empleado.nombre_completo }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="asignar-categoria">Categoría *</label>
+              <select id="asignar-categoria" required>
+                <option value="">-- Seleccionar categoría --</option>
+                {% for categoria in categorias %}
+                <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div style="background: var(--azul-100); padding: 12px; border-radius: 8px; margin: 12px 0; border-left: 4px solid var(--azul-600);">
+              <strong>ℹ️ Nota:</strong> Al asignar un empleado a una categoría, podrá trabajar en proyectos que requieran personal de esa categoría.
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModal('modal-asignar')">
+                Cancelar
+              </button>
+              <button type="submit" class="btn success">
+                ➕ Asignar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Ver Empleados -->
+      <div id="modal-empleados" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Empleados de la Categoría</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-empleados')">&times;</button>
+          </div>
+          
+          <div id="empleados-contenido">
+            <!-- Contenido dinámico de empleados -->
+          </div>
+          
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-empleados')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Modal Lista de Empleados -->
+      <div id="modal-lista-empleados" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+            <h3>👥 Lista de Empleados Disponibles</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-lista-empleados')">&times;</button>
+          </div>
+          
+          <div id="lista-empleados-contenido" style="max-height: 400px; overflow-y: auto;">
+            <!-- Contenido dinámico -->
+          </div>
+          
+          <div style="display: flex; gap: 8px; justify-content: space-between; margin-top: 20px;">
+            <a href="{% url 'home:gestion_usuarios' %}" class="btn">
+              👥 Ir a Gestión de Usuarios
+            </a>
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-lista-empleados')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Historial Completo de Asignaciones -->
+      <div id="modal-historial-asignaciones" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+          <div class="modal-header">
+            <h3>📜 Historial Completo de Asignaciones</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-historial-asignaciones')">&times;</button>
+          </div>
+          
+          <!-- Filtros de búsqueda -->
+          <div class="filters" style="margin-bottom: 16px;">
+            <div class="filter-group">
+              <label for="filtro-empleado-historial">🔍 Buscar Empleado</label>
+              <input type="text" id="filtro-empleado-historial" 
+                     placeholder="Nombre del empleado..."
+                     onkeyup="filtrarHistorialAsignaciones()">
+            </div>
+            
+            <div class="filter-group">
+              <label for="filtro-categoria-historial">Categoría</label>
+              <select id="filtro-categoria-historial" onchange="filtrarHistorialAsignaciones()">
+                <option value="">Todas las categorías</option>
+                {% for categoria in categorias %}
+                <option value="{{ categoria.nombre }}">{{ categoria.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            
+            <div class="filter-group">
+              <label for="filtro-fecha-desde">Desde</label>
+              <input type="date" id="filtro-fecha-desde" onchange="filtrarHistorialAsignaciones()">
+            </div>
+            
+            <div class="filter-group">
+              <label for="filtro-fecha-hasta">Hasta</label>
+              <input type="date" id="filtro-fecha-hasta" onchange="filtrarHistorialAsignaciones()">
+            </div>
+            
+            <div class="filter-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn secondary small" onclick="limpiarFiltrosHistorial()">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+          
+          <div style="max-height: 450px; overflow-y: auto;">
+            <table id="tabla-historial-asignaciones">
+              <thead>
+                <tr>
+                  <th onclick="ordenarHistorial('empleado')" style="cursor: pointer;">
+                    Empleado <span id="sort-empleado">⇅</span>
+                  </th>
+                  <th onclick="ordenarHistorial('categoria')" style="cursor: pointer;">
+                    Categoría <span id="sort-categoria">⇅</span>
+                  </th>
+                  <th onclick="ordenarHistorial('fecha')" style="cursor: pointer;">
+                    Fecha Asignación <span id="sort-fecha">⇅</span>
+                  </th>
+                  <th>Estado</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historial-asignaciones">
+                {% for asignacion in asignaciones_actuales %}
+                <tr data-empleado="{{ asignacion.empleado.nombre_completo|lower }}" 
+                    data-categoria="{{ asignacion.categoria.nombre }}"
+                    data-fecha="{{ asignacion.fecha_asignacion|date:'Y-m-d' }}"
+                    data-fecha-display="{{ asignacion.fecha_asignacion|date:'d/m/Y H:i' }}">
+                  <td><strong>{{ asignacion.empleado.nombre_completo }}</strong></td>
+                  <td>
+                    <span class="pill enviada">{{ asignacion.categoria.nombre }}</span>
+                  </td>
+                  <td>{{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</td>
+                  <td>
+                    <span class="pill activo">Activa</span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn small danger" 
+                            onclick="eliminarAsignacion({{ asignacion.id }})" title="Eliminar">
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="row-sin-asignaciones">
+                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                    No hay asignaciones registradas.
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Mensaje cuando no hay resultados del filtro -->
+          <div id="sin-resultados-filtro" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron resultados</h4>
+            <p style="margin: 0;">Intenta ajustar los filtros de búsqueda</p>
+          </div>
+          
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-historial-asignaciones')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Categorías Activas -->
+      <div id="modal-categorias-activas" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+            <h3>✅ Categorías Activas</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-categorias-activas')">&times;</button>
+          </div>
+          
+          <div style="max-height: 500px; overflow-y: auto;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+              {% for categoria in categorias %}
+              {% if categoria.activo %}
+              <div style="background: var(--azul-100); padding: 16px; border-radius: 8px; border: 2px solid var(--azul-500);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                  <strong style="color: var(--azul-700); font-size: 1.1rem;">{{ categoria.nombre }}</strong>
+                  <span class="pill activo">Activa</span>
+                </div>
+                {% if categoria.descripcion %}
+                <p style="font-size: 0.9rem; color: var(--gris-600); margin: 8px 0;">
+                  {{ categoria.descripcion }}
+                </p>
+                {% endif %}
+                <div style="display: flex; gap: 8px; margin-top: 12px;">
+                  <span class="badge" style="background: var(--azul-600); color: white;">
+                    {{ categoria.empleados.count }} empleados
+                  </span>
+                  <span class="badge" style="background: var(--gris-500); color: white;">
+                    Orden: {{ categoria.orden }}
+                  </span>
+                </div>
+              </div>
+              {% endif %}
+              {% empty %}
+              <div style="text-align: center; color: var(--gris-600); padding: 40px; grid-column: 1 / -1;">
+                No hay categorías activas.
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-categorias-activas')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  // Funciones específicas para gestión de categorías
+  async function editarCategoria(categoriaId) {
+    try {
+      // Cargar datos de la categoría
+      const response = await fetch(`/cotizaciones/categoria-empleado/${categoriaId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Cambiar título del modal
+        document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
+        document.getElementById('categoria-id').value = categoriaId;
+        
+        // Llenar los campos con los datos existentes
+        document.getElementById('categoria-nombre').value = result.categoria.nombre;
+        document.getElementById('categoria-descripcion').value = result.categoria.descripcion;
+        document.getElementById('categoria-orden').value = result.categoria.orden;
+        document.getElementById('categoria-activa').checked = result.categoria.activo;
+        
+        // Mostrar modal
+        mostrarModal('modal-categoria');
+      } else {
+        alert('Error al cargar los datos de la categoría: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando categoría:', error);
+      alert('Error al cargar los datos de la categoría');
+    }
+  }
+  
+  function verEmpleadosCategoria(categoriaId) {
+    // Cargar empleados de la categoría
+    const contenido = document.getElementById('empleados-contenido');
+    contenido.innerHTML = `
+      <div style="text-align: center; padding: 20px;">
+        <p>Cargando empleados de la categoría...</p>
+      </div>
+    `;
+    
+    mostrarModal('modal-empleados');
+    
+    // Cargar empleados (petición AJAX real)
+    fetch(`/cotizaciones/api/categoria-empleado/${categoriaId}/empleados/`)
+      .then(response => response.json())
+      .then(empleados => {
+        let html = '<div class="table-wrap"><table><thead><tr><th>Empleado</th><th>Teléfono</th></tr></thead><tbody>';
+        
+        if (empleados.length === 0) {
+          html += '<tr><td colspan="3" style="text-align: center; padding: 20px;">No hay empleados asignados a esta categoría</td></tr>';
+        } else {
+          empleados.forEach(empleado => {
+            html += `<tr>
+              <td><strong>${empleado.nombre}</strong></td>
+              <td>${empleado.telefono || 'Sin teléfono'}</td>
+            </tr>`;
+          });
+        }
+        
+        html += '</tbody></table></div>';
+        contenido.innerHTML = html;
+      })
+      .catch(error => {
+        contenido.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--rojo-600);">Error al cargar empleados</div>';
+      });
+  }
+  
+  // Función específica para cerrar modal de categoría
+  function cerrarModalCategoria() {
+    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('categoria-id').value = '';
+    document.getElementById('form-categoria').reset();
+    document.getElementById('categoria-activa').checked = true;
+    
+    // Cerrar modal directamente
+    document.getElementById('modal-categoria').classList.remove('show');
+  }
+  
+  // Asignar empleado a categoría
+  async function asignarEmpleadoCategoria() {
+    const empleadoId = document.getElementById('select-empleado').value;
+    const categoriaId = document.getElementById('select-categoria-asignar').value;
+
+    if (!empleadoId || !categoriaId) {
+      alert('Selecciona un empleado y una categoría');
+      return;
+    }
+
+    try {
+      const response = await fetch('/cotizaciones/empleado-categoria/asignar/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+          empleado_id: empleadoId,
+          categoria_id: categoriaId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al asignar empleado');
+    }
+  }
+
+  // Eliminar asignación
+  async function eliminarAsignacion(asignacionId) {
+    if (!confirm('¿Estás seguro de remover esta asignación?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/cotizaciones/empleado-categoria/${asignacionId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar asignación');
+    }
+  }
+
+  // Eliminar categoría
+  async function eliminarCategoria(categoriaId) {
+    if (!confirm('¿Estás seguro de eliminar esta categoría? Se perderán todas las asignaciones de empleados.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/cotizaciones/categoria-empleado/${categoriaId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar la categoría');
+    }
+  }
+  
+  // Manejar envío del formulario de categorías
+  document.getElementById('form-categoria').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = {
+      nombre: document.getElementById('categoria-nombre').value,
+      descripcion: document.getElementById('categoria-descripcion').value,
+      orden: document.getElementById('categoria-orden').value,
+      activo: document.getElementById('categoria-activa').checked
+    };
+    
+    const categoriaId = document.getElementById('categoria-id').value;
+    const isEditing = categoriaId !== '';
+    
+    try {
+      const url = isEditing ? 
+        `/cotizaciones/categoria-empleado/${categoriaId}/editar/` : 
+        '/cotizaciones/categoria-empleado/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModalCategoria();
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando categoría:', error);
+      alert('Error al guardar la categoría');
+    }
+  });
+  
+  // Manejar envío del formulario de asignación
+  document.getElementById('form-asignar').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const empleadoId = document.getElementById('asignar-empleado').value;
+    const categoriaId = document.getElementById('asignar-categoria').value;
+
+    if (!empleadoId || !categoriaId) {
+      alert('Por favor, selecciona un empleado y una categoría');
+      return;
+    }
+
+    try {
+      const response = await fetch('/cotizaciones/empleado-categoria/asignar/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+          empleado_id: empleadoId,
+          categoria_id: categoriaId
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModal('modal-asignar');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al asignar empleado a categoría');
+    }
+  });
+  
+  // Cambiar el comportamiento del botón cerrar del modal
+  document.querySelector('#modal-categoria .close').onclick = function() {
+    cerrarModalCategoria();
+  };
+  
+  // ===== FUNCIONALIDAD DE KPIs INTERACTIVOS =====
+  function initKPIsCategoriasEmpleados() {
+    const kpiTotalCategorias = document.querySelector('#kpi-total-categorias');
+    const kpiEmpleados = document.querySelector('#kpi-empleados');
+    const kpiAsignaciones = document.querySelector('#kpi-asignaciones');
+    const kpiActivas = document.querySelector('#kpi-activas');
+    
+    if (!kpiTotalCategorias) return;
+    
+    // Efecto ripple
+    function createRipple(event, element) {
+      const ripple = document.createElement('span');
+      const rect = element.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+      
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple-effect');
+      
+      element.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    }
+    
+    // 1. Total Categorías - Scroll a tabla de categorías y destacarla
+    kpiTotalCategorias.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const tablaCategorias = document.querySelector('#tabla-categorias');
+      if (tablaCategorias) {
+        // Scroll suave a la tabla
+        tablaCategorias.closest('.table-wrap').scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        
+        // Destacar tabla temporalmente
+        const tableWrap = tablaCategorias.closest('.table-wrap');
+        tableWrap.style.transition = 'all 0.3s ease';
+        tableWrap.style.boxShadow = '0 0 0 4px var(--azul-500), 0 20px 40px rgba(37, 117, 192, 0.3)';
+        tableWrap.style.transform = 'scale(1.02)';
+        
+        setTimeout(() => {
+          tableWrap.style.boxShadow = 'var(--shadow)';
+          tableWrap.style.transform = 'scale(1)';
+        }, 2000);
+      }
+    });
+    
+    // 2. Empleados - Abrir modal con lista de empleados
+    kpiEmpleados.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      abrirModalListaEmpleados();
+    });
+    
+    // 3. Asignaciones - Abrir modal historial completo
+    kpiAsignaciones.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      abrirModalHistorialAsignaciones();
+    });
+    
+    // 4. Activas - Abrir modal categorías activas
+    kpiActivas.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      abrirModalCategoriasActivas();
+    });
+  }
+  
+  // Funciones para abrir modales
+  function abrirModalListaEmpleados() {
+    const contenido = document.getElementById('lista-empleados-contenido');
+    
+    // Preparar datos de empleados desde el template
+    const empleados = [
+      {% for empleado in empleados_disponibles %}
+      {
+        id: {{ empleado.id }},
+        nombre: "{{ empleado.nombre_completo|escapejs }}",
+        email: "{{ empleado.user.email|default:''|escapejs }}",
+        telefono: "{{ empleado.telefono|default:''|escapejs }}",
+        cargo: "{{ empleado.get_cargo_display|escapejs }}",
+        categoria: "{% for asig in asignaciones_actuales %}{% if asig.empleado.id == empleado.id %}{{ asig.categoria.nombre }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}"      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ];
+    
+    mostrarModal('modal-lista-empleados');
+    
+    if (empleados.length === 0) {
+      contenido.innerHTML = `
+        <div style="text-align: center; padding: 40px; color: var(--gris-600);">
+          <h3>No hay empleados disponibles</h3>
+          <p>Dirígete a Gestión de Usuarios para agregar empleados.</p>
+        </div>
+      `;
+    } else {
+      let html = '<div class="table-wrap"><table><thead><tr><th>Nombre</th><th>Email</th><th>Cargo</th><th>Teléfono</th><th>Categoría Asignada</th></tr></thead><tbody>';
+      
+      empleados.forEach(empleado => {
+        html += `
+          <tr>
+            <td><strong>${empleado.nombre}</strong></td>
+            <td>${empleado.email || '<span style="color: var(--gris-500);">Sin email</span>'}</td>
+            <td><span class="cargo-badge cargo-${empleado.cargo.toLowerCase().replace(' ', '-')}">${empleado.cargo}</span></td>
+            <td>${empleado.telefono || '<span style="color: var(--gris-500);">Sin teléfono</span>'}</td>
+            <td>${empleado.categoria ? '<span class="pill enviada">' + empleado.categoria + '</span>' : '<span class="pill borrador">Sin categoría</span>'}</td>
+          </tr>
+        `;
+      });
+      
+      html += '</tbody></table></div>';
+      html += `<div style="margin-top: 16px; padding: 12px; background: var(--azul-100); border-radius: 8px;">
+        <strong>Total:</strong> ${empleados.length} empleado${empleados.length !== 1 ? 's' : ''} disponible${empleados.length !== 1 ? 's' : ''}
+      </div>`;
+      
+      contenido.innerHTML = html;
+    }
+  }
+  
+  function abrirModalHistorialAsignaciones() {
+    mostrarModal('modal-historial-asignaciones');
+  }
+  
+  function abrirModalCategoriasActivas() {
+    mostrarModal('modal-categorias-activas');
+  }
+  
+  // ===== FILTROS DEL HISTORIAL DE ASIGNACIONES =====
+  let ordenActual = { columna: 'fecha', direccion: 'desc' };
+  
+  function filtrarHistorialAsignaciones() {
+    const filtroEmpleado = document.getElementById('filtro-empleado-historial').value.toLowerCase();
+    const filtroCategoria = document.getElementById('filtro-categoria-historial').value;
+    const filtroFechaDesde = document.getElementById('filtro-fecha-desde').value;
+    const filtroFechaHasta = document.getElementById('filtro-fecha-hasta').value;
+    
+    const tbody = document.getElementById('tbody-historial-asignaciones');
+    const rows = tbody.getElementsByTagName('tr');
+    let contadorVisibles = 0;
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      
+      // Saltar la fila de "sin asignaciones"
+      if (row.id === 'row-sin-asignaciones') continue;
+      
+      const empleado = row.getAttribute('data-empleado') || '';
+      const categoria = row.getAttribute('data-categoria') || '';
+      const fecha = row.getAttribute('data-fecha') || '';
+      
+      let mostrar = true;
+      
+      // Filtro por empleado
+      if (filtroEmpleado && !empleado.includes(filtroEmpleado)) {
+        mostrar = false;
+      }
+      
+      // Filtro por categoría
+      if (filtroCategoria && categoria !== filtroCategoria) {
+        mostrar = false;
+      }
+      
+      // Filtro por fecha desde
+      if (filtroFechaDesde && fecha < filtroFechaDesde) {
+        mostrar = false;
+      }
+      
+      // Filtro por fecha hasta
+      if (filtroFechaHasta && fecha > filtroFechaHasta) {
+        mostrar = false;
+      }
+      
+      row.style.display = mostrar ? '' : 'none';
+      if (mostrar) contadorVisibles++;
+    }
+    
+    // Actualizar contador
+    const contador = document.getElementById('contador-resultados-historial');
+    const sinResultados = document.getElementById('sin-resultados-filtro');
+    const tabla = document.getElementById('tabla-historial-asignaciones');
+    
+
+  }
+  
+  function limpiarFiltrosHistorial() {
+    document.getElementById('filtro-empleado-historial').value = '';
+    document.getElementById('filtro-categoria-historial').value = '';
+    document.getElementById('filtro-fecha-desde').value = '';
+    document.getElementById('filtro-fecha-hasta').value = '';
+    filtrarHistorialAsignaciones();
+  }
+  
+  function ordenarHistorial(columna) {
+    const tbody = document.getElementById('tbody-historial-asignaciones');
+    const rows = Array.from(tbody.getElementsByTagName('tr')).filter(row => row.id !== 'row-sin-asignaciones');
+    
+    // Determinar dirección de ordenamiento
+    if (ordenActual.columna === columna) {
+      ordenActual.direccion = ordenActual.direccion === 'asc' ? 'desc' : 'asc';
+    } else {
+      ordenActual.columna = columna;
+      ordenActual.direccion = 'asc';
+    }
+    
+    // Ordenar filas
+    rows.sort((a, b) => {
+      let valorA, valorB;
+      
+      switch(columna) {
+        case 'empleado':
+          valorA = a.getAttribute('data-empleado') || '';
+          valorB = b.getAttribute('data-empleado') || '';
+          break;
+        case 'categoria':
+          valorA = a.getAttribute('data-categoria') || '';
+          valorB = b.getAttribute('data-categoria') || '';
+          break;
+        case 'fecha':
+          valorA = a.getAttribute('data-fecha') || '';
+          valorB = b.getAttribute('data-fecha') || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (valorA < valorB) return ordenActual.direccion === 'asc' ? -1 : 1;
+      if (valorA > valorB) return ordenActual.direccion === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    // Actualizar tabla
+    rows.forEach(row => tbody.appendChild(row));
+    
+    // Actualizar indicadores de orden
+    document.querySelectorAll('[id^="sort-"]').forEach(span => {
+      span.textContent = '⇅';
+    });
+    document.getElementById(`sort-${columna}`).textContent = ordenActual.direccion === 'asc' ? '↑' : '↓';
+  }
+  
+  function exportarHistorialAsignaciones() {
+    const tbody = document.getElementById('tbody-historial-asignaciones');
+    const rows = Array.from(tbody.getElementsByTagName('tr')).filter(row => {
+      return row.id !== 'row-sin-asignaciones' && row.style.display !== 'none';
+    });
+    
+    if (rows.length === 0) {
+      alert('No hay datos para exportar');
+      return;
+    }
+    
+    // Crear CSV
+    let csv = 'Empleado,Categoría,Fecha Asignación,Estado\n';
+    
+    rows.forEach(row => {
+      const cells = row.getElementsByTagName('td');
+      const empleado = cells[0].textContent.trim();
+      const categoria = cells[1].textContent.trim();
+      const fecha = row.getAttribute('data-fecha-display');
+      const estado = cells[3].textContent.trim();
+      
+      csv += `"${empleado}","${categoria}","${fecha}","${estado}"\n`;
+    });
+    
+    // Descargar archivo
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const fecha = new Date().toISOString().split('T')[0];
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `historial_asignaciones_${fecha}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+  
+  // Inicializar cuando carga la página
+  document.addEventListener('DOMContentLoaded', function() {
+    initKPIsCategoriasEmpleados();
+  });
+</script>
+</body>
+</html>

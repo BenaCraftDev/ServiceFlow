@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error - Acceso</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #174678, #2575c0);
+      color: #fff;
+    }
+    .box {
+      background: #fff;
+      color: #0a2342;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+      color: #174678;
+    }
+    p {
+      margin: 8px 0;
+      color: #333;
+    }
+    .btn {
+      display: inline-block;
+      margin-top: 18px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      background: #2575c0;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+    .btn:hover {
+      background: #174678;
+    }
+    .emoji {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="emoji">🚫</div>
+    <h1>Acceso denegado</h1>
+    <p>No tienes permisos para ingresar a esta zona.</p>
+    <!-- <hr style="margin:20px 0; border:0; border-top:1px solid #ddd;">
+    <h1>Usuario no encontrado</h1>
+    <p>El usuario solicitado no existe o fue eliminado.</p> -->
+    <a href="{% url 'home:index' %}" class="btn">Volver al inicio</a> 
+  </div>
+</body>
+</html>

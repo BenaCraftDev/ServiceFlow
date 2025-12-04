@@ -1,0 +1,118 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devolver Material - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+.pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.pill.success {
+  background: var(--verde-100);
+  color: var(--verde-700);
+  border: 1px solid var(--verde-600);
+}
+
+.pill.warning {
+  background: var(--naranja-100);
+  color: var(--naranja-700);
+  border: 1px solid var(--naranja-600);
+}
+
+.pill.danger {
+  background: var(--rojo-100);
+  color: var(--rojo-700);
+  border: 1px solid var(--rojo-600);
+}
+
+.alert.warning {
+  background: var(--naranja-100);
+  color: var(--naranja-700);
+  border: 2px solid var(--naranja-600);
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 8px;
+}
+  </style>
+</head>
+<body>
+
+  {% include 'notificaciones/helmet.html' %}
+
+  <main>
+    <div class="actions">
+      <h1 style="margin: 0; color: var(--verde-600);">✓ Devolver Material</h1>
+    </div>
+
+    <div class="card">
+      <div style="background: var(--azul-100); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 16px; color: var(--azul-700);">
+          {{ prestamo.material.nombre }}
+        </h3>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div>
+            <div style="font-size: 0.85rem; color: var(--gris-600); font-weight: 600;">Código</div>
+            <div style="font-size: 1rem; color: var(--negro); margin-top: 4px;">{{ prestamo.material.codigo }}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.85rem; color: var(--gris-600); font-weight: 600;">Prestado a</div>
+            <div style="font-size: 1rem; color: var(--negro); margin-top: 4px;">{{ prestamo.prestado_a }}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.85rem; color: var(--gris-600); font-weight: 600;">Fecha Préstamo</div>
+            <div style="font-size: 1rem; color: var(--negro); margin-top: 4px;">{{ prestamo.fecha_prestamo|date:"d/m/Y" }}</div>
+          </div>
+          <div>
+            <div style="font-size: 0.85rem; color: var(--gris-600); font-weight: 600;">Fecha Devolución</div>
+            <div style="font-size: 1rem; color: var(--negro); margin-top: 4px;">{{ prestamo.fecha_devolucion|date:"d/m/Y" }}</div>
+          </div>
+        </div>
+
+        {% with estado=prestamo.get_estado %}
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid var(--azul-300);">
+          <span class="pill {{ estado.clase }}" style="font-size: 1rem;">
+            {{ estado.icono }} {{ estado.texto }}
+          </span>
+        </div>
+        {% endwith %}
+      </div>
+
+      {% if prestamo.observaciones %}
+      <div style="background: var(--gris-100); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <strong style="color: var(--gris-700);">Observaciones:</strong>
+        <p style="margin: 8px 0 0; white-space: pre-wrap;">{{ prestamo.observaciones }}</p>
+      </div>
+      {% endif %}
+
+      <div class="alert warning" style="margin-bottom: 20px;">
+        ⚠️ <strong>¿Confirmar devolución?</strong><br>
+        El material {{ prestamo.material.codigo }} quedará disponible para nuevos préstamos.
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="actions">
+          <button type="submit" class="btn success">
+            ✓ Confirmar Devolución
+          </button>
+          <a href="{% url 'cotizaciones:lista_prestamos' %}" class="btn secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+</body>
+</html>

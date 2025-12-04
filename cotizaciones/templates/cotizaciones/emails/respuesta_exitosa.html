@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Respuesta Registrada</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    body {
+      background: linear-gradient(135deg, #eaf3ff 0%, #ffffff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .success-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 600px;
+      box-shadow: 0 8px 20px rgba(10, 35, 66, 0.12);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="success-card">
+    {% if accion == 'aprobar' %}
+      <div style="font-size: 6rem; margin-bottom: 20px;">🎉</div>
+      <h1 style="color: #059669; margin-bottom: 20px;">¡Cotización Aprobada!</h1>
+    {% elif accion == 'rechazar' %}
+      <div style="font-size: 6rem; margin-bottom: 20px;">📋</div>
+      <h1 style="color: #dc2626; margin-bottom: 20px;">Cotización Rechazada</h1>
+    {% elif accion == 'modificar' %}
+      <div style="font-size: 6rem; margin-bottom: 20px;">📝</div>
+      <h1 style="color: #ea580c; margin-bottom: 20px;">Solicitud Enviada</h1>
+    {% endif %}
+
+    <div style="background: var(--azul-100); padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="font-size: 1.1rem; color: var(--azul-700); margin: 0;">
+        {{ mensaje }}
+      </p>
+    </div>
+
+    <p style="color: var(--gris-600); line-height: 1.6;">
+      Hemos registrado su respuesta para la <strong>Cotización N° {{ cotizacion.numero }}</strong>.
+      <br><br>
+      Nuestro equipo ha sido notificado y
+      {% if accion == 'aprobar' %}
+        nos pondremos en contacto con usted para coordinar los siguientes pasos.
+      {% elif accion == 'rechazar' %}
+        hemos tomado nota de su decisión. Gracias por considerar nuestra propuesta.
+      {% elif accion == 'modificar' %}
+        revisaremos su solicitud y le enviaremos una cotización actualizada a la brevedad.
+      {% endif %}
+    </p>
+
+    {% if cotizacion.comentarios_cliente %}
+    <div style="background: var(--gris-100); padding: 15px; border-radius: 8px; margin: 20px 0; text-align: left;">
+      <strong>Sus comentarios:</strong>
+      <p style="margin: 10px 0 0; white-space: pre-line;">{{ cotizacion.comentarios_cliente }}</p>
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--gris-300);">
+      <h3 style="color: var(--azul-700); margin-bottom: 15px;">Información de Contacto</h3>
+      <p style="color: var(--gris-600); margin: 5px 0;">
+        📧 {{ cotizacion.email_enviado_a }}<br>
+        📞 Teléfono: {{ config_empresa.telefono }}<br>
+        📍 {{ config_empresa.direccion }}
+      </p>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <p style="color: var(--gris-500); font-size: 0.9rem;">
+        Puede cerrar esta ventana de forma segura.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

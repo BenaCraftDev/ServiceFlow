@@ -1,0 +1,254 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cotización {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    body {
+      background: linear-gradient(135deg, #eaf3ff 0%, #ffffff 100%);
+    }
+    .public-container {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    .public-header {
+      text-align: center;
+      background: linear-gradient(135deg, #1f5fa5, #2575c0);
+      color: white;
+      padding: 30px;
+      border-radius: 12px 12px 0 0;
+      margin-bottom: 0;
+    }
+    .public-header h1 {
+      margin: 0 0 10px 0;
+      font-size: 1.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="public-container">
+    <div class="public-header">
+      <h1>{{ config_empresa.nombre }}</h1>
+      <p style="margin: 5px 0; opacity: 0.9;">{{ config_empresa.descripcion|striptags }}</p>
+      <p style="margin: 5px 0; font-size: 0.9rem;">
+        📧 {{ config_empresa.email }} | 📞 {{ config_empresa.telefono }}
+      </p>
+    </div>
+
+    <div class="card" style="border-radius: 0 0 12px 12px; margin-top: 0;">
+      <!-- Header de la cotización -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid var(--azul-600);">
+        <div>
+          <h2 style="margin: 0; color: var(--azul-700);">Cotización N° {{ cotizacion.numero }}</h2>
+          <span class="pill {{ cotizacion.estado }}">
+            {{ cotizacion.get_estado_display }}
+          </span>
+        </div>
+        <div style="text-align: right;">
+          <p style="margin: 5px 0; color: var(--gris-600);">
+            <strong>Fecha:</strong> {{ cotizacion.fecha_creacion|date:"d/m/Y" }}
+          </p>
+          {% if cotizacion.fecha_vencimiento %}
+          <p style="margin: 5px 0; color: var(--gris-600);">
+            <strong>Válida hasta:</strong> {{ cotizacion.fecha_vencimiento|date:"d/m/Y" }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Información del Cliente -->
+      <div style="background: var(--azul-100); padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+        <h4 style="margin: 0 0 10px; color: var(--azul-700);">Información del Cliente</h4>
+        <p style="margin: 5px 0;"><strong>Cliente:</strong> {{ cotizacion.get_nombre_cliente }}</p>
+        {% if cotizacion.representante or cotizacion.representante_nombre_respaldo %}
+        <p style="margin: 5px 0;"><strong>Atención:</strong> {{ cotizacion.get_nombre_representante }}</p>
+        {% endif %}
+        <p style="margin: 5px 0;"><strong>Referencia:</strong> {{ cotizacion.referencia }}</p>
+        <p style="margin: 5px 0;"><strong>Lugar:</strong> {{ cotizacion.lugar }}</p>
+        <p style="margin: 5px 0;"><strong>Tipo de Trabajo:</strong> {{ cotizacion.tipo_trabajo.nombre }}</p>
+      </div>
+
+      <!-- Servicios -->
+      {% load formato_numeros %}
+      {% if items_servicio %}
+      <div style="margin-bottom: 24px;">
+        <h3 style="color: var(--azul-700); margin: 0 0 16px;">🔧 Servicios</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50%;">Descripción</th>
+                <th style="width: 15%;">Cantidad</th>
+                <th style="width: 15%;">Precio Unit.</th>
+                <th style="width: 20%;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items_servicio %}
+              <tr>
+                <td>
+                  <strong>{{ item.servicio.nombre }}</strong>
+                  {% if item.descripcion_personalizada %}
+                    <div style="margin-top: 4px; color: var(--gris-600);">{{ item.descripcion_personalizada }}</div>
+                  {% endif %}
+                  {% if item.parametros.all %}
+                    <div style="margin-top: 8px; font-size: 0.9em; color: var(--gris-600);">
+                      {% for param in item.parametros.all %}
+                        <div>• {{ param.parametro.nombre }}: {{ param.valor }}</div>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td>{{ item.cantidad }} {{ item.servicio.unidad }}</td>
+                <td>{{ item.precio_unitario|formato_precio }}</td>
+                <td><strong>{{ item.subtotal|formato_precio }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Materiales -->
+      {% if items_material %}
+      <div style="margin-bottom: 24px;">
+        <h3 style="color: var(--azul-700); margin: 0 0 16px;">📦 Materiales</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50%;">Material</th>
+                <th style="width: 15%;">Cantidad</th>
+                <th style="width: 15%;">Precio Unit.</th>
+                <th style="width: 20%;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items_material %}
+              <tr>
+                <td>
+                  <strong>{{ item.material.codigo }} - {{ item.material.nombre }}</strong>
+                  {% if item.descripcion_personalizada %}
+                    <div style="margin-top: 4px; color: var(--gris-600);">{{ item.descripcion_personalizada }}</div>
+                  {% endif %}
+                </td>
+                <td>{{ item.cantidad }} {{ item.material.unidad }}</td>
+                <td>{{ item.precio_unitario|formato_precio }}</td>
+                <td><strong>{{ item.subtotal|formato_precio }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Mano de Obra -->
+      {% if items_mano_obra %}
+      <div style="margin-bottom: 24px;">
+        <h3 style="color: var(--azul-700); margin: 0 0 16px;">👷 Mano de Obra</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50%;">Descripción</th>
+                <th style="width: 15%;">Horas</th>
+                <th style="width: 15%;">Precio/Hora</th>
+                <th style="width: 20%;">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items_mano_obra %}
+              <tr>
+                <td>{{ item.descripcion }}</td>
+                <td>{{ item.horas }}</td>
+                <td>{{ item.precio_hora|formato_precio }}</td>
+                <td><strong>{{ item.subtotal|formato_precio }}</strong></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Totales -->
+      <div style="background: var(--azul-100); border: 2px solid var(--azul-300); border-radius: var(--radius); padding: 24px; margin-top: 30px;">
+        <h3 style="margin: 0 0 20px; color: var(--azul-700); text-align: center; font-size: 1.3rem;">💰 RESUMEN FINANCIERO</h3>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px 20px; align-items: center; max-width: 500px; margin: 0 auto;">
+          {% if cotizacion.subtotal_servicios > 0 %}
+          <div style="font-weight: 600;">Total Servicios:</div>
+          <div style="text-align: right; font-weight: 600;">{{ cotizacion.subtotal_servicios|formato_precio }}</div>
+          {% endif %}
+          
+          {% if cotizacion.subtotal_materiales > 0 %}
+          <div style="font-weight: 600;">Materiales:</div>
+          <div style="text-align: right; font-weight: 600;">{{ cotizacion.subtotal_materiales|formato_precio }}</div>
+          {% endif %}
+          
+          {% if cotizacion.subtotal_mano_obra > 0 %}
+          <div style="font-weight: 600;">Mano de Obra:</div>
+          <div style="text-align: right; font-weight: 600;">{{ cotizacion.subtotal_mano_obra|formato_precio }}</div>
+          {% endif %}
+          
+          {% if cotizacion.gastos_traslado > 0 %}
+          <div style="font-weight: 600;">Gastos de Traslado:</div>
+          <div style="text-align: right; font-weight: 600;">{{ cotizacion.gastos_traslado|formato_precio }}</div>
+          {% endif %}
+          
+          <div style="font-weight: 600; padding-top: 12px; border-top: 1px solid var(--azul-600);">Valor Neto:</div>
+          <div style="text-align: right; font-weight: 600; padding-top: 12px; border-top: 1px solid var(--azul-600);">{{ cotizacion.valor_neto|formato_precio }}</div>
+          
+          <div style="font-weight: 600;">IVA (19%):</div>
+          <div style="text-align: right; font-weight: 600;">{{ cotizacion.valor_iva|formato_precio }}</div>
+          
+          <div style="grid-column: 1 / -1; border-top: 3px solid var(--azul-600); padding-top: 16px; margin-top: 12px; display: grid; grid-template-columns: 1fr auto; gap: 20px;">
+            <div style="font-size: 1.4rem; font-weight: 800; color: var(--azul-700);">VALOR TOTAL:</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: var(--azul-700); text-align: right;">{{ cotizacion.valor_total|formato_precio }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Observaciones -->
+      {% if cotizacion.observaciones %}
+      <div style="margin-top: 24px; padding: 16px; background: var(--gris-100); border-radius: var(--radius);">
+        <h4 style="margin: 0 0 8px; color: var(--azul-700);">📝 Observaciones</h4>
+        <div>{{ cotizacion.observaciones|linebreaksbr }}</div>
+      </div>
+      {% endif %}
+
+      <!-- Botones de acción -->
+      {% if cotizacion.puede_responder %}
+      <div style="margin-top: 40px; text-align: center; padding: 30px; background: white; border-radius: 8px; border: 2px dashed var(--azul-300);">
+        <h3 style="color: var(--azul-700); margin-bottom: 20px;">¿Qué desea hacer con esta cotización?</h3>
+        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+          <a href="{% url 'cotizaciones:responder' cotizacion.token_validacion 'aprobar' %}" class="btn success">
+            ✅ Aprobar Cotización
+          </a>
+          <a href="{% url 'cotizaciones:responder' cotizacion.token_validacion 'modificar' %}" class="btn warning">
+            📝 Solicitar Cambios
+          </a>
+          <a href="{% url 'cotizaciones:responder' cotizacion.token_validacion 'rechazar' %}" class="btn danger">
+            ❌ Rechazar
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Footer -->
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--gris-300); text-align: center; color: var(--gris-600); font-size: 0.9rem;">
+        <p style="margin: 5px 0;">📧 {{ config_empresa.email }} | 📞 {{ config_empresa.telefono }}</p>
+        <p style="margin: 5px 0;">📍 {{ config_empresa.direccion }}</p>
+        <p style="margin: 15px 0 0; font-size: 0.85rem; color: var(--gris-500);">
+          Cotización generada el {{ cotizacion.fecha_creacion|date:"d/m/Y H:i" }}
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

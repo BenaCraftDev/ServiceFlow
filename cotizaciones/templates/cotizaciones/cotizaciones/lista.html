@@ -1,0 +1,374 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lista de Cotizaciones - Sistema de Cotizaciones</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Lista</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a onclick="window.history.back()" style="cursor: pointer;">← Volver</a>
+      <a href="{% url 'home:panel_empleados' %}" >🏠 Panel</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">Lista de Cotizaciones</h1>
+      </div>
+      <div class="actions-right">
+        <div class="dropdown-export" style="position: relative; display: inline-block;">
+          <button type="button" class="btn"
+            onclick="window.location.href='{% url 'cotizaciones:crear' %}'">
+            ➕ Nueva Cotización
+          </button>
+          <button type="button" class="btn secondary" onclick="toggleExportMenu('export-clientes')">
+            📥 Exportar
+          </button>
+          <div id="export-clientes" class="export-menu" style="display: none;">
+            <a href="{% url 'cotizaciones:exportar_cotizaciones' %}?formato=excel{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">
+              📊 Exportar a Excel
+            </a>
+            <a href="{% url 'cotizaciones:exportar_cotizaciones' %}?formato=csv{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">
+              📄 Exportar a CSV
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <form method="get" style="display: contents;">
+        <div class="filter-group">
+          <label for="busqueda">Buscar</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                 placeholder="Número, cliente, referencia...">
+        </div>
+        
+        <div class="filter-group">
+          <label for="estado">Estado</label>
+          <select id="estado" name="estado">
+            <option value="">Todos los estados</option>
+            {% for estado_choice in estados %}
+              <option value="{{ estado_choice.0 }}" 
+                      {% if estado_choice.0 == estado_filtro %}selected{% endif %}>
+                {{ estado_choice.1 }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="cliente">Cliente</label>
+          <select id="cliente" name="cliente">
+            <option value="">Todos los clientes</option>
+            {% for cliente in clientes %}
+              <option value="{{ cliente.id }}" 
+                      {% if cliente.id|stringformat:"s" == cliente_filtro %}selected{% endif %}>
+                {{ cliente.nombre }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="mes">Mes</label>
+          <select id="mes" name="mes">
+            <option value="">Todos los meses</option>
+            <option value="1" {% if request.GET.mes == '1' %}selected{% endif %}>Enero</option>
+            <option value="2" {% if request.GET.mes == '2' %}selected{% endif %}>Febrero</option>
+            <option value="3" {% if request.GET.mes == '3' %}selected{% endif %}>Marzo</option>
+            <option value="4" {% if request.GET.mes == '4' %}selected{% endif %}>Abril</option>
+            <option value="5" {% if request.GET.mes == '5' %}selected{% endif %}>Mayo</option>
+            <option value="6" {% if request.GET.mes == '6' %}selected{% endif %}>Junio</option>
+            <option value="7" {% if request.GET.mes == '7' %}selected{% endif %}>Julio</option>
+            <option value="8" {% if request.GET.mes == '8' %}selected{% endif %}>Agosto</option>
+            <option value="9" {% if request.GET.mes == '9' %}selected{% endif %}>Septiembre</option>
+            <option value="10" {% if request.GET.mes == '10' %}selected{% endif %}>Octubre</option>
+            <option value="11" {% if request.GET.mes == '11' %}selected{% endif %}>Noviembre</option>
+            <option value="12" {% if request.GET.mes == '12' %}selected{% endif %}>Diciembre</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="anio">Año</label>
+          <select id="anio" name="anio">
+            <option value="">Todos los años</option>
+            {% for year in years_range %}
+              <option value="{{ year }}" {% if request.GET.anio == year|stringformat:"s" %}selected{% endif %}>
+                {{ year }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn">🔍 Filtrar</button>
+        </div>
+        
+        <div class="filter-group">
+          <label>&nbsp;</label>
+          <button type="button" class="btn secondary"
+            onclick="window.location.href='{% url 'cotizaciones:lista' %}'">
+            🗑️ Limpiar
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Tabla de Cotizaciones -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Representante</th>
+            <th>Referencia</th>
+            <th>Tipo</th>
+            <th>Estado</th>
+            <th>Valor Total</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cotizacion in cotizaciones %}
+          <tr>
+            <td><strong>{{ cotizacion.numero }}</strong></td>
+            <td>{{ cotizacion.get_nombre_cliente }}</td>
+            <td>
+              {% if cotizacion.representante or cotizacion.representante_nombre_respaldo %}
+                {{ cotizacion.representante.nombre }}
+              {% else %}
+                <span style="color: var(--gris-500);">-</span>
+              {% endif %}
+            </td>
+            <td>{{ cotizacion.referencia|truncatewords:5 }}</td>
+            <td>{{ cotizacion.tipo_trabajo.nombre }}</td>
+            <td>
+              <span class="pill {{ cotizacion.estado }}">
+                {{ cotizacion.get_estado_display }}
+              </span>
+            </td>
+            <td><strong>${{ cotizacion.valor_total|floatformat:0 }}</strong></td>
+            <td>{{ cotizacion.fecha_creacion|date:"d/m/Y" }}</td>
+            <td>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" 
+                  class="btn small secondary" title="Ver detalle">
+                  👁️
+                </a>
+                
+                {% if cotizacion.estado == 'borrador' %}
+                  <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" 
+                    class="btn small" title="Editar">
+                    ✏️
+                  </a>
+                  <a href="{% url 'cotizaciones:enviar_email' cotizacion.pk %}" 
+                    class="btn small success" title="Enviar por email">
+                    📧
+                  </a>
+                  <button type="button" 
+                    class="btn small danger" 
+                    onclick="eliminarCotizacion({{ cotizacion.pk }}, '{{ cotizacion.numero }}')" 
+                    title="Eliminar">
+                    🗑️
+                  </button>
+                {% elif cotizacion.estado == 'requiere_cambios' %}
+                  <a href="{% url 'cotizaciones:reenviar' cotizacion.pk %}" 
+                    class="btn small warning" title="Editar y reenviar">
+                    📝
+                  </a>
+                {% elif cotizacion.estado == 'enviada' %}
+                  <span class="btn small secondary" style="opacity: 0.6;" title="Esperando respuesta">
+                    ⏳
+                  </span>
+                {% elif cotizacion.estado == 'aprobada' %}
+                  <span class="btn small success" style="opacity: 0.8;" title="Aprobada">
+                    ✅
+                  </span>
+                {% elif cotizacion.estado == 'rechazada' %}
+                  <span class="btn small danger" style="opacity: 0.8;" title="Rechazada">
+                    ❌
+                  </span>
+                {% endif %}
+                
+                <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" 
+                  class="btn small secondary" title="Ver PDF" target="_blank">
+                  📄
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              {% if busqueda or estado_filtro or cliente_filtro %}
+                No se encontraron cotizaciones que coincidan con los filtros aplicados.
+                <br><br>
+                <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">Limpiar filtros</a>
+              {% else %}
+                No hay cotizaciones registradas aún.
+                <br><br>
+                <a href="{% url 'cotizaciones:crear' %}" class="btn">Crear Primera Cotización</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if cotizaciones.has_other_pages %}
+    <div class="pagination">
+      {% if cotizaciones.has_previous %}
+        <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">&laquo; Primera</a>
+        <a href="?page={{ cotizaciones.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">&lsaquo; Anterior</a>
+      {% endif %}
+      
+      <span class="current">
+        Página {{ cotizaciones.number }} de {{ cotizaciones.paginator.num_pages }}
+      </span>
+      
+      {% if cotizaciones.has_next %}
+        <a href="?page={{ cotizaciones.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">Siguiente &rsaquo;</a>
+        <a href="?page={{ cotizaciones.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}{% if cliente_filtro %}&cliente={{ cliente_filtro }}{% endif %}">Última &raquo;</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Resumen de filtros aplicados -->
+    {% if busqueda or estado_filtro or cliente_filtro or request.GET.mes or request.GET.anio %}
+    <div class="card" style="margin-top: 20px;">
+      <h4>Filtros aplicados:</h4>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        {% if busqueda %}
+        <span class="pill enviada">Búsqueda: "{{ busqueda }}"</span>
+        {% endif %}
+        {% if estado_filtro %}
+        <span class="pill {{ estado_filtro }}">Estado: {{ estado_filtro|capfirst }}</span>
+        {% endif %}
+        {% if cliente_filtro %}
+        <span class="pill aprobada">Cliente: {{ cliente_nombre }}</span>
+        {% endif %}
+        {% if request.GET.mes %}
+        <span class="pill borrador">Mes: {{ request.GET.mes }}</span>
+        {% endif %}
+        {% if request.GET.anio %}
+        <span class="pill borrador">Año: {{ request.GET.anio }}</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</body>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  async function eliminarCotizacion(cotizacionId, numeroCotizacion) {
+      if (!confirm(`¿Estás seguro de eliminar la cotización ${numeroCotizacion}?\n\nEsta acción no se puede deshacer.`)) {
+          return;
+      }
+      
+      try {
+          const response = await fetch(`/cotizaciones/${cotizacionId}/eliminar/`, {
+              method: 'DELETE',
+              headers: {
+                  'X-CSRFToken': getCSRFToken()
+              }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+              alert(result.message);
+              location.reload();
+          } else {
+              alert('Error: ' + result.error);
+          }
+      } catch (error) {
+          console.error('Error eliminando cotización:', error);
+          alert('Error al eliminar la cotización');
+      }
+  }
+
+  async function completarCotizacion(cotizacionId) {
+      if (!confirm('¿Marcar esta cotización como enviada?\n\nUna vez enviada no podrá ser eliminada.')) {
+          return;
+      }
+      
+      try {
+          const response = await fetch(`/cotizaciones/${cotizacionId}/completar/`, {
+              method: 'POST',
+              headers: {
+                  'X-CSRFToken': getCSRFToken()
+              }
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+              alert(result.message);
+              location.reload();
+          } else {
+              alert('Error: ' + result.error);
+          }
+      } catch (error) {
+          console.error('Error completando cotización:', error);
+          alert('Error al completar la cotización');
+      }
+  }
+
+  
+  function toggleExportMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    const allMenus = document.querySelectorAll('.export-menu');
+    
+    // Cerrar todos los menús excepto el actual
+    allMenus.forEach(m => {
+      if (m.id !== menuId) {
+        m.style.display = 'none';
+      }
+    });
+    
+    // Toggle del menú actual
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-export')) {
+      document.querySelectorAll('.export-menu').forEach(menu => {
+        menu.style.display = 'none';
+      });
+    }
+  });
+
+</script>
+</html>

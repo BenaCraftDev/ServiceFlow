@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Responder Cotización {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    body {
+      background: linear-gradient(135deg, #eaf3ff 0%, #ffffff 100%);
+    }
+    .public-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    .action-card {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(10, 35, 66, 0.12);
+    }
+  </style>
+</head>
+<body>
+  <div class="public-container">
+    <div class="action-card">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: var(--azul-700); margin: 0 0 10px;">{{ config_empresa.nombre }}</h1>
+        <h2 style="color: var(--gris-600); font-size: 1.3rem; margin: 0;">
+          Cotización N° {{ cotizacion.numero }}
+        </h2>
+      </div>
+
+      {% if accion == 'aprobar' %}
+        <div style="text-align: center; margin: 30px 0;">
+          <div style="font-size: 5rem; margin-bottom: 20px;">✅</div>
+          <h2 style="color: #059669;">Aprobar Cotización</h2>
+          <p style="color: var(--gris-600);">
+            Está a punto de aprobar esta cotización. Confirme su decisión a continuación.
+          </p>
+        </div>
+      {% elif accion == 'rechazar' %}
+        <div style="text-align: center; margin: 30px 0;">
+          <div style="font-size: 5rem; margin-bottom: 20px;">❌</div>
+          <h2 style="color: #dc2626;">Rechazar Cotización</h2>
+          <p style="color: var(--gris-600);">
+            Está a punto de rechazar esta cotización. Por favor indique el motivo.
+          </p>
+        </div>
+      {% elif accion == 'modificar' %}
+        <div style="text-align: center; margin: 30px 0;">
+          <div style="font-size: 5rem; margin-bottom: 20px;">📝</div>
+          <h2 style="color: #ea580c;">Solicitar Cambios</h2>
+          <p style="color: var(--gris-600);">
+            Indique los cambios que requiere en la cotización.
+          </p>
+        </div>
+      {% endif %}
+
+      <!-- Resumen de la cotización -->
+      <div style="background: var(--azul-100); padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 5px 0;"><strong>Cliente:</strong> {{ cotizacion.get_nombre_cliente }}</p>
+        <p style="margin: 5px 0;"><strong>Referencia:</strong> {{ cotizacion.referencia }}</p>
+        <p style="margin: 5px 0;"><strong>Valor Total:</strong> 
+          <span style="font-size: 1.3rem; color: var(--azul-700); font-weight: bold;">
+            ${{ cotizacion.valor_total|floatformat:0 }}
+          </span>
+        </p>
+        <a href="{% url 'cotizaciones:ver_publica' cotizacion.token_validacion %}" 
+           target="_blank" 
+           style="color: var(--azul-600); text-decoration: underline;">
+          Ver cotización completa →
+        </a>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="comentarios">
+            {% if accion == 'rechazar' %}
+              Motivo del Rechazo *
+            {% elif accion == 'modificar' %}
+              Cambios Solicitados *
+            {% else %}
+              Comentarios (Opcional)
+            {% endif %}
+          </label>
+          <textarea 
+            id="comentarios" 
+            name="comentarios" 
+            rows="6"
+            {% if accion != 'aprobar' %}required{% endif %}
+            placeholder="{% if accion == 'rechazar' %}Por favor indique el motivo del rechazo...{% elif accion == 'modificar' %}Especifique qué cambios necesita en la cotización...{% else %}Agregue cualquier comentario adicional...{% endif %}"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 30px; justify-content: center;">
+          <a href="{% url 'cotizaciones:ver_publica' cotizacion.token_validacion %}" 
+             class="btn secondary">
+            ← Volver a la Cotización
+          </a>
+          <button type="submit" class="btn {% if accion == 'aprobar' %}success{% elif accion == 'rechazar' %}danger{% else %}warning{% endif %}">
+            {% if accion == 'aprobar' %}
+              ✅ Confirmar Aprobación
+            {% elif accion == 'rechazar' %}
+              ❌ Confirmar Rechazo
+            {% else %}
+              📝 Enviar Solicitud de Cambios
+            {% endif %}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Footer con info de contacto -->
+    <div style="text-align: center; margin-top: 30px; color: var(--gris-600); font-size: 0.9rem;">
+      <p>¿Tiene preguntas? Contáctenos:</p>
+      <p>
+        📧 {{ config_empresa.email }} | 
+        📞 {{ config_empresa.telefono }}
+      </p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,367 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mis Trabajos - {{ perfil_empleado.nombre_completo }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      🔧 Sistema de Cotizaciones
+      <span class="badge">Mis Trabajos</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'home:panel_empleados' %}">🏠 Menú</a>
+      <span>👤 {{ user.get_full_name|default:user.username }}</span>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Bienvenida -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">
+          📋 Mis Trabajos Asignados
+        </h1>
+        <p style="margin: 5px 0 0 0; color: var(--gris-600);">
+          Bienvenido <strong>{{ perfil_empleado.nombre_completo }}</strong> - Solo trabajos de cotizaciones aprobadas
+        </p>
+      </div>
+      <div class="actions-right">
+        <select onchange="filtrarPorEstado(this.value)" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--gris-300);">
+          <option value="">Todos los estados</option>
+          {% for key, value in estados_choices %}
+          <option value="{{ key }}" {% if estado_filtro == key %}selected{% endif %}>{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="card">
+      <h3>📊 Resumen de Trabajos (Solo Cotizaciones Aprobadas)</h3>
+      <div class="cards" style="margin: 0;">
+        <div class="card" style="margin: 0;">
+          <h4>⏳ Pendientes</h4>
+          <div class="kpi" style="color: var(--naranja-600);">{{ stats.pendientes }}</div>
+          <div class="muted">Por iniciar</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>🔄 En Progreso</h4>
+          <div class="kpi" style="color: var(--azul-600);">{{ stats.en_progreso }}</div>
+          <div class="muted">En ejecución</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>✅ Completados</h4>
+          <div class="kpi" style="color: var(--verde-600);">{{ stats.completados }}</div>
+          <div class="muted">Finalizados</div>
+        </div>
+        <div class="card" style="margin: 0;">
+          <h4>⏱️ Horas Trabajadas</h4>
+          <div class="kpi">{{ stats.total_horas|floatformat:1 }}</div>
+          <div class="muted">Total acumulado</div>
+        </div>
+      </div>
+    </div>
+
+    {% if not trabajos %}
+    <!-- Sin trabajos -->
+    <div class="card" style="text-align: center; padding: 60px 20px;">
+      <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;">📭</div>
+      <h3 style="color: var(--gris-600); margin: 0 0 10px 0;">No tienes trabajos asignados</h3>
+      <p style="color: var(--gris-500); margin: 0;">
+        Los trabajos aparecerán aquí cuando se aprueben cotizaciones con tareas asignadas para ti.
+      </p>
+    </div>
+    {% else %}
+    <!-- Lista de Trabajos -->
+    <div class="card">
+      <h3>📝 Lista de Trabajos</h3>
+      
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Cotización</th>
+              <th>Cliente</th>
+              <th>Descripción del Trabajo</th>
+              <th>Estado Cotización</th>
+              <th>Estado Trabajo</th>
+              <th>Fecha Asignación</th>
+              <th>Horas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for trabajo in trabajos %}
+            <tr data-trabajo-id="{{ trabajo.id }}" {% if trabajo.estado == 'completado' %}style="background: #f0fdf4;"{% endif %}>
+              <td>
+                <strong style="color: var(--azul-700);">{{ trabajo.cotizacion.numero }}</strong><br>
+                <small style="color: var(--gris-600);">{{ trabajo.cotizacion.referencia|truncatewords:5 }}</small>
+              </td>
+              <td>
+                <strong>{{ trabajo.cotizacion.get_nombre_cliente }}</strong><br>
+                <small style="color: var(--gris-600);">📍 {{ trabajo.cotizacion.lugar|truncatewords:3 }}</small>
+              </td>
+              <td>
+                {{ trabajo.item_mano_obra.descripcion|truncatewords:8 }}<br>
+                <small style="color: var(--gris-600);">💰 ${{ trabajo.item_mano_obra.precio_hora|floatformat:0 }}/hora</small>
+              </td>
+              <td>
+                <span class="pill {% if trabajo.cotizacion.estado == 'aprobada' %}aprobada{% elif trabajo.cotizacion.estado == 'finalizada' %}success{% endif %}">
+                  {{ trabajo.cotizacion.get_estado_display }}
+                </span>
+              </td>
+              <td>
+                <span class="pill {% if trabajo.estado == 'completado' %}success{% elif trabajo.estado == 'en_progreso' %}warning{% elif trabajo.estado == 'pendiente' %}info{% else %}danger{% endif %}">
+                  {{ trabajo.get_estado_display }}
+                </span>
+              </td>
+              <td>
+                {% if trabajo.fecha_inicio %}
+                  <strong>{{ trabajo.fecha_inicio|date:"d/m/Y" }}</strong><br>
+                  <small>{{ trabajo.fecha_inicio|date:"H:i" }}</small>
+                {% else %}
+                  <span style="color: var(--gris-500);">No iniciado</span>
+                {% endif %}
+              </td>
+              <td>
+                <strong style="font-size: 1.1rem; color: var(--azul-700);">{{ trabajo.horas_trabajadas|floatformat:1 }}</strong> hrs
+                {% if trabajo.fecha_fin %}
+                  <br><small style="color: var(--verde-600);">✓ Finalizado: {{ trabajo.fecha_fin|date:"d/m/Y H:i" }}</small>
+                {% endif %}
+              </td>
+              <td>
+                {% if trabajo.estado != 'completado' %}
+                  <button type="button" class="btn small" onclick="editarTrabajo({{ trabajo.id }}, '{{ trabajo.estado }}', '{{ trabajo.horas_trabajadas }}', `{{ trabajo.observaciones_empleado|default:'' }}`)">
+                    ✏️ Editar
+                  </button>
+                  {% if trabajo.estado == 'pendiente' %}
+                    <button type="button" class="btn small warning" onclick="iniciarTrabajo({{ trabajo.id }})">
+                      ▶️ Iniciar
+                    </button>
+                  {% endif %}
+                  {% if trabajo.estado == 'en_progreso' %}
+                    <button type="button" class="btn small success" onclick="completarTrabajo({{ trabajo.id }})">
+                      ✅ Completar
+                    </button>
+                  {% endif %}
+                {% else %}
+                  <span style="color: var(--verde-600); font-weight: 600;">✓ Completado</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Modal Editar Trabajo -->
+  <div id="modal-editar-trabajo" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Actualizar Trabajo</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-editar-trabajo')">&times;</button>
+      </div>
+      
+      <div class="form-group">
+        <label for="estado-trabajo">Estado</label>
+        <select id="estado-trabajo" class="form-control">
+          {% for key, value in estados_choices %}
+          <option value="{{ key }}">{{ value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="horas-trabajadas">Horas Trabajadas</label>
+        <input type="number" id="horas-trabajadas" step="0.5" min="0" class="form-control">
+      </div>
+      
+      <div class="form-group">
+        <label for="observaciones-trabajo">Observaciones</label>
+        <textarea id="observaciones-trabajo" rows="4" class="form-control" placeholder="Describe el trabajo realizado, dificultades encontradas, etc."></textarea>
+      </div>
+      
+      <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+        <button type="button" class="btn secondary" onclick="cerrarModal('modal-editar-trabajo')">Cancelar</button>
+        <button type="button" class="btn" onclick="guardarTrabajo()">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let trabajoEditando = null;
+
+    // Función para obtener el token CSRF
+    function getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.getAttribute('content');
+        
+        const cookie = document.cookie.split(';').find(c => c.trim().startsWith('csrftoken='));
+        if (cookie) return cookie.split('=')[1];
+        
+        return '';
+    }
+
+    // Filtrar por estado
+    function filtrarPorEstado(estado) {
+        const url = new URL(window.location);
+        if (estado) {
+            url.searchParams.set('estado', estado);
+        } else {
+            url.searchParams.delete('estado');
+        }
+        window.location.href = url.toString();
+    }
+
+    // Iniciar trabajo
+    async function iniciarTrabajo(trabajoId) {
+        if (!confirm('¿Deseas iniciar este trabajo ahora?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cotizaciones/trabajo/${trabajoId}/actualizar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    estado: 'en_progreso'
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ Trabajo iniciado exitosamente');
+                location.reload();
+            } else {
+                alert('❌ Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al iniciar trabajo');
+        }
+    }
+
+    // Completar trabajo
+    async function completarTrabajo(trabajoId) {
+        if (!confirm('¿Estás seguro de marcar este trabajo como completado?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cotizaciones/trabajo/${trabajoId}/completar/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ Trabajo completado exitosamente');
+                location.reload();
+            } else {
+                alert('❌ Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al completar trabajo');
+        }
+    }
+
+    // Editar trabajo
+    function editarTrabajo(trabajoId, estado, horas, observaciones) {
+        trabajoEditando = trabajoId;
+        
+        // Cargar datos actuales
+        document.getElementById('estado-trabajo').value = estado;
+        document.getElementById('horas-trabajadas').value = horas;
+        document.getElementById('observaciones-trabajo').value = observaciones;
+        
+        mostrarModal('modal-editar-trabajo');
+    }
+
+    // Guardar cambios del trabajo
+    async function guardarTrabajo() {
+        if (!trabajoEditando) return;
+
+        const estado = document.getElementById('estado-trabajo').value;
+        const horasTrabajadas = document.getElementById('horas-trabajadas').value;
+        const observaciones = document.getElementById('observaciones-trabajo').value;
+
+        try {
+            const response = await fetch(`/cotizaciones/trabajo/${trabajoEditando}/actualizar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    estado: estado,
+                    horas_trabajadas: parseFloat(horasTrabajadas),
+                    observaciones_empleado: observaciones
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ Trabajo actualizado exitosamente');
+                location.reload();
+            } else {
+                alert('❌ Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al actualizar trabajo');
+        }
+    }
+
+    // Cerrar modal
+    function cerrarModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        
+        if (modalId === 'modal-editar-trabajo') {
+            trabajoEditando = null;
+            document.getElementById('estado-trabajo').value = '';
+            document.getElementById('horas-trabajadas').value = '';
+            document.getElementById('observaciones-trabajo').value = '';
+        }
+    }
+
+    // Mostrar modal
+    function mostrarModal(modalId) {
+        const modal = document.getElementById(modalId);
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+    }
+
+    // Cerrar modal al hacer click fuera
+    window.onclick = function(event) {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                cerrarModal(modal.id);
+            }
+        });
+    }
+  </script>
+</body>
+</html>

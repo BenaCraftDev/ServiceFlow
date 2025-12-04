@@ -1,0 +1,114 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ titulo }} - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+.alert.error {
+  background: var(--rojo-100);
+  color: var(--rojo-700);
+  border: 1px solid var(--rojo-600);
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+  </style>
+</head>
+<body>
+
+  {% include 'notificaciones/helmet.html' %}
+
+  <main>
+    <div class="actions">
+      <h1 style="margin: 0; color: var(--azul-700);">{{ titulo }}</h1>
+    </div>
+
+    <div class="card">
+      <form method="post" id="formPrestamo">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="{{ form.material.id_for_label }}">Material *</label>
+          {{ form.material }}
+          {% if form.material.errors %}
+            <div class="alert error">{{ form.material.errors }}</div>
+          {% endif %}
+          <small class="muted">
+            {% if prestamo %}
+              No se puede cambiar el material de un préstamo existente
+            {% else %}
+              Solo se muestran materiales disponibles (sin préstamo)
+            {% endif %}
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.prestado_a.id_for_label }}">Prestado a *</label>
+          {{ form.prestado_a }}
+          {% if form.prestado_a.errors %}
+            <div class="alert error">{{ form.prestado_a.errors }}</div>
+          {% endif %}
+          <small class="muted">Nombre de la persona o empresa</small>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.fecha_devolucion.id_for_label }}">Fecha de Devolución *</label>
+          {{ form.fecha_devolucion }}
+          {% if form.fecha_devolucion.errors %}
+            <div class="alert error">{{ form.fecha_devolucion.errors }}</div>
+          {% endif %}
+          <small class="muted">Fecha estimada de devolución del material</small>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+          {{ form.observaciones }}
+          {% if form.observaciones.errors %}
+            <div class="alert error">{{ form.observaciones.errors }}</div>
+          {% endif %}
+          <small class="muted">Información adicional (opcional)</small>
+        </div>
+
+        <div class="actions" style="margin-top: 24px;">
+          <button type="submit" class="btn">
+            💾 {{ titulo }}
+          </button>
+          <a href="{% url 'cotizaciones:lista_prestamos' %}" class="btn secondary">
+            Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+// Validación del formulario
+document.getElementById('formPrestamo').addEventListener('submit', function(e) {
+  const material = document.querySelector('[name="material"]').value;
+  const prestadoA = document.querySelector('[name="prestado_a"]').value;
+  const fechaDevolucion = document.querySelector('[name="fecha_devolucion"]').value;
+  
+  if (!material || !prestadoA || !fechaDevolucion) {
+    e.preventDefault();
+    alert('Por favor complete todos los campos obligatorios');
+    return false;
+  }
+  
+  // Validar fecha no sea pasada
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fecha = new Date(fechaDevolucion);
+  
+  if (fecha < hoy) {
+    e.preventDefault();
+    alert('La fecha de devolución no puede ser en el pasado');
+    return false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mis Notificaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      🔔 Notificaciones
+      <span class="badge">Sistema</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      {% include 'notificaciones/notification_bell.html' %}
+      <a href="{% url 'home:mi_perfil' %}">{{ user.get_full_name|default:user.username }}</a>
+      <a href="{% url 'home:logout' %}">🚪 Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" aria-label="Navegación del panel">
+      <h3>☰ Navegación</h3>
+      <nav class="nav">
+        <a href="{% url 'home:panel_empleados' %}">🏠 Panel Principal</a>
+        <a href="{% url 'home:gestion_usuarios' %}">👥 Usuarios</a>
+        <a href="{% url 'cotizaciones:dashboard' %}">📊 Menu Cotizaciones</a>
+        <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
+        <a href="{% url 'cotizaciones:gestionar_clientes' %}">🤵 Clientes</a>
+        <a href="{% url 'cotizaciones:gestionar_servicios' %}">🔧 Servicios</a>
+        <a href="{% url 'cotizaciones:gestionar_materiales' %}">📦 Materiales</a>
+        <a href="{% url 'cotizaciones:gestionar_categorias_empleados' %}">👷 Mano de Obra</a>
+        <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
+        <a href="{% url 'cotizaciones:reportes_dashboard' %}">📈 Reportes Generales</a>
+      </nav>
+    </aside>
+
+    <div class="contenido"></div>
+
+    <!-- Main Content -->
+    <main>
+      <!-- Actions -->
+      <div class="actions" style="margin-bottom: 20px;">
+        <div class="actions-left">
+          <h2 style="margin: 0; color: var(--azul-700);">Todas mis Notificaciones</h2>
+        </div>
+        <div class="actions-right">
+          <button class="btn secondary" onclick="marcarTodasLeidas()">Marcar todas como leídas</button>
+        </div>
+      </div>
+
+      <!-- Notificaciones Card -->
+      <div class="card">
+        {% if notificaciones %}
+          {% for notif in notificaciones %}
+          <div class="notification-item-full {% if not notif.leida %}unread{% endif %}" data-id="{{ notif.id }}" data-url="{{ notif.url }}">
+            <div class="notif-header">
+              <h4>
+                {% if notif.tipo == 'info' %}ℹ️{% elif notif.tipo == 'success' %}✅{% elif notif.tipo == 'warning' %}⚠️{% elif notif.tipo == 'danger' %}🚨{% endif %}
+                {{ notif.titulo }}
+              </h4>
+              <span class="notif-date">{{ notif.fecha_creacion|date:"d/m/Y H:i" }}</span>
+            </div>
+            <p>{{ notif.mensaje }}</p>
+            {% if notif.url %}
+            <a href="{{ notif.url }}" class="btn small secondary" onclick="marcarLeida({{ notif.id }}, event)">
+              Ver detalle →
+            </a>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="text-align: center; padding: 60px 20px; color: var(--gris-600);">
+            <div style="font-size: 4rem; margin-bottom: 20px;">🔔</div>
+            <h3>No tienes notificaciones</h3>
+            <p>Cuando recibas notificaciones aparecerán aquí</p>
+          </div>
+        {% endif %}
+      </div>
+    </main>
+  </div>
+
+  <style>
+    .notification-item-full {
+      padding: 20px;
+      border-bottom: 1px solid var(--gris-300);
+      transition: all 0.3s;
+    }
+
+    .notification-item-full:last-child {
+      border-bottom: none;
+    }
+
+    .notification-item-full:hover {
+      background: var(--gris-100);
+    }
+
+    .notification-item-full.unread {
+      background: var(--azul-100);
+      border-left: 4px solid var(--azul-600);
+    }
+
+    .notif-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .notif-header h4 {
+      margin: 0;
+      color: var(--azul-700);
+      font-size: 1rem;
+    }
+
+    .notif-date {
+      font-size: 0.85rem;
+      color: var(--gris-500);
+    }
+
+    .notification-item-full p {
+      margin: 8px 0;
+      color: var(--gris-800);
+      line-height: 1.5;
+    }
+  </style>
+
+  <script>
+    function marcarLeida(id, event) {
+      event.preventDefault();
+      fetch(`/notificaciones/marcar-leida/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        }
+      }).then(() => {
+        window.location.href = event.target.href;
+      });
+    }
+
+    function marcarTodasLeidas() {
+      fetch("{% url 'notificaciones:marcar_todas_leidas' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        }
+      }).then(() => {
+        location.reload();
+      });
+    }
+
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+</body>
+</html>

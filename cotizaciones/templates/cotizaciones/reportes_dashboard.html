@@ -1,0 +1,1321 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Reportes - Sistema de Cotizaciones</title>
+    <link href="{% static 'css/main.css' %}" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+        .chart-container { 
+            position: relative; 
+            height: 300px; 
+            width: 100%; 
+        }
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .metric-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* EFECTOS HOVER PARA KPIS */
+        .metric-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 24px rgba(37, 117, 192, 0.2);
+            border-color: var(--azul-500);
+        }
+        
+        .metric-card:active {
+            transform: translateY(-2px) scale(1.01);
+        }
+        
+        .metric-icon {
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--azul-100);
+            color: var(--azul-600);
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover .metric-icon {
+            transform: scale(1.1) rotate(5deg);
+            background: var(--azul-200);
+        }
+        
+        .progress-bar {
+            height: 8px;
+            background: var(--gris-300);
+            border-radius: 4px;
+            overflow: hidden;
+            flex: 1;
+            margin: 0 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--azul-600);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+        .legend-item:hover {
+            background: var(--azul-50);
+            transform: translateX(4px);
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .cliente-item, .servicio-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--gris-100);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .cliente-item:hover, .servicio-item:hover {
+            background: var(--azul-50);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+        .filter-tabs {
+            display: flex;
+            background: var(--gris-100);
+            border-radius: 12px;
+            padding: 4px;
+            gap: 4px;
+        }
+        .filter-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--gris-600);
+            transition: all 0.2s;
+        }
+        .filter-tab.active {
+            background: white;
+            color: var(--azul-600);
+            box-shadow: var(--shadow);
+        }
+        .dashboard-grid {
+            display: grid;
+            gap: 20px;
+        }
+        .grid-2 {
+            grid-template-columns: 2fr 1fr;
+        }
+        .grid-equal {
+            grid-template-columns: 1fr 1fr;
+        }
+        @media (max-width: 900px) {
+            .grid-2, .grid-equal {
+                grid-template-columns: 1fr;
+            }
+            .metric-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* ESTILOS PARA MODALES INTERACTIVOS */
+        .modal-interactivo {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-interactivo.show { display: flex; }
+        
+        .modal-content-int {
+            background: white;
+            border-radius: 16px;
+            width: 95%;
+            max-width: 1400px;
+            min-width: min(1400px, 95vw);
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header-int {
+            padding: 24px 32px;
+            background: linear-gradient(135deg, var(--azul-700), var(--azul-500));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-header-int h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .modal-stats-int {
+            display: flex;
+            gap: 16px;
+            font-size: 0.9rem;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        .modal-stat {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .close-modal {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .close-modal:hover { 
+            background: rgba(255, 255, 255, 0.3); 
+            transform: rotate(90deg);
+        }
+        
+        .modal-body-int {
+            padding: 24px 32px;
+            flex: 1;
+            overflow: hidden;
+            min-width: 0;
+            width: 100%;
+        }
+        
+        /* MODAL CON DOS COLUMNAS */
+        .modal-dos-columnas {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            height: calc(90vh - 250px);
+            min-height: 400px;
+            width: 100%;
+        }
+        
+        .columna-modal {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .columna-modal h3 {
+            margin: 0 0 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--azul-100);
+            color: var(--azul-700);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .columna-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 8px;
+            height: 100%;
+        }
+        
+        /* Scrollbar personalizado para cada columna */
+        .columna-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .columna-scroll::-webkit-scrollbar-track {
+            background: var(--gris-100);
+            border-radius: 3px;
+        }
+        
+        .columna-scroll::-webkit-scrollbar-thumb {
+            background: var(--azul-400);
+            border-radius: 3px;
+        }
+        
+        .columna-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--azul-600);
+        }
+        
+        .cotizacion-card {
+            background: white;
+            border: 1px solid var(--gris-200);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            min-width: 0;
+        }
+        .cotizacion-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--azul-400);
+        }
+        .pill { 
+            padding: 4px 12px; 
+            border-radius: 12px; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            display: inline-block;
+        }
+        .pill.borrador { background: #fef3c7; color: #92400e; }
+        .pill.enviada { background: #dbeafe; color: #1e40af; }
+        .pill.aprobada { background: #dcfce7; color: #166534; }
+        .pill.rechazada { background: #fee2e2; color: #991b1b; }
+        .pill.vencida { background: #f3f4f6; color: #374151; }
+        .pill.finalizada { background: #d1fae5; color: #065f46; }
+        
+        @media (max-width: 900px) {
+            .modal-dos-columnas {
+                grid-template-columns: 1fr;
+            }
+        }
+
+</style>
+</head>
+<body>
+    <!-- Modal para gráficos interactivos -->
+    <div id="modal-interactivo" class="modal-interactivo">
+        <div class="modal-content-int">
+            <div class="modal-header-int">
+                <div>
+                    <h2 id="modal-titulo"><i data-lucide="file-text"></i> <span></span></h2>
+                    <div class="modal-stats-int" id="modal-stats"></div>
+                </div>
+                <button class="close-modal" onclick="cerrarModalInteractivo()">×</button>
+            </div>
+            <div class="modal-body-int" id="modal-contenido">
+                <p style="text-align: center; color: var(--gris-600);">Cargando...</p>
+            </div>
+        </div>
+    </div>
+
+    {% include 'notificaciones/helmet.html' %}
+
+    
+    <!-- Main Content -->
+    <main>
+        <div id="reportes-dashboard">
+            <div class="card">
+                <div style="text-align: center; padding: 40px;">
+                    <div style="display: inline-block; width: 48px; height: 48px; border: 4px solid var(--gris-300); border-top: 4px solid var(--azul-600); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p class="muted" style="margin-top: 16px;">Cargando datos...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+        
+    <script>
+        lucide.createIcons();
+        
+        const formatCurrency = (value) => {
+            return new Intl.NumberFormat('es-CL', {
+                style: 'currency',
+                currency: 'CLP',
+                minimumFractionDigits: 0
+            }).format(value);
+        };
+        
+        async function cargarDatos(periodo = 'mes-actual') {
+            try {
+                const response = await fetch(`{% url 'cotizaciones:datos_dashboard_reportes' %}?periodo=${periodo}`);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                return data;
+            } catch (error) {
+                console.error('Error al cargar datos:', error);
+                return null;
+            }
+        }
+        
+        let chartEvolucion = null;
+        let chartEstados = null;
+        let filtroActual = 'mes-actual';
+        let datosActuales = null;
+        
+        function destroyCharts() {
+            if (chartEvolucion) {
+                chartEvolucion.destroy();
+                chartEvolucion = null;
+            }
+            if (chartEstados) {
+                chartEstados.destroy();
+                chartEstados = null;
+            }
+        }
+        
+        function renderDashboard(data) {
+            datosActuales = data; // Guardar datos globalmente
+            const container = document.getElementById('reportes-dashboard');
+            
+            container.innerHTML = `
+            <!-- Header con filtros -->
+                <div class="card">
+                    <div class="actions" style="margin-bottom: 20px;">
+                        <div class="actions-left" >
+                            <h2 style="margin: 0; color: var(--azul-700);">Dashboard de Reportes</h2>
+                        </div>
+                        <div class="actions-right" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                            <select id="filtro-tipo" style="padding: 10px 12px; border: 1px solid var(--gris-300); border-radius: 8px; cursor: pointer;">
+                                <option value="predefinido">Período Predefinido</option>
+                                <option value="mes">Por Mes</option>
+                                <option value="ano">Por Año</option>
+                            </select>
+                            
+                            <select id="filtro-periodo" style="padding: 10px 12px; border: 1px solid var(--gris-300); border-radius: 8px; cursor: pointer;">
+                                <option value="mes-actual">Mes Actual</option>
+                                <option value="mes-anterior">Mes Anterior</option>
+                                <option value="trimestre">Último Trimestre</option>
+                                <option value="semestre">Último Semestre</option>
+                                <option value="ano">Año Actual</option>
+                                <option value="todos">Histórico Completo</option>
+                            </select>
+                            
+                            <select id="filtro-mes" style="padding: 10px 12px; border: 1px solid var(--gris-300); border-radius: 8px; cursor: pointer; display: none;">
+                                <option value="">Seleccionar Mes</option>
+                                <option value="1">Enero</option>
+                                <option value="2">Febrero</option>
+                                <option value="3">Marzo</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Mayo</option>
+                                <option value="6">Junio</option>
+                                <option value="7">Julio</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                                <option value="12">Diciembre</option>
+                            </select>
+                            
+                            <select id="filtro-ano" style="padding: 10px 12px; border: 1px solid var(--gris-300); border-radius: 8px; cursor: pointer; display: none;">
+                                <option value="">Seleccionar Año</option>
+                                ${Array.from({length: 6}, (_, i) => new Date().getFullYear() - i).map(year => 
+                                    `<option value="${year}">${year}</option>`
+                                ).join('')}
+                            </select>
+                            
+                            <button id="btn-aplicar-filtro" style="padding: 10px 16px; background: var(--azul-600); color: white; border: none; border-radius: 8px; cursor: pointer; display: none; font-weight: 600;">
+                                Aplicar
+                            </button>
+                            
+                            <div class="filter-tabs">
+                                <button class="filter-tab active" data-vista="general">General</button>
+                                <button class="filter-tab" data-vista="empleados">Empleados</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Métricas principales - AHORA CON ONCLICK -->
+                    <div class="metric-grid" style="margin-bottom: 0px;">
+                        ${renderMetricCardClickeable('Total Cotizaciones', data.metricasActuales.totalCotizaciones, 'file-text', 'var(--azul-600)', 'abrirModalTotalCotizaciones')}
+                        ${renderMetricCardClickeable('💰 Dinero Teórico', formatCurrency(data.metricasActuales.dineroTeorico || 0), 'trending-up', 'var(--verde-600)', 'abrirModalDineroTeorico')}
+                        ${renderMetricCardClickeable('💵 Ingresos Reales', formatCurrency(data.metricasActuales.ingresosReales || 0), 'dollar-sign', 'var(--verde-600)', 'abrirModalIngresosReales')}
+                        ${renderMetricCardClickeable('Tasa Aprobación', data.metricasActuales.tasaAprobacion + '%', 'check-circle', 'var(--naranja-600)', 'abrirModalTasaAprobacion')}
+                        ${renderMetricCardClickeable('Ticket Promedio', formatCurrency(data.metricasActuales.ticketPromedio || 0), 'bar-chart-2', 'var(--azul-600)', 'abrirModalTicketPromedio')}
+                    </div>
+                </div>
+                
+                <div id="vista-general">
+                    <!-- Gráficos principales -->
+                    <div class="dashboard-grid grid-2">
+                        <!-- Evolución mensual -->
+                        <div class="card">
+                            <h3>Evolución de Cotizaciones <span style="font-size: 0.8rem; color: var(--gris-600); font-weight: normal;">(Click en un punto para ver detalles)</span></h3>
+                            <div class="chart-container">
+                                <canvas id="chart-evolucion"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Estados -->
+                        <div class="card">
+                            <h3>Estados de Cotizaciones</h3>
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="chart-estados"></canvas>
+                            </div>
+                            <div id="leyenda-estados" style="margin-top: 16px;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top clientes y servicios -->
+                    <div class="dashboard-grid grid-equal">
+                        <div class="card">
+                            <h3>Top 5 Clientes</h3>
+                            <div id="top-clientes"></div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>Servicios Más Cotizados</h3>
+                            <div id="servicios-cotizados"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="vista-empleados" style="display: none;">
+                    <div class="card">
+                        <h3>Empleados Más Productivos</h3>
+                        <div class="table-wrap">
+                            <table id="tabla-empleados">
+                                <thead>
+                                    <tr>
+                                        <th>Empleado</th>
+                                        <th>Trabajos</th>
+                                        <th>Horas Total</th>
+                                        <th>Tasa Completada</th>
+                                        <th>Performance</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="empleados-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Renderizar componentes específicos
+            setTimeout(() => {
+                renderCharts(data);
+                renderTopClientes(data.topClientes);
+                renderServiciosCotizados(data.serviciosCotizados);
+                renderEstadosLeyenda(data.estadosCotizaciones);
+                if (data.empleadosProductivos && data.empleadosProductivos.length > 0) {
+                    renderEmpleados(data.empleadosProductivos);
+                }
+                
+                // Configurar filtros
+                const filtroTipo = document.getElementById('filtro-tipo');
+                const filtroPeriodo = document.getElementById('filtro-periodo');
+                const filtroMes = document.getElementById('filtro-mes');
+                const filtroAno = document.getElementById('filtro-ano');
+                const btnAplicar = document.getElementById('btn-aplicar-filtro');
+                
+                // Restaurar valor seleccionado
+                if (filtroPeriodo) {
+                    filtroPeriodo.value = filtroActual;
+                }
+                
+                // Cambiar tipo de filtro
+                filtroTipo.addEventListener('change', () => {
+                    const tipo = filtroTipo.value;
+                    filtroPeriodo.style.display = tipo === 'predefinido' ? 'block' : 'none';
+                    filtroMes.style.display = tipo === 'mes' ? 'block' : 'none';
+                    filtroAno.style.display = (tipo === 'mes' || tipo === 'ano') ? 'block' : 'none';
+                    btnAplicar.style.display = tipo !== 'predefinido' ? 'block' : 'none';
+                    
+                    if (tipo === 'predefinido') {
+                        cargarYRenderizar(filtroPeriodo.value);
+                    }
+                });
+                
+                // Cambiar período predefinido
+                filtroPeriodo.addEventListener('change', async () => {
+                    if (filtroTipo.value === 'predefinido') {
+                        cargarYRenderizar(filtroPeriodo.value);
+                    }
+                });
+                
+                // Aplicar filtro personalizado
+                btnAplicar.addEventListener('click', async () => {
+                    const tipo = filtroTipo.value;
+                    let periodo = '';
+                    
+                    if (tipo === 'mes') {
+                        const mes = filtroMes.value;
+                        const ano = filtroAno.value;
+                        if (!mes || !ano) {
+                            alert('Selecciona mes y año');
+                            return;
+                        }
+                        periodo = `mes-${mes}-${ano}`;
+                    } else if (tipo === 'ano') {
+                        const ano = filtroAno.value;
+                        if (!ano) {
+                            alert('Selecciona un año');
+                            return;
+                        }
+                        periodo = `ano-${ano}`;
+                    }
+                    
+                    cargarYRenderizar(periodo);
+                });
+                
+                // Cambiar vista General/Empleados
+                document.querySelectorAll('.filter-tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                        tab.classList.add('active');
+                        
+                        const vista = tab.dataset.vista;
+                        document.getElementById('vista-general').style.display = vista === 'general' ? 'block' : 'none';
+                        document.getElementById('vista-empleados').style.display = vista === 'empleados' ? 'block' : 'none';
+                    });
+                });
+                
+                lucide.createIcons();
+            }, 100);
+        }
+        
+        async function cargarYRenderizar(periodo) {
+            filtroActual = periodo;
+            destroyCharts();
+            document.getElementById('reportes-dashboard').innerHTML = `
+                <div class="card">
+                    <div style="text-align: center; padding: 40px;">
+                        <div style="display: inline-block; width: 48px; height: 48px; border: 4px solid var(--gris-300); border-top: 4px solid var(--azul-600); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <p class="muted" style="margin-top: 16px;">Cargando datos...</p>
+                    </div>
+                </div>
+            `;
+            const data = await cargarDatos(periodo);
+            if (data) {
+                renderDashboard(data);
+            }
+        }
+        
+        function renderMetricCardClickeable(titulo, valor, icon, color, funcionClick) {
+            return `
+                <div class="card metric-card" onclick="${funcionClick}()">
+                    <div>
+                        <p class="muted" style="margin: 0 0 8px; font-size: 0.85rem;">${titulo}</p>
+                        <p class="kpi" style="margin: 0; color: ${color};">${valor}</p>
+                    </div>
+                    <div class="metric-icon" style="background: ${color}20; color: ${color};">
+                        <i data-lucide="${icon}" style="width: 24px; height: 24px;"></i>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderCharts(data) {
+            destroyCharts();
+            
+            // Gráfico de evolución CON INTERACTIVIDAD
+            const ctxEvolucion = document.getElementById('chart-evolucion');
+            if (ctxEvolucion) {
+                chartEvolucion = new Chart(ctxEvolucion, {
+                    type: 'line',
+                    data: {
+                        labels: data.cotizacionesMes.map(item => item.mes),
+                        datasets: [
+                            {
+                                label: 'Cotizaciones',
+                                data: data.cotizacionesMes.map(item => item.cotizaciones),
+                                borderColor: '#2575c0',
+                                backgroundColor: 'rgba(37, 117, 192, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 5,
+                                pointHoverRadius: 8,
+                                pointBackgroundColor: '#2575c0',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2
+                            },
+                            {
+                                label: 'Aprobadas',
+                                data: data.cotizacionesMes.map(item => item.aprobadas),
+                                borderColor: '#059669',
+                                backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 5,
+                                pointHoverRadius: 8,
+                                pointBackgroundColor: '#059669',
+                                pointBorderColor: '#fff',
+                                pointBorderWidth: 2
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        },
+                        onClick: (event, activeElements) => {
+                            if (activeElements.length > 0) {
+                                const index = activeElements[0].index;
+                                const mesLabel = data.cotizacionesMes[index].mes;
+                                abrirModalEvolucionMes(mesLabel, data.cotizacionesMes[index]);
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: () => 'Click para ver detalles'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Gráfico de estados
+            const ctxEstados = document.getElementById('chart-estados');
+            if (ctxEstados) {
+                chartEstados = new Chart(ctxEstados, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.estadosCotizaciones.map(item => item.estado),
+                        datasets: [{
+                            data: data.estadosCotizaciones.map(item => item.valor),
+                            backgroundColor: data.estadosCotizaciones.map(item => item.color),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        onClick: (event, activeElements) => {
+                            if (activeElements.length > 0) {
+                                const index = activeElements[0].index;
+                                const estado = data.estadosCotizaciones[index].estado;
+                                abrirModalPorEstado(estado);
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const porcentaje = context.parsed;
+                                        const totalCotizaciones = data.metricasActuales.totalCotizaciones || 0;
+                                        const cantidad = Math.round((porcentaje * totalCotizaciones) / 100);
+                                        return `${label}: ${cantidad}`;
+                                    },
+                                    afterLabel: () => 'Click para ver detalles'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        function renderTopClientes(clientes) {
+            const container = document.getElementById('top-clientes');
+            if (!container) return;
+            
+            if (!clientes || clientes.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--gris-600);">
+                        <i data-lucide="users" style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+                        <p>No hay datos de clientes disponibles</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = clientes.map(cliente => `
+                <div class="cliente-item" data-cliente="${cliente.nombre}" onclick="abrirModalPorCliente(this.dataset.cliente)">
+                    <div>
+                        <h4 style="margin: 0 0 4px; color: var(--azul-700);">${cliente.nombre || 'Sin nombre'}</h4>
+                        <p class="muted" style="margin: 0;">${cliente.cotizaciones || 0} cotizaciones</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0 0 4px; font-weight: 600; color: var(--azul-700);">${formatCurrency(cliente.valorTotal || 0)}</p>
+                        <p class="muted" style="margin: 0; color: var(--verde-600);">${cliente.tasaAprobacion || 0}% aprobación</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderServiciosCotizados(servicios) {
+            const container = document.getElementById('servicios-cotizados');
+            if (!container) return;
+            
+            if (!servicios || servicios.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--gris-600);">
+                        <i data-lucide="tool" style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.3;"></i>
+                        <p>No hay datos de servicios disponibles</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const maxCantidad = Math.max(...servicios.map(s => s.cantidad || 0));
+            
+            container.innerHTML = servicios.map(servicio => `
+                <div class="servicio-item" data-servicio="${servicio.servicio}" onclick="abrirModalPorServicio(this.dataset.servicio)">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 8px; color: var(--azul-700);">${servicio.servicio || 'Sin nombre'}</h4>
+                        <div style="display: flex; align-items: center;">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${maxCantidad > 0 ? ((servicio.cantidad || 0) / maxCantidad) * 100 : 0}%;"></div>
+                            </div>
+                            <span class="muted">${servicio.cantidad || 0}</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right; margin-left: 16px;">
+                        <p style="margin: 0; font-weight: 600; color: var(--azul-700);">${formatCurrency(servicio.valor || 0)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderEstadosLeyenda(estados) {
+            const container = document.getElementById('leyenda-estados');
+            if (!container) return;
+            
+            container.innerHTML = estados.map(estado => `
+                <div class="legend-item" onclick="abrirModalPorEstado('${estado.estado}')">
+                    <div style="display: flex; align-items: center;">
+                        <span class="legend-color" style="background: ${estado.color};"></span>
+                        <span>${estado.estado}</span>
+                    </div>
+                    <strong>${estado.valor}%</strong>
+                </div>
+            `).join('');
+        }
+        
+        function renderEmpleados(empleados) {
+            const tbody = document.getElementById('empleados-tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = empleados.map(emp => {
+                const tasaCompleta = emp.tasaCompleta || 0;
+                return `
+                    <tr>
+                        <td>${emp.nombre}</td>
+                        <td>${emp.trabajos}</td>
+                        <td>${emp.horasTotal || 0} hrs</td>
+                        <td>${tasaCompleta}%</td>
+                        <td>
+                            <i data-lucide="${tasaCompleta >= 90 ? 'trending-up' : tasaCompleta >= 80 ? 'minus' : 'trending-down'}" 
+                            style="color: ${tasaCompleta >= 90 ? 'var(--verde-600)' : tasaCompleta >= 80 ? 'var(--naranja-600)' : 'var(--rojo-600)'}; width: 20px; height: 20px;"></i>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        async function init() {
+            const data = await cargarDatos();
+            if (data) {
+                renderDashboard(data);
+                lucide.createIcons();
+            } else {
+                document.getElementById('reportes-dashboard').innerHTML = `
+                    <div class="alert error">
+                        <i data-lucide="alert-circle"></i>
+                        <span>Error al cargar los datos del dashboard</span>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', init);
+
+        // ============== FUNCIONES PARA INTERACTIVIDAD ==============
+        
+        // Helper para prevenir el shift del contenido al abrir modal
+        function abrirModalSinShift() {
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            
+            // Crear elemento visual para reemplazar scrollbar
+            if (scrollbarWidth > 0) {
+                const scrollbarPlaceholder = document.createElement('div');
+                scrollbarPlaceholder.id = 'scrollbar-placeholder';
+                scrollbarPlaceholder.style.position = 'fixed';
+                scrollbarPlaceholder.style.top = '0';
+                scrollbarPlaceholder.style.right = '0';
+                scrollbarPlaceholder.style.width = scrollbarWidth + 'px';
+                scrollbarPlaceholder.style.height = '100vh';
+                scrollbarPlaceholder.style.background = '#2c2c2c'; 
+                scrollbarPlaceholder.style.zIndex = '999';
+                document.body.appendChild(scrollbarPlaceholder);
+            }
+            
+            document.body.style.overflow = 'hidden';
+            document.body.style.paddingRight = scrollbarWidth + 'px';
+        }
+        
+        window.cerrarModalInteractivo = function() {
+            document.getElementById('modal-interactivo').classList.remove('show');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            // Remover placeholder de scrollbar
+            const placeholder = document.getElementById('scrollbar-placeholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+        }
+        
+        // Función para extraer mes y año del label (ej: "Oct 24" -> mes=10, año=2024)
+        function parseMesLabel(mesLabel) {
+            const meses = {
+                'ene': 1, 'feb': 2, 'mar': 3, 'abr': 4, 'may': 5, 'jun': 6,
+                'jul': 7, 'ago': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dic': 12
+            };
+            
+            const partes = mesLabel.toLowerCase().split(' ');
+            const mesNombre = partes[0];
+            const añoCorto = partes[1];
+            
+            const mes = meses[mesNombre];
+            const año = parseInt('20' + añoCorto);
+            
+            return { mes, año };
+        }
+        
+        // NUEVA: Modal para gráfico de evolución
+        window.abrirModalEvolucionMes = async function(mesLabel, datosMes) {
+            console.log('📊 abrirModalEvolucionMes:', mesLabel, datosMes);
+            
+            const { mes, año } = parseMesLabel(mesLabel);
+            
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = `Cotizaciones de ${mesLabel}`;
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-mes/?mes=${mes}&ano=${año}`);
+                const data = await response.json();
+                
+                console.log('✅ Datos recibidos:', data);
+                
+                // Validar que los datos existen
+                if (!data.todas) {
+                    throw new Error('Estructura de datos incorrecta');
+                }
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Total: ${data.total_count || 0}</div>
+                    <div class="modal-stat">Aprobadas: ${data.aprobadas_count || 0}</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total || 0)}</div>
+                    <div class="modal-stat">Tasa: ${data.tasa_aprobacion || 0}%</div>
+                `;
+                
+                if (data.todas.length === 0 && data.aprobadas.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones en este mes</p>';
+                } else {
+                    contenido.innerHTML = `
+                        <div class="modal-dos-columnas">
+                            <div class="columna-modal">
+                                <h3>
+                                    Todas las Cotizaciones
+                                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700);">${data.todas.length}</span>
+                                </h3>
+                                <div class="columna-scroll">
+                                    ${data.todas.length > 0 ? data.todas.map(cot => `
+                                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                                <strong>${cot.numero}</strong>
+                                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                                            </div>
+                                            <div><strong>${cot.cliente}</strong></div>
+                                            <div style="color: var(--gris-600); font-size: 0.85rem; margin: 4px 0;">${cot.representante || 'Sin representante'}</div>
+                                            <div style="color: var(--gris-600); margin: 8px 0; font-size: 0.9rem;">${cot.referencia || 'Sin referencia'}</div>
+                                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200); font-size: 0.9rem;">
+                                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                                            </div>
+                                        </div>
+                                    `).join('') : '<p style="text-align: center; color: var(--gris-600); padding: 20px;">No hay cotizaciones</p>'}
+                                </div>
+                            </div>
+                            
+                            <div class="columna-modal">
+                                <h3>
+                                    Aprobadas
+                                    <span class="pill aprobada">${data.aprobadas.length}</span>
+                                </h3>
+                                <div class="columna-scroll">
+                                    ${data.aprobadas.length > 0 ? data.aprobadas.map(cot => `
+                                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                                <strong>${cot.numero}</strong>
+                                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                                            </div>
+                                            <div><strong>${cot.cliente}</strong></div>
+                                            <div style="color: var(--gris-600); font-size: 0.85rem; margin: 4px 0;">${cot.representante || 'Sin representante'}</div>
+                                            <div style="color: var(--gris-600); margin: 8px 0; font-size: 0.9rem;">${cot.referencia || 'Sin referencia'}</div>
+                                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200); font-size: 0.9rem;">
+                                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                                            </div>
+                                        </div>
+                                    `).join('') : '<p style="text-align: center; color: var(--gris-600); padding: 20px;">No hay cotizaciones aprobadas</p>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                lucide.createIcons();
+            } catch (error) {
+                console.error('❌ Error:', error);
+                contenido.innerHTML = `<p style="text-align: center; color: red; padding: 40px;">Error al cargar datos: ${error.message}</p>`;
+            }
+        }
+        
+        // MODALES PARA KPIs
+        window.abrirModalTotalCotizaciones = async function() {
+            console.log('📋 Total Cotizaciones modal');
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = 'Todas las Cotizaciones del Período';
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-por-estado/?estado=todas&periodo=${filtroActual}`);
+                const data = await response.json();
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Total: ${data.total}</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total)}</div>
+                `;
+                
+                if (data.cotizaciones.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones</p>';
+                } else {
+                    contenido.innerHTML = data.cotizaciones.map(cot => `
+                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <strong>${cot.numero}</strong>
+                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                            </div>
+                            <div><strong>${cot.cliente}</strong></div>
+                            <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            } catch (error) {
+                contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar</p>';
+            }
+        }
+        
+        window.abrirModalDineroTeorico = async function() {
+            console.log('💰 Dinero Teórico modal');
+            abrirModalPorEstado('Aprobada');
+        }
+        
+        window.abrirModalIngresosReales = async function() {
+            console.log('💵 Ingresos Reales modal');
+            abrirModalPorEstado('Finalizada');
+        }
+        
+        window.abrirModalTasaAprobacion = async function() {
+            console.log('✅ Tasa Aprobación modal');
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = 'Cotizaciones Aprobadas';
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-por-estado/?estado=Aprobada&periodo=${filtroActual}`);
+                const data = await response.json();
+                
+                const total = datosActuales?.metricasActuales?.totalCotizaciones || 0;
+                const tasaAprobacion = total > 0 ? Math.round((data.total / total) * 100) : 0;
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Aprobadas: ${data.total}</div>
+                    <div class="modal-stat">Total: ${total}</div>
+                    <div class="modal-stat">Tasa: ${tasaAprobacion}%</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total)}</div>
+                `;
+                
+                if (data.cotizaciones.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones aprobadas</p>';
+                } else {
+                    contenido.innerHTML = data.cotizaciones.map(cot => `
+                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <strong>${cot.numero}</strong>
+                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                            </div>
+                            <div><strong>${cot.cliente}</strong></div>
+                            <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            } catch (error) {
+                contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar</p>';
+            }
+        }
+        
+        window.abrirModalTicketPromedio = async function() {
+            console.log('📊 Ticket Promedio modal');
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = 'Desglose de Valores';
+            
+            if (datosActuales) {
+                const metricas = datosActuales.metricasActuales;
+                const ticketPromedio = metricas.ticketPromedio || 0;
+                const total = metricas.totalCotizaciones || 0;
+                const valorTotal = metricas.valorTotal || 0;
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Promedio: ${formatCurrency(ticketPromedio)}</div>
+                    <div class="modal-stat">Cotizaciones: ${total}</div>
+                    <div class="modal-stat">Valor Total: ${formatCurrency(valorTotal)}</div>
+                `;
+                
+                // Mostrar top 10 cotizaciones por valor
+                try {
+                    const response = await fetch(`/cotizaciones/api/cotizaciones-por-estado/?estado=todas&periodo=${filtroActual}`);
+                    const data = await response.json();
+                    
+                    // Ordenar por valor descendente
+                    const topCotizaciones = data.cotizaciones
+                        .sort((a, b) => b.valor_total - a.valor_total)
+                        .slice(0, 10);
+                    
+                    contenido.innerHTML = `
+                        <h3 style="margin-top: 0;">Top 10 Cotizaciones por Valor</h3>
+                        ${topCotizaciones.map((cot, index) => `
+                            <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                    <strong>#${index + 1} - ${cot.numero}</strong>
+                                    <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                                </div>
+                                <div><strong>${cot.cliente}</strong></div>
+                                <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                                <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                    <span style="font-weight: 700; color: var(--verde-600); font-size: 1.1rem;">${formatCurrency(cot.valor_total)}</span>
+                                    <span style="color: var(--gris-600);">${cot.fecha}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    `;
+                } catch (error) {
+                    contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar datos</p>';
+                }
+            }
+            
+            modal.classList.add('show');
+            abrirModalSinShift();
+            lucide.createIcons();
+        }
+        
+        window.abrirModalPorEstado = async function(estado) {
+            console.log('🔵 abrirModalPorEstado llamada con:', estado);
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = `Cotizaciones en estado: ${estado}`;
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-por-estado/?estado=${encodeURIComponent(estado)}&periodo=${filtroActual}`);
+                const data = await response.json();
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Total: ${data.total}</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total)}</div>
+                `;
+                
+                if (data.cotizaciones.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones en este estado</p>';
+                } else {
+                    contenido.innerHTML = data.cotizaciones.map(cot => `
+                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <strong>${cot.numero}</strong>
+                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                            </div>
+                            <div><strong>${cot.cliente}</strong></div>
+                            <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            } catch (error) {
+                contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar</p>';
+            }
+        }
+        
+        window.abrirModalPorCliente = async function(cliente) {
+            console.log('🟢 abrirModalPorCliente llamada con:', cliente);
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = `Cotizaciones de: ${cliente}`;
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-por-cliente/?cliente=${encodeURIComponent(cliente)}&periodo=${filtroActual}`);
+                const data = await response.json();
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Total: ${data.total}</div>
+                    <div class="modal-stat">Aprobadas: ${data.aprobadas}</div>
+                    <div class="modal-stat">Tasa: ${data.tasa_aprobacion}%</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total)}</div>
+                `;
+                
+                if (data.cotizaciones.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones para este cliente</p>';
+                } else {
+                    contenido.innerHTML = data.cotizaciones.map(cot => `
+                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <strong>${cot.numero}</strong>
+                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                            </div>
+                            <div><strong>${cot.cliente}</strong></div>
+                            <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            } catch (error) {
+                contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar</p>';
+            }
+        }
+        
+        window.abrirModalPorServicio = async function(servicio) {
+            console.log('🟡 abrirModalPorServicio llamada con:', servicio);
+            const modal = document.getElementById('modal-interactivo');
+            const titulo = document.getElementById('modal-titulo').querySelector('span');
+            const stats = document.getElementById('modal-stats');
+            const contenido = document.getElementById('modal-contenido');
+            
+            titulo.textContent = `Cotizaciones con: ${servicio}`;
+            contenido.innerHTML = '<p style="text-align: center;">Cargando...</p>';
+            modal.classList.add('show');
+            abrirModalSinShift();
+            
+            try {
+                const response = await fetch(`/cotizaciones/api/cotizaciones-por-servicio/?servicio=${encodeURIComponent(servicio)}&periodo=${filtroActual}`);
+                const data = await response.json();
+                
+                stats.innerHTML = `
+                    <div class="modal-stat">Cotizaciones: ${data.total}</div>
+                    <div class="modal-stat">Cantidad total: ${data.cantidad_total}</div>
+                    <div class="modal-stat">Valor: ${formatCurrency(data.valor_total)}</div>
+                `;
+                
+                if (data.cotizaciones.length === 0) {
+                    contenido.innerHTML = '<p style="text-align: center; padding: 40px;">No hay cotizaciones con este servicio</p>';
+                } else {
+                    contenido.innerHTML = data.cotizaciones.map(cot => `
+                        <div class="cotizacion-card" onclick="window.open('/cotizaciones/${cot.id}/', '_blank')">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                                <strong>${cot.numero}</strong>
+                                <span class="pill ${cot.estado}">${cot.estado.toUpperCase()}</span>
+                            </div>
+                            <div><strong>${cot.cliente}</strong></div>
+                            <div style="color: var(--gris-600); margin: 8px 0;">${cot.referencia || 'Sin referencia'}</div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--gris-200);">
+                                <span style="font-weight: 600; color: var(--verde-600);">${formatCurrency(cot.valor_total)}</span>
+                                <span style="color: var(--gris-600);">${cot.fecha}</span>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                lucide.createIcons();
+            } catch (error) {
+                contenido.innerHTML = '<p style="text-align: center; color: red;">Error al cargar</p>';
+            }
+        }
+        
+        // Cerrar modal con ESC o click fuera
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') cerrarModalInteractivo();
+        });
+        document.getElementById('modal-interactivo')?.addEventListener('click', (e) => {
+            if (e.target.id === 'modal-interactivo') cerrarModalInteractivo();
+        });
+
+    </script>
+</body>
+</html>

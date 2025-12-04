@@ -1,0 +1,277 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Parámetros - {{ servicio.nombre }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Parámetros</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:gestionar_servicios' %}">⬅️ Volver a Servicios</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">
+          Parámetros: {{ servicio.nombre }}
+        </h1>
+        <p style="color: var(--gris-600); margin-top: 8px;">
+          Categoría: {{ servicio.categoria.nombre }} | Precio Base: ${{ servicio.precio_base|floatformat:0 }}
+        </p>
+      </div>
+      <div class="actions-right">
+        <button type="button" class="btn" onclick="mostrarModal('modal-parametro')">
+          ➕ Nuevo Parámetro
+        </button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="tabla-parametros">
+        <thead>
+          <tr>
+            <th>Orden</th>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Requerido</th>
+            <th>Valor por Defecto</th>
+            <th>Opciones</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for parametro in parametros %}
+          <tr>
+            <td><strong>{{ parametro.orden }}</strong></td>
+            <td>{{ parametro.nombre }}</td>
+            <td><span class="pill enviada">{{ parametro.get_tipo_display }}</span></td>
+            <td>
+              {% if parametro.requerido %}
+                <span class="pill aprobada">Sí</span>
+              {% else %}
+                <span class="pill borrador">No</span>
+              {% endif %}
+            </td>
+            <td>{{ parametro.valor_por_defecto|default:"-" }}</td>
+            <td style="font-size: 0.85rem;">
+              {% if parametro.tipo == 'select' and parametro.opciones %}
+                {{ parametro.get_opciones_list|join:", " }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              <div style="display: flex; gap: 4px;">
+                <button type="button" class="btn small secondary" 
+                        onclick="editarParametro({{ parametro.id }})" title="Editar">
+                  ✏️
+                </button>
+                <button type="button" class="btn small danger" 
+                        onclick="eliminarParametro({{ parametro.id }}, '{{ parametro.nombre }}')" title="Eliminar">
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              No hay parámetros configurados para este servicio.
+              <br><br>
+              <button type="button" class="btn" onclick="mostrarModal('modal-parametro')">
+                Crear Primer Parámetro
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal Parámetro -->
+  <div id="modal-parametro" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-parametro-titulo">Nuevo Parámetro</h3>
+        <button type="button" class="close" onclick="cerrarModalParametro()">&times;</button>
+      </div>
+      
+      <form id="form-parametro">
+        {% csrf_token %}
+        <input type="hidden" id="parametro-id" value="">
+        
+        <div class="form-group">
+          <label for="parametro-nombre">Nombre del Parámetro *</label>
+          <input type="text" id="parametro-nombre" required 
+                 placeholder="Ej: Potencia (HP), Voltaje, Diámetro">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="parametro-tipo">Tipo *</label>
+            <select id="parametro-tipo" required onchange="toggleOpcionesParametro()">
+              {% for value, label in tipos_parametro %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="parametro-orden">Orden</label>
+            <input type="number" id="parametro-orden" min="0" value="{{ parametros|length }}">
+          </div>
+        </div>
+        
+        <div class="form-group" id="opciones-group" style="display: none;">
+          <label for="parametro-opciones">Opciones (separadas por comas) *</label>
+          <input type="text" id="parametro-opciones"
+                 placeholder="Ej: 220V, 380V, 440V">
+          <small style="color: var(--gris-600);">
+            Para tipo "Selección": ingrese las opciones separadas por comas
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label for="parametro-valor-defecto">Valor por Defecto</label>
+          <input type="text" id="parametro-valor-defecto"
+                 placeholder="Valor inicial sugerido (opcional)">
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="parametro-requerido" checked> 
+            Parámetro Requerido
+          </label>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn secondary" onclick="cerrarModalParametro()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn">
+            Guardar Parámetro
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+const SERVICIO_ID = {{ servicio.id }};
+
+function toggleOpcionesParametro() {
+  const tipo = document.getElementById('parametro-tipo').value;
+  const opcionesGroup = document.getElementById('opciones-group');
+  const opcionesInput = document.getElementById('parametro-opciones');
+  
+  if (tipo === 'select') {
+    opcionesGroup.style.display = 'block';
+    opcionesInput.required = true;
+  } else {
+    opcionesGroup.style.display = 'none';
+    opcionesInput.required = false;
+  }
+}
+
+function cerrarModalParametro() {
+  document.getElementById('modal-parametro-titulo').textContent = 'Nuevo Parámetro';
+  document.getElementById('parametro-id').value = '';
+  document.getElementById('form-parametro').reset();
+  document.getElementById('parametro-requerido').checked = true;
+  toggleOpcionesParametro();
+  document.getElementById('modal-parametro').classList.remove('show');
+}
+
+async function editarParametro(parametroId) {
+  // Aquí cargarías los datos del parámetro y mostrarías el modal
+  // Similar a editarServicio
+  alert('Función de edición en desarrollo');
+}
+
+async function eliminarParametro(parametroId, nombre) {
+  if (!confirm(`¿Estás seguro de eliminar el parámetro "${nombre}"?`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/cotizaciones/parametro/${parametroId}/eliminar/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': getCSRFToken()
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+  } catch (error) {
+    console.error('Error eliminando parámetro:', error);
+    alert('Error al eliminar el parámetro');
+  }
+}
+
+document.getElementById('form-parametro').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const formData = {
+    nombre: document.getElementById('parametro-nombre').value,
+    tipo: document.getElementById('parametro-tipo').value,
+    requerido: document.getElementById('parametro-requerido').checked,
+    opciones: document.getElementById('parametro-opciones').value,
+    valor_por_defecto: document.getElementById('parametro-valor-defecto').value,
+    orden: document.getElementById('parametro-orden').value
+  };
+  
+  const parametroId = document.getElementById('parametro-id').value;
+  const isEditing = parametroId !== '';
+  
+  try {
+    const url = isEditing ? 
+      `/cotizaciones/parametro/${parametroId}/editar/` : 
+      `/cotizaciones/servicio/${SERVICIO_ID}/parametro/crear/`;
+    
+    const method = isEditing ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      cerrarModalParametro();
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+    
+  } catch (error) {
+    console.error('Error guardando parámetro:', error);
+    alert('Error al guardar el parámetro');
+  }
+});
+</script>
+</body>
+</html>

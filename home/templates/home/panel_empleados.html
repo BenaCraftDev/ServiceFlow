@@ -1,0 +1,117 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Panel de Empleados</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/pages/panel.css' %}">
+</head>
+<body>
+    <!-- Header del empleado -->
+    <div class="employee-header">
+        <div class="container">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h1>Panel de Empleados</h1>
+                    <p>Bienvenido, {{ user.first_name|default:user.username }}</p>
+                </div>
+                <div>
+                    {% include 'notificaciones/notification_bell_alt.html' %}
+                    <a href="{% url 'home:configuracion_usuario' %}" class="btn secondary">⚙️ Configuración</a>
+                    <a href="{% url 'home:logout' %}" class="btn secondary">🚪 Cerrar Sesión</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Mensajes del sistema -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {{ message.tags }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Información del usuario -->
+        <div class="user-info-card">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div><h3>Información del Empleado</h3></div>
+                <div><a href="{% url 'home:mi_perfil' %}" class="btn secondary">➕ Más info</a></div>
+            </div>
+            <div class="info-grid">
+                <div class="info-section">
+                    <h5>📋 Información Personal</h5>
+                    <div class="info-item">
+                        <span class="info-label">Usuario:</span>
+                        <span class="info-value">{{ user.username }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Nombre:</span>
+                        <span class="info-value">{{ user.first_name }} {{ user.last_name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">{{ user.email }}</span>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h5>💼 Información Laboral</h5>
+                    <div class="info-item">
+                        <span class="info-label">Cargo:</span>
+                        <span class="cargo-badge cargo-{{ perfil.cargo }}">
+                            {{ perfil.get_cargo_display }}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Fecha de ingreso:</span>
+                        <span class="info-value">{{ perfil.fecha_ingreso|date:"d/m/Y" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Teléfono:</span>
+                        <span class="info-value">{{ perfil.telefono|default:"No especificado" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Funciones disponibles -->
+        <div class="funciones-section">
+            <h3>⚡ Funciones Disponibles</h3>
+            
+            {% if funciones_disponibles %}
+                <div class="funciones-grid">
+                    {% for funcion in funciones_disponibles %}
+                        <a href="{% url funcion.url %}" class="funcion-card">
+                            <div class="funcion-icono">{{ funcion.icono }}</div>
+                            <h6>{{ funcion.nombre }}</h6>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-funciones">
+                    <div class="no-funciones-icon">⚠️</div>
+                    <h4 style="margin: 0 0 8px; color: var(--azul-700);">Sin funciones asignadas</h4>
+                    <p style="margin: 0; color: var(--gris-600);">
+                        No tienes funciones asignadas actualmente. Contacta al administrador para obtener acceso a las funcionalidades del sistema.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Acciones adicionales -->
+        <div class="actions-bottom">
+            <a href="{% url 'home:index' %}" class="btn secondary">
+                ← Volver a la página principal
+            </a>
+        </div>
+    </div>
+</body>
+</html>

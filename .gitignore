@@ -1,0 +1,20 @@
+# Entorno virtual
+venv/
+env/
+
+# Archivos de configuración no seguros
+.env
+
+# Archivos compilados
+__pycache__/
+*.pyc
+
+# Archivos masivos
+*.sqlite3
+
+# Archivos de VSCode
+.vscode/
+
+# Archivos de Django
+/staticfiles/
+media/

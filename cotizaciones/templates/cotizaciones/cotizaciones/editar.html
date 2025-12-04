@@ -1,0 +1,1056 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editar Cotización {{ cotizacion.numero }} - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Editar {{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">👁️ Detalles Cotización</a>
+      <a href="{% url 'cotizaciones:lista' %}">📄 Lista</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="actions" style="margin-bottom: 20px;">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">
+          Editar Cotización {{ cotizacion.numero }}
+        </h1>
+        <span class="pill {{ cotizacion.estado }}">
+          {{ cotizacion.get_estado_display }}
+        </span>
+      </div>
+      <div class="actions-right">
+        <button type="button" class="btn success" onclick="guardarCotizacion()">
+          💾 Guardar Cambios
+        </button>
+        <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" class="btn secondary" target="_blank">
+          📄 Ver PDF
+        </a>
+        {% if cotizacion.estado == 'borrador' %}
+          <button type="button" class="btn warning" onclick="guardarYEnviar()">
+            ✅ Completar y Enviar
+          </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Información Básica -->
+    <div class="card">
+      <h3>📋 Información Básica</h3>
+      <form method="post" id="cotizacion-form">
+        {% csrf_token %}
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.cliente.id_for_label }}">Cliente *</label>
+            {{ form.cliente }}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.representante.id_for_label }}">Atención / Representante</label>
+            {{ form.representante }}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.tipo_trabajo.id_for_label }}">Tipo de Trabajo *</label>
+            {{ form.tipo_trabajo }}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha Vencimiento</label>
+            {{ form.fecha_vencimiento }}
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.referencia.id_for_label }}">Referencia *</label>
+          {{ form.referencia }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.lugar.id_for_label }}">Lugar *</label>
+          {{ form.lugar }}
+        </div>
+        <div class="form-group">
+          <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+          {{ form.observaciones }}
+        </div>
+      </form>
+    </div>
+
+    <!-- Servicios -->
+    <div class="card">
+      <h3>🔧 Servicios</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Agregar servicios a la cotización</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-servicio')">
+          ➕ Agregar Servicio
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-servicios">
+          <thead>
+            <tr>
+              <th>Servicio</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_servicio %}
+            <tr data-item-id="{{ item.id }}">
+              <td><strong>{{ item.servicio.nombre }}</strong></td>
+              <td>
+                {% if item.descripcion_personalizada %}
+                  {{ item.descripcion_personalizada|truncatewords:10 }}
+                {% else %}
+                  {{ item.servicio.descripcion|truncatewords:10 }}
+                {% endif %}
+              </td>
+              <td>{{ item.cantidad }} {{ item.servicio.unidad }}</td>
+              <td>${{ item.precio_unitario|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemServicio({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-servicios">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay servicios agregados. Haz clic en "Agregar Servicio" para comenzar.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Materiales -->
+    <div class="card">
+      <h3>📦 Materiales</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Materiales necesarios para el trabajo</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-material')">
+          ➕ Agregar Material
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-materiales">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Descripción</th>
+              <th>Cantidad</th>
+              <th>Precio Unit.</th>
+              <th>Subtotal</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_material %}
+            <tr data-item-id="{{ item.id }}">
+              <td><strong>{{ item.material.codigo }} - {{ item.material.nombre }}</strong></td>
+              <td>
+                {% if item.descripcion_personalizada %}
+                  {{ item.descripcion_personalizada|truncatewords:10 }}
+                {% else %}
+                  {{ item.material.descripcion|truncatewords:10 }}
+                {% endif %}
+              </td>
+              <td>{{ item.cantidad }} {{ item.material.unidad }}</td>
+              <td>${{ item.precio_unitario|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemMaterial({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-materiales">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay materiales agregados.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Mano de Obra -->
+    <div class="card">
+      <h3>👷 Mano de Obra</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <p style="margin: 0; color: var(--gris-600);">Trabajos de mano de obra directa</p>
+        <button type="button" class="btn" onclick="mostrarModal('modal-mano-obra')">
+          ➕ Agregar Mano de Obra
+        </button>
+      </div>
+      
+      <div class="table-wrap">
+        <table id="tabla-mano-obra">
+          <thead>
+            <tr>
+              <th>Descripción</th>
+              <th>Horas</th>
+              <th>Precio/Hora</th>
+              <th>Subtotal</th>
+              <th>Empleados</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items_mano_obra %}
+            <tr data-item-id="{{ item.id }}">
+              <td><strong>{{ item.descripcion }}</strong></td>
+              <td>{{ item.horas|floatformat:1 }} hrs</td>
+              <td>${{ item.precio_hora|floatformat:0 }}</td>
+              <td><strong>${{ item.subtotal|floatformat:0 }}</strong></td>
+              <td>
+                {% if item.empleados_asignados.exists %}
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    {% for asignacion in item.empleados_asignados.all %}
+                      <span style="font-size: 0.85rem; color: var(--azul-600);">
+                        👤 {{ asignacion.empleado.nombre_completo }} ({{ asignacion.horas_asignadas }}h)
+                      </span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <span style="color: var(--gris-500); font-size: 0.85rem;">Sin asignar</span>
+                {% endif %}
+              </td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarItemManoObra({{ item.id }})">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-mano-obra">
+              <td colspan="6" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay mano de obra agregada.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Gastos Adicionales -->
+    <div class="card">
+      <h3>💰 Gastos de Traslado</h3>
+      <div class="form-group" style="max-width: 300px;">
+        <label for="gastos-traslado">Monto de Gastos de Traslado</label>
+        <input 
+          type="number" 
+          id="gastos-traslado" 
+          name="gastos_traslado" 
+          value="{{ cotizacion.gastos_traslado|floatformat:0 }}"
+          min="0" 
+          step="100"
+          oninput="actualizarVisualizacionGastos()"
+          onchange="actualizarGastosTraslado()"
+        >
+      </div>
+    </div>
+
+    <!-- Totales -->
+    <div class="totales">
+      <div class="row">
+        <span>Subtotal Servicios:</span>
+        <strong>${{ cotizacion.subtotal_servicios|floatformat:0 }}</strong>
+      </div>
+      <div class="row">
+        <span>Subtotal Materiales:</span>
+        <strong>${{ cotizacion.subtotal_materiales|floatformat:0 }}</strong>
+      </div>
+      <div class="row">
+        <span>Subtotal Mano de Obra:</span>
+        <strong>${{ cotizacion.subtotal_mano_obra|floatformat:0 }}</strong>
+      </div>
+      <div class="row">
+        <span>Gastos de Traslado:</span>
+        <strong id="display-gastos-traslado">${{ cotizacion.gastos_traslado|floatformat:0 }}</strong>
+      </div>
+      <div class="row">
+        <span>Valor Neto:</span>
+        <strong id="display-valor-neto">${{ cotizacion.valor_neto|floatformat:0 }}</strong>
+      </div>
+      <div class="row">
+        <span>IVA (19%):</span>
+        <strong id="display-valor-iva">${{ cotizacion.valor_iva|floatformat:0 }}</strong>
+      </div>
+      <div class="row total">
+        <span>TOTAL:</span>
+        <strong id="display-valor-total">${{ cotizacion.valor_total|floatformat:0 }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Servicio -->
+  <div id="modal-servicio" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Agregar Servicio</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-servicio')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="servicio-select">Servicio *</label>
+        <select id="servicio-select" onchange="mostrarParametrosServicio()">
+          <option value="">Seleccione un servicio</option>
+          {% for servicio in servicios %}
+            <option value="{{ servicio.id }}" 
+                    data-precio="{{ servicio.precio_base|stringformat:'f' }}" 
+                    data-unidad="{{ servicio.unidad }}"
+                    data-parametrizable="{{ servicio.es_parametrizable|lower }}">
+              {{ servicio.categoria.nombre }} - {{ servicio.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div id="parametros-container" class="parametros-container"></div>
+      
+      <div class="form-group">
+        <label for="cantidad-servicio">Cantidad *</label>
+        <input type="number" id="cantidad-servicio" value="1" min="1" step="1">
+      </div>
+      <div class="form-group">
+        <label for="precio-servicio">Precio Unitario *</label>
+        <input type="number" id="precio-servicio" value="0" min="0" step="100">
+      </div>
+      <div class="form-group">
+        <label for="descripcion-personalizada-servicio">Descripción Personalizada</label>
+        <textarea id="descripcion-personalizada-servicio" rows="3"></textarea>
+      </div>
+      <button type="button" class="btn success" onclick="agregarServicio()">
+        ✅ Agregar Servicio
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Material -->
+  <div id="modal-material" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Agregar Material</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-material')">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="material-select">Material *</label>
+        <select id="material-select" onchange="actualizarPrecioMaterial()">
+          <option value="">Seleccione un material</option>
+          {% for material in materiales %}
+            <option value="{{ material.id }}" 
+                    data-precio="{{ material.precio_unitario|stringformat:'f' }}"
+                    data-unidad="{{ material.unidad }}"
+                    data-requiere-mantenimiento="{{ material.requiere_mantenimiento }}"
+                    data-tipo-mantenimiento="{{ material.tipo_mantenimiento }}">
+              {{ material.codigo }} - {{ material.nombre }}
+              {% if material.requiere_mantenimiento %}
+                {% if material.tipo_mantenimiento == 'horas' %}⏱️{% endif %}
+              {% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="cantidad-material">Cantidad *</label>
+        <input type="number" id="cantidad-material" value="1" min="1" step="1">
+      </div>
+      <div class="form-group">
+        <label for="precio-material">Precio Unitario *</label>
+        <input type="number" id="precio-material" value="0" min="0" step="100">
+      </div>
+      
+      <!-- Campo de HORAS DE USO (solo visible si el material es de tipo horas) -->
+      <div id="campo-horas-uso" class="form-group" style="display: none; background: var(--azul-100); padding: 16px; border-radius: 8px; border: 2px solid var(--azul-500);">
+        <label for="horas-uso-material">⏱️ Horas de Uso Estimadas *</label>
+        <input type="number" id="horas-uso-material" value="0" min="0" step="0.1" placeholder="Ej: 100, 250, 500...">
+        <small style="color: var(--azul-700); font-size: 0.85rem; display: block; margin-top: 6px;">
+          <strong>⚠️ Este material requiere mantenimiento por horas.</strong><br>
+          Indique las horas de uso estimadas para este trabajo.
+        </small>
+      </div>
+      
+      <div class="form-group">
+        <label for="descripcion-personalizada-material">Descripción Personalizada</label>
+        <textarea id="descripcion-personalizada-material" rows="3"></textarea>
+      </div>
+      <button type="button" class="btn success" onclick="agregarMaterial()">
+        ✅ Agregar Material
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Mano de Obra -->
+  <div id="modal-mano-obra" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Agregar Mano de Obra</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-mano-obra'); limpiarModalManoObra();">&times;</button>
+      </div>
+      <div class="form-group">
+        <label for="descripcion-mano-obra">Descripción del Trabajo *</label>
+        <textarea id="descripcion-mano-obra" rows="3" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="horas-mano-obra">Horas de Trabajo *</label>
+        <input type="number" id="horas-mano-obra" value="1" min="0.5" step="0.5" required>
+      </div>
+      <div class="form-group">
+        <label for="precio-hora-mano-obra">Precio por Hora *</label>
+        <input type="number" id="precio-hora-mano-obra" value="0" min="0" step="100" required>
+      </div>
+      
+      <!-- Selector de Categoría de Empleado -->
+      <div class="form-group">
+        <label for="categoria-empleados-mano-obra">Categoría de Empleados (Opcional)</label>
+        <select id="categoria-empleados-mano-obra" onchange="cargarEmpleadosCategoriaManoObra()">
+          <option value="">Seleccione una categoría</option>
+          {% for categoria in categorias_empleados %}
+            <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+          {% endfor %}
+        </select>
+        <small style="color: var(--gris-600);">Selecciona una categoría para ver empleados disponibles</small>
+      </div>
+      
+      <!-- Container para empleados disponibles -->
+      <div id="empleados-disponibles-container" style="display: none;">
+        <label>Empleados Disponibles:</label>
+        <div id="empleados-disponibles-list"></div>
+      </div>
+      
+      <button type="button" class="btn success" onclick="agregarManoObra()">
+        ✅ Agregar Mano de Obra
+      </button>
+    </div>
+  </div>
+
+
+<script>
+  // Definir variables globales primero
+  const cotizacionId = {{ cotizacion.pk }};
+  window.cotizacionId = cotizacionId;
+  
+  console.log('✅ CotizacionId cargado:', cotizacionId);
+  
+  // Función para actualizar precio de material (debe estar disponible antes del modal)
+  function actualizarPrecioMaterial() {
+    const select = document.getElementById('material-select');
+    if (!select) return;
+    
+    const option = select.options[select.selectedIndex];
+    const precio = option.getAttribute('data-precio');
+    const precioNumerico = precio ? parseFloat(precio.replace(',', '.')) : 0;
+    
+    const precioInput = document.getElementById('precio-material');
+    if (precioInput) {
+      precioInput.value = precioNumerico;
+    }
+    
+    // Mostrar/ocultar campo de horas de uso
+    const requiereMantenimiento = option.getAttribute('data-requiere-mantenimiento') === 'True';
+    const tipoMantenimiento = option.getAttribute('data-tipo-mantenimiento');
+    const campoHoras = document.getElementById('campo-horas-uso');
+    
+    if (requiereMantenimiento && tipoMantenimiento === 'horas') {
+      campoHoras.style.display = 'block';
+    } else {
+      campoHoras.style.display = 'none';
+      document.getElementById('horas-uso-material').value = 0;
+    }
+  }
+</script>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+
+<script>
+  // Funciones específicas de esta página que no están en main.js
+
+  function getCSRFToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+  }
+
+  function mostrarModal(modalId) {
+    document.getElementById(modalId).classList.add('show');
+  }
+
+  function cerrarModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+  }
+
+  function guardarCotizacion() {
+    document.getElementById('cotizacion-form').submit();
+  }
+
+  function guardarYEnviar() {
+    const form = document.getElementById('cotizacion-form');
+    const inputEnviar = document.createElement('input');
+    inputEnviar.type = 'hidden';
+    inputEnviar.name = 'guardar_y_enviar';
+    inputEnviar.value = 'true';
+    form.appendChild(inputEnviar);
+    form.submit();
+  }
+
+  async function mostrarParametrosServicio() {
+    const select = document.getElementById('servicio-select');
+    const option = select.options[select.selectedIndex];
+    const servicioId = select.value;
+    const esParametrizable = option.getAttribute('data-parametrizable') === 'true';
+    const precio = option.getAttribute('data-precio');
+    
+    const precioNumerico = precio ? parseFloat(precio.replace(',', '.')) : 0;
+    document.getElementById('precio-servicio').value = precioNumerico;
+    
+    const container = document.getElementById('parametros-container');
+    container.innerHTML = '';
+    
+    if (esParametrizable && servicioId) {
+      try {
+        const response = await fetch(`/cotizaciones/api/servicio/${servicioId}/parametros/`);
+        const parametros = await response.json();
+        
+        if (parametros.length > 0) {
+          container.style.display = 'block';
+          let html = '<h4 style="margin-top: 10px;">Parámetros del Servicio</h4>';
+          
+          parametros.forEach(param => {
+            html += `<div class="form-group">`;
+            html += `<label for="param-${param.id}">${param.nombre} ${param.requerido ? '*' : ''}</label>`;
+            
+            if (param.tipo === 'text') {
+              html += `<input type="text" id="param-${param.id}" name="param-${param.id}" ${param.requerido ? 'required' : ''} value="${param.valor_por_defecto || ''}">`;
+            } else if (param.tipo === 'number') {
+              html += `<input type="number" id="param-${param.id}" name="param-${param.id}" ${param.requerido ? 'required' : ''} value="${param.valor_por_defecto || ''}">`;
+            } else if (param.tipo === 'select') {
+              html += `<select id="param-${param.id}" name="param-${param.id}" ${param.requerido ? 'required' : ''}>`;
+              html += `<option value="">Seleccione...</option>`;
+              param.opciones.forEach(opcion => {
+                html += `<option value="${opcion}">${opcion}</option>`;
+              });
+              html += `</select>`;
+            } else if (param.tipo === 'boolean') {
+              html += `<input type="checkbox" id="param-${param.id}" name="param-${param.id}" ${param.valor_por_defecto === 'true' ? 'checked' : ''}>`;
+            }
+            html += `</div>`;
+          });
+          
+          container.innerHTML = html;
+        }
+      } catch (error) {
+        console.error('Error cargando parámetros:', error);
+      }
+    } else {
+      container.style.display = 'none';
+    }
+  }
+
+  async function agregarServicio() {
+    const servicioId = document.getElementById('servicio-select').value;
+    const cantidad = document.getElementById('cantidad-servicio').value;
+    const precio = document.getElementById('precio-servicio').value;
+    const descripcionPersonalizada = document.getElementById('descripcion-personalizada-servicio').value;
+    
+    if (!servicioId || !cantidad || !precio) {
+      alert('Debe completar todos los campos requeridos');
+      return;
+    }
+    
+    const parametros = {};
+    document.querySelectorAll('#parametros-container input, #parametros-container select').forEach(input => {
+      if (input.type === 'checkbox') {
+        parametros[input.name] = input.checked;
+      } else {
+        parametros[input.name] = input.value;
+      }
+    });
+    
+    const data = {
+      servicio_id: servicioId,
+      cantidad: cantidad,
+      precio_unitario: precio,
+      descripcion_personalizada: descripcionPersonalizada,
+      parametros: parametros
+    };
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/item-servicio/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        cerrarModal('modal-servicio');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al agregar servicio');
+    }
+  }
+
+  async function agregarMaterial() {
+    const materialId = document.getElementById('material-select').value;
+    const cantidad = document.getElementById('cantidad-material').value;
+    const precio = document.getElementById('precio-material').value;
+    const descripcionPersonalizada = document.getElementById('descripcion-personalizada-material').value;
+    const horasUso = document.getElementById('horas-uso-material').value;
+    
+    // Validar si el campo de horas es visible y está vacío
+    const campoHorasVisible = document.getElementById('campo-horas-uso').style.display !== 'none';
+    
+    if (!materialId || !cantidad || !precio) {
+      alert('Debe completar todos los campos requeridos');
+      return;
+    }
+    
+    if (campoHorasVisible && (!horasUso || parseFloat(horasUso) <= 0)) {
+      alert('⚠️ Este material requiere mantenimiento por horas.\nDebe indicar las horas de uso estimadas.');
+      return;
+    }
+    
+    const data = {
+      material_id: materialId,
+      cantidad: cantidad,
+      precio_unitario: precio,
+      descripcion_personalizada: descripcionPersonalizada,
+      horas_uso: horasUso || null  // Solo enviar si hay valor
+    };
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/item-material/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(data)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        cerrarModal('modal-material');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al agregar material');
+    }
+  }
+
+  async function eliminarItemServicio(itemId) {
+    if (!confirm('¿Está seguro de eliminar este servicio?')) return;
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/item-servicio/${itemId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar servicio');
+    }
+  }
+
+  async function eliminarItemMaterial(itemId) {
+    if (!confirm('¿Está seguro de eliminar este material?')) return;
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/item-material/${itemId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar material');
+    }
+  }
+
+  async function eliminarItemManoObra(itemId) {
+    if (!confirm('¿Está seguro de eliminar esta mano de obra?')) return;
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/item-mano-obra/${itemId}/eliminar/`, {
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCSRFToken() }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert('Mano de obra eliminada exitosamente');
+        location.reload();
+      } else {
+        alert('Error: ' + (result.error || 'No se pudo eliminar'));
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar mano de obra');
+    }
+  }
+
+  async function actualizarGastosTraslado() {
+    const gastosTraslado = document.getElementById('gastos-traslado').value;
+    
+    try {
+      const response = await fetch(`/cotizaciones/${cotizacionId}/gastos-traslado/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+          gastos_traslado: gastosTraslado
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al actualizar gastos de traslado');
+    }
+  }
+
+  // Función para actualizar visualización en tiempo real sin guardar
+  function actualizarVisualizacionGastos() {
+    // Obtener valor del input - FORZAR conversión a número
+    const gastosInputElement = document.getElementById('gastos-traslado');
+    const gastosRaw = gastosInputElement.value.replace(/[^0-9]/g, '');
+    const gastosInput = Number(gastosRaw) || 0;  // Number() en lugar de parseInt
+    
+    // DEBUG: Ver valores RAW antes de limpiar
+    const subtotalServiciosOriginal = "{{ cotizacion.subtotal_servicios|default:0 }}";
+    const subtotalMaterialesOriginal = "{{ cotizacion.subtotal_materiales|default:0 }}";
+    const subtotalManoObraOriginal = "{{ cotizacion.subtotal_mano_obra|default:0 }}";
+    
+    // console.log('VALORES ORIGINALES DJANGO:');
+    // console.log('Servicios original:', subtotalServiciosOriginal);
+    // console.log('Materiales original:', subtotalMaterialesOriginal);
+    // console.log('Mano Obra original:', subtotalManoObraOriginal);
+    
+    // Limpiar valores: primero eliminar decimales (después de coma), luego puntos
+    const limpiarValor = (valor) => {
+      let limpio = String(valor);
+      // Si tiene coma, eliminar todo después de ella (decimales)
+      if (limpio.includes(',')) {
+        limpio = limpio.split(',')[0];
+      }
+      // Si tiene punto, eliminar todo después de él (decimales)
+      if (limpio.includes('.') && limpio.indexOf('.') > limpio.length - 4) {
+        limpio = limpio.split('.')[0];
+      }
+      // Eliminar puntos de miles
+      limpio = limpio.replace(/\./g, '');
+      // Eliminar cualquier otro carácter no numérico
+      limpio = limpio.replace(/[^0-9]/g, '');
+      return limpio;
+    };
+    
+    const subtotalServiciosRaw = limpiarValor(subtotalServiciosOriginal);
+    const subtotalMaterialesRaw = limpiarValor(subtotalMaterialesOriginal);
+    const subtotalManoObraRaw = limpiarValor(subtotalManoObraOriginal);
+    
+    // console.log('VALORES DESPUÉS DE LIMPIAR:');
+    // console.log('Servicios raw:', subtotalServiciosRaw);
+    // console.log('Materiales raw:', subtotalMaterialesRaw);
+    // console.log('Mano Obra raw:', subtotalManoObraRaw);
+    
+    // Convertir EXPLÍCITAMENTE a números
+    const subtotalServicios = Number(subtotalServiciosRaw) || 0;
+    const subtotalMateriales = Number(subtotalMaterialesRaw) || 0;
+    const subtotalManoObra = Number(subtotalManoObraRaw) || 0;
+    
+    // DEBUG para verificar tipos
+    // console.log('=== VALORES PARSEADOS ===');
+    // console.log('Gastos:', gastosInput, typeof gastosInput);
+    // console.log('Servicios:', subtotalServicios, typeof subtotalServicios);
+    // console.log('Materiales:', subtotalMateriales, typeof subtotalMateriales);
+    // console.log('Mano Obra:', subtotalManoObra, typeof subtotalManoObra);
+    
+    // Calcular totales con operador + unario para garantizar suma numérica
+    const nuevoValorNeto = (+subtotalServicios) + (+subtotalMateriales) + (+subtotalManoObra) + (+gastosInput);
+    const nuevoIVA = Math.round(nuevoValorNeto * 0.19);
+    const nuevoTotal = nuevoValorNeto + nuevoIVA;
+    
+    // console.log('Valor Neto:', nuevoValorNeto, typeof nuevoValorNeto);
+    // console.log('========================');
+    
+    const formatearNumero = (num) => {
+      return num.toString();
+    };
+    
+    // Actualizar elementos si existen
+    const displayGastos = document.getElementById('display-gastos-traslado');
+    const displayNeto = document.getElementById('display-valor-neto');
+    const displayIVA = document.getElementById('display-valor-iva');
+    const displayTotal = document.getElementById('display-valor-total');
+    
+    if (displayGastos) displayGastos.textContent = '$' + formatearNumero(gastosInput);
+    if (displayNeto) displayNeto.textContent = '$' + formatearNumero(nuevoValorNeto);
+    if (displayIVA) displayIVA.textContent = '$' + formatearNumero(nuevoIVA);
+    if (displayTotal) displayTotal.textContent = '$' + formatearNumero(nuevoTotal);
+  }
+
+  async function cargarEmpleadosCategoriaManoObra() {
+      const categoriaId = document.getElementById('categoria-empleados-mano-obra').value;
+      const container = document.getElementById('empleados-disponibles-container');
+      const list = document.getElementById('empleados-disponibles-list');
+      
+      if (!categoriaId) {
+          container.style.display = 'none';
+          return;
+      }
+      
+      try {
+          const response = await fetch(`/cotizaciones/api/categoria-empleado/${categoriaId}/empleados/`);
+          
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const empleados = await response.json();
+          
+          if (empleados.length === 0) {
+              list.innerHTML = '<p style="color: var(--gris-600);">No hay empleados en esta categoría</p>';
+          } else {
+              let html = '<div style="max-height: 150px; overflow-y: auto; border: 1px solid var(--gris-300); border-radius: 8px; padding: 10px;">';
+              empleados.forEach(empleado => {
+                  html += `
+                      <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--gris-200);">
+                          <div>
+                              <strong>${empleado.nombre}</strong><br>
+                              <small>${empleado.telefono || 'Sin teléfono'} - ${empleado.departamento || 'Sin departamento'}</small>
+                          </div>
+                          <input type="checkbox" name="empleados-seleccionados" value="${empleado.id}" style="margin-left: 10px;">
+                      </div>
+                  `;
+              });
+              html += '</div>';
+              html += '<p style="font-size: 12px; color: var(--gris-600); margin-top: 5px;">Selecciona los empleados que participarán en este trabajo</p>';
+              list.innerHTML = html;
+          }
+          
+          container.style.display = 'block';
+          
+      } catch (error) {
+          console.error('Error al cargar empleados:', error);
+          list.innerHTML = '<p style="color: var(--rojo-600);">Error al cargar empleados</p>';
+          container.style.display = 'block';
+      }
+  }
+
+  async function agregarManoObra() {
+      const descripcion = document.getElementById('descripcion-mano-obra').value.trim();
+      const horas = parseFloat(document.getElementById('horas-mano-obra').value);
+      const precioHora = parseFloat(document.getElementById('precio-hora-mano-obra').value);
+      
+      if (!descripcion) {
+          alert('La descripción del trabajo es requerida');
+          return;
+      }
+      
+      if (!horas || horas <= 0) {
+          alert('Las horas de trabajo deben ser mayor a 0');
+          return;
+      }
+      
+      if (!precioHora || precioHora <= 0) {
+          alert('El precio por hora debe ser mayor a 0');
+          return;
+      }
+      
+      const empleadosSeleccionados = [];
+      const checkboxes = document.querySelectorAll('input[name="empleados-seleccionados"]:checked');
+      checkboxes.forEach(checkbox => {
+          empleadosSeleccionados.push(parseInt(checkbox.value));
+      });
+      
+      const data = {
+          descripcion: descripcion,
+          horas: horas,
+          precio_hora: precioHora,
+          empleados_seleccionados: empleadosSeleccionados
+      };
+      
+      try {
+          const response = await fetch(`/cotizaciones/${window.cotizacionId}/item-mano-obra/`, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': getCSRFToken()
+              },
+              body: JSON.stringify(data)
+          });
+          
+          if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          
+          if (result.success) {
+              document.getElementById('descripcion-mano-obra').value = '';
+              document.getElementById('horas-mano-obra').value = '';
+              document.getElementById('precio-hora-mano-obra').value = '';
+              document.getElementById('categoria-empleados-mano-obra').value = '';
+              document.getElementById('empleados-disponibles-container').style.display = 'none';
+              
+              cerrarModal('modal-mano-obra');
+              
+              if (result.empleados_asignados && result.empleados_asignados.length > 0) {
+                  alert(`Mano de obra agregada exitosamente con ${result.empleados_asignados.length} empleados asignados: ${result.empleados_asignados.join(', ')}`);
+              } else {
+                  alert('Mano de obra agregada exitosamente. Puedes asignar empleados después.');
+              }
+              
+              location.reload();
+          } else {
+              alert('Error: ' + result.error);
+          }
+      } catch (error) {
+          console.error('Error:', error);
+          alert('Error al agregar mano de obra: ' + error.message);
+      }
+  }
+
+  function limpiarModalManoObra() {
+      document.getElementById('descripcion-mano-obra').value = '';
+      document.getElementById('horas-mano-obra').value = '';
+      document.getElementById('precio-hora-mano-obra').value = '';
+      document.getElementById('categoria-empleados-mano-obra').value = '';
+      document.getElementById('empleados-disponibles-container').style.display = 'none';
+      
+      const checkboxes = document.querySelectorAll('input[name="empleados-seleccionados"]');
+      checkboxes.forEach(checkbox => {
+          checkbox.checked = false;
+      });
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const selectMaterial = document.querySelector('#id_material'); // Ajustar ID según tu formulario
+    
+    if (selectMaterial) {
+      selectMaterial.addEventListener('change', function() {
+        const materialId = this.value;
+        
+        if (materialId) {
+          verificarDisponibilidadMaterial(materialId);
+        }
+      });
+    }
+  });
+
+  function verificarDisponibilidadMaterial(materialId) {
+    fetch(`/cotizaciones/api/material/verificar-disponible/?material_id=${materialId}`)
+      .then(response => response.json())
+      .then(data => {
+        const alertContainer = document.getElementById('alert-material-prestado');
+        
+        if (!data.disponible) {
+          // Mostrar alerta
+          if (alertContainer) {
+            alertContainer.innerHTML = `
+              <div class="alert warning" style="display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; background: var(--naranja-100); color: var(--naranja-700); border: 2px solid var(--naranja-600); margin-top: 12px;">
+                ⚠️ <strong>${data.mensaje}</strong> (Prestado a: ${data.prestado_a})
+              </div>
+            `;
+          } else {
+            alert(`⚠️ ${data.mensaje}\nPrestado a: ${data.prestado_a}`);
+          }
+          
+          // Opcional: Deshabilitar el botón de agregar
+          const btnAgregar = document.querySelector('button[type="submit"]');
+          if (btnAgregar) {
+            btnAgregar.disabled = true;
+            btnAgregar.style.opacity = '0.5';
+            btnAgregar.style.cursor = 'not-allowed';
+          }
+        } else {
+          // Limpiar alerta y habilitar botón
+          if (alertContainer) {
+            alertContainer.innerHTML = '';
+          }
+          
+          const btnAgregar = document.querySelector('button[type="submit"]');
+          if (btnAgregar) {
+            btnAgregar.disabled = false;
+            btnAgregar.style.opacity = '1';
+            btnAgregar.style.cursor = 'pointer';
+          }
+        }
+      })
+      .catch(error => {
+        console.error('Error verificando disponibilidad:', error);
+      });
+  }
+
+</script>
+</body>
+</html>

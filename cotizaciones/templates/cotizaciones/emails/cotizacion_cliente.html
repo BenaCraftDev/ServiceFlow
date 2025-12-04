@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotización {{ cotizacion.numero }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1f5fa5, #2575c0);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px 5px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .btn-success {
+            background: #059669;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-warning {
+            background: #ea580c;
+            color: white;
+        }
+        .btn-info {
+            background: #2575c0;
+            color: white;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+        .info-box {
+            background: #f0f8ff;
+            padding: 15px;
+            border-left: 4px solid #2575c0;
+            margin: 15px 0;
+        }
+        .totales {
+            background: #eaf3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .total-final {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1f5fa5;
+            border-top: 2px solid #1f5fa5;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ config_empresa.nombre }}</h1>
+        <p>{{ config_empresa.descripcion|linebreaks }}</p>
+    </div>
+    
+    <div class="content">
+
+        {% if es_copia_remitente %}
+        <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            <strong>📋 COPIA PARA REMITENTE</strong><br>
+            <small>Este es un duplicado del email enviado a: {{ email_destinatario }}</small>
+        </div>
+        {% endif %}
+
+        <h2>Cotización N° {{ cotizacion.numero }}</h2>
+        
+        {% if mensaje_adicional %}
+        <div class="info-box">
+            <strong>Mensaje:</strong><br>
+            {{ mensaje_adicional|linebreaks }}
+        </div>
+        {% endif %}
+        
+        <p><strong>Estimado(a) {{ cotizacion.get_nombre_cliente }},</strong></p>
+        
+        <p>Le enviamos la cotización solicitada con los siguientes detalles:</p>
+        
+        <div class="info-box">
+            <p><strong>Referencia:</strong> {{ cotizacion.referencia }}</p>
+            <p><strong>Lugar:</strong> {{ cotizacion.lugar }}</p>
+            <p><strong>Tipo de Trabajo:</strong> {{ cotizacion.tipo_trabajo.nombre }}</p>
+            <p><strong>Fecha:</strong> {{ cotizacion.fecha_creacion|date:"d/m/Y" }}</p>
+            {% if cotizacion.fecha_vencimiento %}
+            <p><strong>Válida hasta:</strong> {{ cotizacion.fecha_vencimiento|date:"d/m/Y" }}</p>
+            {% endif %}
+        </div>
+        
+        <div class="totales">
+            <h3>Resumen de Valores</h3>
+            <div class="total-row">
+                <span>Valor Neto:</span>
+                <span>${{ cotizacion.valor_neto|floatformat:0 }}</span>
+            </div>
+            <div class="total-row">
+                <span>IVA (19%):</span>
+                <span>${{ cotizacion.valor_iva|floatformat:0 }}</span>
+            </div>
+            <div class="total-row total-final">
+                <span>VALOR TOTAL:</span>
+                <span>${{ cotizacion.valor_total|floatformat:0 }}</span>
+            </div>
+        </div>
+        
+        {% if cotizacion.observaciones %}
+        <div class="info-box">
+            <strong>Observaciones:</strong><br>
+            {{ cotizacion.observaciones|linebreaks }}
+        </div>
+        {% endif %}
+        
+        <h3>¿Qué desea hacer?</h3>
+        <p>Por favor, seleccione una de las siguientes opciones:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{{ url_ver }}" class="button btn-info">👁️ Ver Cotización Completa</a>
+            <br><br>
+            <a href="{{ url_aprobar }}" class="button btn-success">✅ Aprobar Cotización</a>
+            <br>
+            <a href="{{ url_modificar }}" class="button btn-warning">📝 Solicitar Cambios</a>
+            <br>
+            <a href="{{ url_rechazar }}" class="button btn-danger">❌ Rechazar</a>
+        </div>
+        
+        <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <strong>Contacto:</strong><br>
+            📧 {{ config_empresa.email }}<br>
+            📞 {{ config_empresa.telefono }}<br>
+            📍 {{ config_empresa.direccion }}
+        </p>
+    </div>
+    
+    <div class="footer">
+        <p>Este correo fue enviado automáticamente. Por favor, no responda a este mensaje.</p>
+        <p>Para consultas, contáctenos directamente a {{ config_empresa.email }}</p>
+    </div>
+</body>
+</html>

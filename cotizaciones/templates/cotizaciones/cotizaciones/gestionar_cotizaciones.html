@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    /* Desactivar animación del último KPI */
+    .cards .card.no-interactive {
+      cursor: default !important;
+    }
+    
+    .cards .card.no-interactive:hover {
+      transform: none !important;
+      box-shadow: var(--shadow) !important;
+      border-color: var(--gris-300) !important;
+      background: var(--blanco) !important;
+    }
+    
+    .cards .card.no-interactive:active {
+      transform: none !important;
+    }
+    
+    .cards .card.no-interactive .kpi:hover {
+      color: var(--azul-700) !important;
+      text-shadow: none !important;
+      transform: none !important;
+    }
+    
+    .cards .card.no-interactive h4:hover {
+      color: var(--azul-700) !important;
+      transform: none !important;
+    }
+  </style>
+  </style>
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <!-- Main Content -->
+    <main>
+      <!-- KPIs -->
+      <div class="cards">
+        <div class="card" id="kpi-total">
+          <h4>Total Cotizaciones</h4>
+          <div class="kpi">{{ total_cotizaciones }}</div>
+          <div class="muted">Desde el inicio</div>
+        </div>
+        <div class="card" id="kpi-mes">
+          <h4>Este Mes</h4>
+          <div class="kpi">{{ cotizaciones_mes }}</div>
+          <div class="muted">Cotizaciones creadas</div>
+        </div>
+        <div class="card" id="kpi-pendientes">
+          <h4>Pendientes</h4>
+          <div class="kpi">{{ cotizaciones_pendientes }}</div>
+          <div class="muted">Esperando respuesta</div>
+        </div>
+        <div class="card" id="kpi-valor-mes">
+          <h4>Valor Esperado del Mes</h4>
+          <div class="kpi">${{ valor_total_mes|floatformat:0 }}</div>
+          <div class="muted">Total cotizado Esperado</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h2 style="margin: 0; color: var(--azul-700);">Resumen de Cotizaciones (Últimas 5)</h2>
+        </div>
+        <div class="actions-right">
+          <a href="{% url 'cotizaciones:crear' %}" class="btn">
+            ➕ Nueva Cotización
+          </a>
+          <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">
+            📄 Ver Todas
+          </a>
+        </div>
+      </div>
+
+      <!-- Grid de contenido -->
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <!-- Últimas Cotizaciones -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Representante</th>
+                <th>Estado</th>
+                <th>Valor Total</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cotizacion in ultimas_cotizaciones %}
+              <tr>
+                <td><strong>{{ cotizacion.numero }}</strong></td>
+                <td>{{ cotizacion.get_nombre_cliente }}</td>
+                <td>
+                  {% if cotizacion.representante or cotizacion.representante_nombre_respaldo %}
+                    {{ cotizacion.representante.nombre }}
+                  {% else %}
+                    <span style="color: var(--gris-500);">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="pill {{ cotizacion.estado }}">
+                    {{ cotizacion.get_estado_display }}
+                  </span>
+                </td>
+                <td>${{ cotizacion.valor_total|floatformat:0 }}</td>
+                <td>{{ cotizacion.fecha_creacion|date:"d/m/Y" }}</td>
+                <td>
+                  <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn small secondary">
+                    👁️ Ver
+                  </a>
+                  <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" class="btn small secondary" target="_blank">
+                    📥 Ver PDF
+                  </a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                  No hay cotizaciones registradas aún.
+                  <br><br>
+                  <a href="{% url 'cotizaciones:crear' %}" class="btn">Crear Primera Cotización</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Estados de Cotizaciones -->
+        <div class="card">
+          <h3>Estados de Cotizaciones</h3>
+          {% for estado in estados_stats %}
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span class="pill {{ estado.estado }}">
+              {{ estado.estado|capfirst }}
+            </span>
+            <strong>{{ estado.total }}</strong>
+          </div>
+          {% empty %}
+          <p style="color: var(--gris-600); text-align: center; padding: 20px;">
+            Sin datos disponibles
+          </p>
+          {% endfor %}
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+
+<script>
+  // KPIs Interactivos para Cotizaciones
+  document.addEventListener('DOMContentLoaded', function() {
+    const kpiTotal = document.getElementById('kpi-total');
+    const kpiMes = document.getElementById('kpi-mes');
+    const kpiPendientes = document.getElementById('kpi-pendientes');
+    
+    if (kpiTotal) {
+      kpiTotal.addEventListener('click', function() {
+        window.location.href = "{% url 'cotizaciones:lista' %}";
+      });
+    }
+    
+    if (kpiMes) {
+      kpiMes.addEventListener('click', function() {
+        const fecha = new Date();
+        const mes = fecha.getMonth() + 1;
+        const anio = fecha.getFullYear();
+        window.location.href = "{% url 'cotizaciones:lista' %}?mes=" + mes + "&anio=" + anio;
+      });
+    }
+    
+    if (kpiPendientes) {
+      kpiPendientes.addEventListener('click', function() {
+        window.location.href = "{% url 'cotizaciones:lista' %}?estado=enviada";
+      });
+    }
+
+    if (document.getElementById('kpi-valor-mes')) {
+      document.getElementById('kpi-valor-mes').addEventListener('click', function() {
+        window.location.href = "{% url 'cotizaciones:lista' %}?estado=aprobada,finalizada";
+      });
+    }
+  });
+</script>
+</body>
+</html>

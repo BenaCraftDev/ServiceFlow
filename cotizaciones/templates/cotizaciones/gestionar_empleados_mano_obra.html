@@ -1,0 +1,323 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Empleados - Cotización {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% csrf_token %}
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Empleados Mano de Obra</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:editar' cotizacion.pk %}">⬅ Volver a Cotización</a>
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">👁️ Ver Cotización</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Información del trabajo -->
+    <div class="card">
+      <h3>🔧 Información del Trabajo</h3>
+      <div class="info-grid">
+        <div>
+          <strong>Cotización:</strong> {{ cotizacion.numero }}<br>
+          <strong>Cliente:</strong> {{ cotizacion.cliente.nombre }}<br>
+          <strong>Referencia:</strong> {{ cotizacion.referencia }}
+        </div>
+        <div>
+          <strong>Descripción del Trabajo:</strong><br>
+          {{ item_mano_obra.descripcion }}<br>
+          <strong>Horas Totales:</strong> {{ item_mano_obra.horas }}<br>
+          <strong>Precio/Hora:</strong> ${{ item_mano_obra.precio_hora|floatformat:0 }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Agregar Empleados -->
+    <div class="card">
+      <h3>👥 Asignar Empleados</h3>
+      
+      <div class="form-row" style="margin-bottom: 20px;">
+        <div class="form-group">
+          <label for="categoria-filtro">Filtrar por Categoría</label>
+          <select id="categoria-filtro" onchange="cargarEmpleadosPorCategoria()">
+            <option value="">Todos los empleados</option>
+            {% for categoria in categorias_empleados %}
+            <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="empleado-select">Empleado</label>
+          <select id="empleado-select">
+            <option value="">Seleccionar empleado</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="horas-asignadas">Horas Asignadas</label>
+          <input type="number" id="horas-asignadas" step="0.5" min="0" value="{{ item_mano_obra.horas }}">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="observaciones-empleado">Observaciones</label>
+        <textarea id="observaciones-empleado" rows="2" placeholder="Observaciones específicas para este empleado"></textarea>
+      </div>
+      
+      <div style="margin-top: 15px;">
+        <button type="button" class="btn" onclick="asignarEmpleado()">
+          ➕ Asignar Empleado
+        </button>
+      </div>
+    </div>
+
+    <!-- Empleados Asignados -->
+    <div class="card">
+      <h3>👷 Empleados Asignados</h3>
+      
+      <div class="table-wrap">
+        <table id="tabla-empleados-asignados">
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Teléfono</th>
+              <th>Horas Asignadas</th>
+              <th>Fecha Asignación</th>
+              <th>Estado</th>
+              <th>Observaciones</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asignacion in empleados_asignados %}
+            <tr data-empleado-id="{{ asignacion.empleado.id }}">
+              <td>
+                <strong>{{ asignacion.empleado.nombre_completo }}</strong><br>
+                <small>{{ asignacion.empleado.departamento|default:"Sin departamento" }}</small>
+              </td>
+              <td>{{ asignacion.empleado.telefono|default:"-" }}</td>
+              <td>{{ asignacion.horas_asignadas }} hrs</td>
+              <td>{{ asignacion.fecha_asignacion|date:"d/m/Y H:i" }}</td>
+              <td>
+                <span class="pill {% if asignacion.completado %}success{% else %}warning{% endif %}">
+                  {% if asignacion.completado %}Completado{% else %}Pendiente{% endif %}
+                </span>
+              </td>
+              <td>{{ asignacion.observaciones|truncatewords:5|default:"-" }}</td>
+              <td>
+                <button type="button" class="btn small danger" onclick="eliminarEmpleado({{ asignacion.empleado.id }})">
+                  🗑️ Remover
+                </button>
+              </td>
+            </tr>
+            {% empty %}
+            <tr id="no-empleados">
+              <td colspan="7" style="text-align: center; padding: 20px; color: var(--gris-600);">
+                No hay empleados asignados a este trabajo.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="card">
+      <h3>📊 Resumen</h3>
+      <div class="totales">
+        <div class="row">
+          <span>Total de Empleados Asignados:</span>
+          <span id="total-empleados">{{ empleados_asignados.count }}</span>
+        </div>
+        <div class="row">
+          <span>Horas Totales del Trabajo:</span>
+          <span>{{ item_mano_obra.horas }} hrs</span>
+        </div>
+        <div class="row">
+          <span>Horas Asignadas:</span>
+          <span id="horas-asignadas-total">{{ total_horas_asignadas|default:0 }} hrs</span>
+        </div>
+        <div class="row">
+          <span>Empleados Completados:</span>
+          <span id="empleados-completados">{{ empleados_completados }} de {{ empleados_asignados.count }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cotizacionId = {{ cotizacion.pk }};
+    const itemManoObraId = {{ item_mano_obra.pk }};
+
+    // Función para obtener el token CSRF
+    function getCSRFToken() {
+        // Buscar en meta tag primero
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+            return metaToken.getAttribute('content');
+        }
+        
+        // Buscar en input hidden
+        const inputToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (inputToken) {
+            return inputToken.value;
+        }
+        
+        // Buscar en cookies como último recurso
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='));
+        
+        if (cookieValue) {
+            return cookieValue.split('=')[1];
+        }
+        
+        console.error('CSRF token no encontrado');
+        return null;
+    }
+
+    // Cargar empleados por categoría
+    async function cargarEmpleadosPorCategoria() {
+        const categoriaId = document.getElementById('categoria-filtro').value;
+        const empleadoSelect = document.getElementById('empleado-select');
+        
+        // Limpiar select
+        empleadoSelect.innerHTML = '<option value="">Seleccionar empleado</option>';
+        
+        if (!categoriaId) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/cotizaciones/api/categoria-empleado/${categoriaId}/empleados/`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const empleados = await response.json();
+            
+            empleados.forEach(empleado => {
+                const option = document.createElement('option');
+                option.value = empleado.id;
+                option.textContent = empleado.nombre;
+                empleadoSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('Error al cargar empleados:', error);
+            alert('Error al cargar empleados de la categoría');
+        }
+    }
+
+    // Asignar empleado
+    async function asignarEmpleado() {
+        const empleadoId = document.getElementById('empleado-select').value;
+        const horasAsignadasInput = document.getElementById('horas-asignadas');
+        const observaciones = document.getElementById('observaciones-empleado').value;
+
+        if (!empleadoId) {
+            alert('Selecciona un empleado');
+            return;
+        }
+
+        // Convertir el valor a número y validar
+        const horasAsignadas = parseFloat(horasAsignadasInput.value.replace(',', '.'));
+        
+        if (isNaN(horasAsignadas) || horasAsignadas <= 0) {
+            alert('Ingresa las horas asignadas válidas');
+            return;
+        }
+
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert('Error: Token CSRF no encontrado');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cotizaciones/${cotizacionId}/item-mano-obra/${itemManoObraId}/empleado/agregar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    empleado_id: parseInt(empleadoId),
+                    horas_asignadas: horasAsignadas,
+                    observaciones: observaciones
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ ' + result.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al asignar empleado: ' + error.message);
+        }
+    }
+
+    // Eliminar empleado
+    async function eliminarEmpleado(empleadoId) {
+        if (!confirm('¿Estás seguro de remover este empleado del trabajo?')) {
+            return;
+        }
+
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            alert('Error: Token CSRF no encontrado');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/cotizaciones/${cotizacionId}/item-mano-obra/${itemManoObraId}/empleado/${empleadoId}/eliminar/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ ' + result.message);
+                location.reload();
+            } else {
+                alert('❌ Error: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al eliminar empleado: ' + error.message);
+        }
+    }
+
+    // Cargar todos los empleados al inicio
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Página cargada, ready para gestionar empleados');
+    });
+  </script>
+</body>
+</html>

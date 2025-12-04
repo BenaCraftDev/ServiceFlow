@@ -1,0 +1,752 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Préstamos - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+      <!-- Alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Estadísticas -->
+      <div class="cards">
+        <div class="card" id="kpi-total-prestamos">
+          <h4>Total Préstamos</h4>
+          <div class="kpi">{{ total }}</div>
+          <div class="muted">Actualmente prestados</div>
+        </div>
+        <div class="card" id="kpi-vencidos">
+          <h4>Vencidos</h4>
+          <div class="kpi">{{ vencidos }}</div>
+          <div class="muted">Requieren atención</div>
+        </div>
+        <div class="card" id="kpi-proximos">
+          <h4>Por Vencer</h4>
+          <div class="kpi">{{ proximos }}</div>
+          <div class="muted">En 3 días o menos</div>
+        </div>
+        <div class="card" id="kpi-disponibles">
+          <h4>Materiales Disponibles</h4>
+          <div class="kpi">{{ materiales_disponibles }}</div>
+          <div class="muted">Sin préstamo</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">Gestión de Préstamos</h1>
+        </div>
+        <div class="actions-right">
+          <button type="button" class="btn secondary" onclick="mostrarModal('modal-historial')">
+            📋 Historial
+          </button>
+          <button type="button" class="btn" onclick="mostrarModal('modal-prestamo')">
+            ➕ Nuevo Préstamo
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filtro-estado">Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="success">Al día</option>
+            <option value="proximo">Por vencer</option>
+            <option value="vencido">Vencido</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="busqueda">Buscar</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ buscar }}" 
+                placeholder="Material, código o persona...">
+        </div>
+        
+        <div class="filter-group" style="align-self: end;">
+          <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+            🗑️ Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Préstamos -->
+      <div class="table-wrap">
+        <table id="tabla-prestamos">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Código</th>
+              <th>Prestado a</th>
+              <th>Fecha Préstamo</th>
+              <th>Fecha Devolución</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prestamo in prestamos %}
+            {% with estado=prestamo.get_estado %}
+            <tr data-estado="{{ estado.clase }}">
+              <td>
+                <strong>{{ prestamo.material.nombre }}</strong>
+                {% if prestamo.material.categoria %}
+                <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+                  {{ prestamo.material.categoria }}
+                </div>
+                {% endif %}
+              </td>
+              <td><strong>{{ prestamo.material.codigo }}</strong></td>
+              <td>{{ prestamo.prestado_a }}</td>
+              <td>{{ prestamo.fecha_prestamo|date:"d/m/Y" }}</td>
+              <td>{{ prestamo.fecha_devolucion|date:"d/m/Y" }}</td>
+              <td>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn small {{ estado.clase }}" 
+                          onclick="devolverMaterial({{ prestamo.id }}, '{{ prestamo.material.codigo }}')" 
+                          title="Devolver material">
+                    {{ estado.icono }} {{ estado.texto }}
+                  </button>
+                  <button type="button" class="btn small secondary" 
+                          onclick="editarPrestamo({{ prestamo.id }})" title="Editar">
+                    ✏️
+                  </button>
+                  <button type="button" class="btn small danger" 
+                          onclick="eliminarPrestamo({{ prestamo.id }}, '{{ prestamo.material.codigo }}')" title="Eliminar">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                {% if buscar %}
+                  No se encontraron préstamos que coincidan con la búsqueda.
+                {% else %}
+                  No hay préstamos activos. Todos los materiales están disponibles.
+                {% endif %}
+                <br><br>
+                <button type="button" class="btn" onclick="mostrarModal('modal-prestamo')">
+                  Crear Primer Préstamo
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal Nuevo/Editar Préstamo -->
+      <div id="modal-prestamo" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-prestamo-titulo">Nuevo Préstamo</h3>
+            <button type="button" class="close" onclick="cerrarModalPrestamo()">&times;</button>
+          </div>
+          
+          <form id="form-prestamo">
+            {% csrf_token %}
+            <input type="hidden" id="prestamo-id" value="">
+            
+            <div class="form-group">
+              <label for="prestamo-material">Material *</label>
+              <select id="prestamo-material" required>
+                <option value="">Seleccione un material...</option>
+                {% for material in materiales_disponibles_form %}
+                <option value="{{ material.id }}">{{ material.codigo }} - {{ material.nombre }}</option>
+                {% endfor %}
+              </select>
+              <small style="color: var(--gris-600);">Solo se muestran materiales activos (disponibles)</small>
+            </div>
+            
+            <div class="form-group">
+              <label for="prestamo-prestado-a">Prestado a *</label>
+              <input type="text" id="prestamo-prestado-a" required 
+                     placeholder="Nombre de persona o empresa">
+            </div>
+            
+            <div class="form-group">
+              <label for="prestamo-fecha-devolucion">Fecha de Devolución *</label>
+              <input type="date" id="prestamo-fecha-devolucion" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="prestamo-observaciones">Observaciones</label>
+              <textarea id="prestamo-observaciones" rows="3" 
+                        placeholder="Información adicional (opcional)"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModalPrestamo()">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Guardar Préstamo
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Historial de Préstamos -->
+      <div id="modal-historial" class="modal">
+        <div class="modal-content" style="max-width: 1000px;">
+          <div class="modal-header">
+            <h3>📋 Historial de Préstamos</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-historial')">&times;</button>
+          </div>
+          
+          <!-- Filtros del historial -->
+          <div class="filters" style="margin-bottom: 20px;">
+            <div class="filter-group">
+              <label>Buscar en historial</label>
+              <input type="text" id="buscar-historial" placeholder="Material, código o persona...">
+            </div>
+            <div class="filter-group">
+              <label>Ordenar por</label>
+              <select id="orden-historial">
+                <option value="reciente">Más reciente</option>
+                <option value="antiguo">Más antiguo</option>
+                <option value="material">Material (A-Z)</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Tabla de historial -->
+          <div class="table-wrap" style="max-height: 500px; overflow-y: auto;">
+            <table id="tabla-historial">
+              <thead style="position: sticky; top: 0; background: white; z-index: 1;">
+                <tr>
+                  <th>Material</th>
+                  <th>Código</th>
+                  <th>Prestado a</th>
+                  <th>Fecha Préstamo</th>
+                  <th>Fecha Devolución</th>
+                  <th>Devuelto</th>
+                  <th>Duración</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historial">
+                <tr>
+                  <td colspan="7" style="text-align: center; padding: 40px;">
+                    <div class="loading">
+                      <div class="spinner"></div>
+                      Cargando historial...
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: right; color: var(--gris-600); font-size: 0.9rem;">
+            <span id="total-historial">Total: 0 préstamos</span>
+          </div>
+        </div>
+      </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+// ===== FUNCIÓN CSRF TOKEN =====
+function getCSRFToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// ===== FUNCIONES PARA MODALES =====
+function cerrarModalPrestamo() {
+  document.getElementById('modal-prestamo-titulo').textContent = 'Nuevo Préstamo';
+  document.getElementById('prestamo-id').value = '';
+  document.getElementById('form-prestamo').reset();
+  
+  // Rehabilitar select de material
+  document.getElementById('prestamo-material').disabled = false;
+  
+  cerrarModal('modal-prestamo');
+}
+
+// ===== HISTORIAL DE PRÉSTAMOS =====
+let historialCompleto = [];
+
+async function cargarHistorial() {
+  try {
+    const response = await fetch('/cotizaciones/prestamos/historial/');
+    const data = await response.json();
+    
+    if (data.success) {
+      historialCompleto = data.historial;
+      renderizarHistorial(historialCompleto);
+      document.getElementById('total-historial').textContent = `Total: ${historialCompleto.length} préstamos`;
+    } else {
+      mostrarErrorHistorial('Error al cargar el historial');
+    }
+  } catch (error) {
+    console.error('Error cargando historial:', error);
+    mostrarErrorHistorial('Error al cargar el historial');
+  }
+}
+
+function renderizarHistorial(historial) {
+  const tbody = document.getElementById('tbody-historial');
+  
+  if (historial.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+          No hay préstamos en el historial
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  tbody.innerHTML = historial.map(item => {
+    const fechaDevuelto = item.fecha_devuelto ? new Date(item.fecha_devuelto).toLocaleDateString('es-CL') : '-';
+    const estadoDevuelto = item.fecha_devuelto ? 
+      '<span class="pill success">✓ Devuelto</span>' : 
+      '<span class="pill warning">En préstamo</span>';
+    
+    return `
+      <tr>
+        <td><strong>${item.material_nombre}</strong></td>
+        <td>${item.material_codigo}</td>
+        <td>${item.prestado_a}</td>
+        <td>${new Date(item.fecha_prestamo).toLocaleDateString('es-CL')}</td>
+        <td>${new Date(item.fecha_devolucion).toLocaleDateString('es-CL')}</td>
+        <td>${estadoDevuelto}</td>
+        <td>${item.duracion_dias} días</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function mostrarErrorHistorial(mensaje) {
+  const tbody = document.getElementById('tbody-historial');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="7" style="text-align: center; padding: 40px;">
+        <div style="color: var(--rojo-600);">
+          ⚠️ ${mensaje}
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function filtrarHistorial() {
+  const busqueda = document.getElementById('buscar-historial').value.toLowerCase();
+  const orden = document.getElementById('orden-historial').value;
+  
+  let historialFiltrado = [...historialCompleto];
+  
+  // Filtrar por búsqueda
+  if (busqueda) {
+    historialFiltrado = historialFiltrado.filter(item => 
+      item.material_nombre.toLowerCase().includes(busqueda) ||
+      item.material_codigo.toLowerCase().includes(busqueda) ||
+      item.prestado_a.toLowerCase().includes(busqueda)
+    );
+  }
+  
+  // Ordenar
+  switch(orden) {
+    case 'reciente':
+      historialFiltrado.sort((a, b) => new Date(b.fecha_prestamo) - new Date(a.fecha_prestamo));
+      break;
+    case 'antiguo':
+      historialFiltrado.sort((a, b) => new Date(a.fecha_prestamo) - new Date(b.fecha_prestamo));
+      break;
+    case 'material':
+      historialFiltrado.sort((a, b) => a.material_codigo.localeCompare(b.material_codigo));
+      break;
+  }
+  
+  renderizarHistorial(historialFiltrado);
+  document.getElementById('total-historial').textContent = 
+    `Mostrando: ${historialFiltrado.length} de ${historialCompleto.length} préstamos`;
+}
+
+// Event listeners para historial
+document.getElementById('buscar-historial')?.addEventListener('input', filtrarHistorial);
+document.getElementById('orden-historial')?.addEventListener('change', filtrarHistorial);
+
+// Interceptar apertura del modal de historial para cargar datos
+const modalHistorialOriginal = window.mostrarModal;
+window.mostrarModal = function(modalId) {
+  modalHistorialOriginal(modalId);
+  if (modalId === 'modal-historial') {
+    cargarHistorial();
+  }
+};
+
+// ===== CRUD PRÉSTAMOS =====
+async function editarPrestamo(prestamoId) {
+  try {
+    // Aquí cargarías los datos del préstamo
+    const response = await fetch(`/cotizaciones/prestamos/${prestamoId}/datos/`);
+    const data = await response.json();
+    
+    if (data.success) {
+      document.getElementById('modal-prestamo-titulo').textContent = 'Editar Préstamo';
+      document.getElementById('prestamo-id').value = prestamoId;
+      document.getElementById('prestamo-material').value = data.prestamo.material_id;
+      document.getElementById('prestamo-material').disabled = true; // No permitir cambiar material
+      document.getElementById('prestamo-prestado-a').value = data.prestamo.prestado_a;
+      document.getElementById('prestamo-fecha-devolucion').value = data.prestamo.fecha_devolucion;
+      document.getElementById('prestamo-observaciones').value = data.prestamo.observaciones || '';
+      
+      mostrarModal('modal-prestamo');
+    }
+  } catch (error) {
+    console.error('Error cargando préstamo:', error);
+    alert('Error al cargar el préstamo');
+  }
+}
+
+async function devolverMaterial(prestamoId, materialCodigo) {
+  if (!confirm(`¿Confirmar devolución del material ${materialCodigo}?\n\nEl material quedará disponible nuevamente.`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/cotizaciones/prestamos/${prestamoId}/eliminar/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message || 'Material devuelto correctamente');
+      window.location.reload();
+    } else {
+      alert('Error: ' + (result.error || 'Error desconocido'));
+    }
+  } catch (error) {
+    console.error('Error devolviendo material:', error);
+    alert('Error al devolver el material: ' + error.message);
+  }
+}
+
+async function eliminarPrestamo(prestamoId, materialCodigo) {
+  if (!confirm(`¿Eliminar el préstamo del material ${materialCodigo}?\n\nEsta acción no se puede deshacer.`)) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/cotizaciones/prestamos/${prestamoId}/eliminar/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': getCSRFToken(),
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message || 'Préstamo eliminado correctamente');
+      window.location.reload();
+    } else {
+      alert('Error: ' + (result.error || 'Error desconocido'));
+    }
+  } catch (error) {
+    console.error('Error eliminando préstamo:', error);
+    alert('Error al eliminar el préstamo: ' + error.message);
+  }
+}
+
+// ===== FORM SUBMIT =====
+document.getElementById('form-prestamo').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const formData = {
+    material_id: document.getElementById('prestamo-material').value,
+    prestado_a: document.getElementById('prestamo-prestado-a').value,
+    fecha_devolucion: document.getElementById('prestamo-fecha-devolucion').value,
+    observaciones: document.getElementById('prestamo-observaciones').value
+  };
+  
+  // Validar fecha
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const fecha = new Date(formData.fecha_devolucion);
+  
+  if (fecha < hoy) {
+    alert('La fecha de devolución no puede ser en el pasado');
+    return;
+  }
+  
+  const prestamoId = document.getElementById('prestamo-id').value;
+  const isEditing = prestamoId !== '';
+  
+  try {
+    const url = isEditing ? 
+      `/cotizaciones/prestamos/${prestamoId}/editar/` : 
+      `/cotizaciones/prestamos/crear/`;
+    
+    const method = isEditing ? 'PUT' : 'POST';
+    
+    const response = await fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken()
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      cerrarModalPrestamo();
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+    
+  } catch (error) {
+    console.error('Error guardando préstamo:', error);
+    alert('Error al guardar el préstamo');
+  }
+});
+
+// ===== SISTEMA DE FILTROS =====
+function aplicarFiltros() {
+  const busqueda = document.getElementById('busqueda').value.toLowerCase();
+  const estadoFiltro = document.getElementById('filtro-estado').value;
+  
+  const filas = document.querySelectorAll('#tabla-prestamos tbody tr:not(.fila-sin-resultados)');
+  let visibles = 0;
+  
+  filas.forEach(fila => {
+    if (fila.cells.length === 1) return; // Saltar fila de "sin datos"
+    
+    const textoFila = fila.textContent.toLowerCase();
+    const estadoFila = fila.getAttribute('data-estado');
+    
+    let mostrar = true;
+    
+    // Filtro de búsqueda
+    if (busqueda && !textoFila.includes(busqueda)) {
+      mostrar = false;
+    }
+    
+    // Filtro de estado
+    if (estadoFiltro && estadoFila !== estadoFiltro) {
+      mostrar = false;
+    }
+    
+    fila.style.display = mostrar ? '' : 'none';
+    if (mostrar) visibles++;
+  });
+  
+  // Actualizar mensaje si no hay resultados
+  actualizarMensajeSinResultados(visibles);
+}
+
+function actualizarMensajeSinResultados(visibles) {
+  const tbody = document.querySelector('#tabla-prestamos tbody');
+  let filaMensaje = tbody.querySelector('.fila-sin-resultados');
+  
+  if (visibles === 0) {
+    if (!filaMensaje) {
+      filaMensaje = document.createElement('tr');
+      filaMensaje.className = 'fila-sin-resultados';
+      filaMensaje.innerHTML = `
+        <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
+          No se encontraron préstamos que coincidan con los filtros aplicados.
+          <br><br>
+          <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+            Limpiar Filtros
+          </button>
+        </td>
+      `;
+      tbody.appendChild(filaMensaje);
+    }
+  } else if (filaMensaje) {
+    filaMensaje.remove();
+  }
+}
+
+function limpiarFiltros() {
+  document.getElementById('busqueda').value = '';
+  document.getElementById('filtro-estado').value = '';
+  
+  // Limpiar visuales de KPIs
+  document.querySelectorAll('.cards .card').forEach(card => {
+    card.classList.remove('active');
+  });
+  
+  aplicarFiltros();
+}
+
+// ===== SISTEMA DE FILTROS RÁPIDOS PARA KPIs =====
+function initFiltrosRapidosPrestamos() {
+  const kpiTotal = document.querySelector('#kpi-total-prestamos');
+  const kpiVencidos = document.querySelector('#kpi-vencidos');
+  const kpiProximos = document.querySelector('#kpi-proximos');
+  const kpiDisponibles = document.querySelector('#kpi-disponibles');
+  
+  const inputBusqueda = document.querySelector('#busqueda');
+  const selectEstado = document.querySelector('#filtro-estado');
+  
+  if (!kpiTotal || !inputBusqueda) return;
+  
+  function limpiarFiltrosVisuales() {
+    document.querySelectorAll('.cards .card').forEach(card => {
+      card.classList.remove('active');
+    });
+  }
+  
+  function limpiarTodosFiltros() {
+    if (inputBusqueda) inputBusqueda.value = '';
+    if (selectEstado) selectEstado.value = '';
+  }
+  
+  function ejecutarFiltro() {
+    aplicarFiltros();
+  }
+  
+  // 1. Total Préstamos - Limpiar TODO
+  kpiTotal.addEventListener('click', function(e) {
+    createRipple(e, this);
+    if (navigator.vibrate) navigator.vibrate(10);
+    
+    setTimeout(() => {
+      limpiarFiltrosVisuales();
+      limpiarTodosFiltros();
+      ejecutarFiltro();
+    }, 100);
+  });
+  
+  // 2. Vencidos - Filtrar SOLO vencidos
+  kpiVencidos.addEventListener('click', function(e) {
+    createRipple(e, this);
+    if (navigator.vibrate) navigator.vibrate(10);
+    
+    const yaEstaActiva = this.classList.contains('active');
+    
+    if (yaEstaActiva) {
+      // Si ya está activo, limpiar
+      limpiarFiltrosVisuales();
+      limpiarTodosFiltros();
+      ejecutarFiltro();
+      return;
+    }
+    
+    setTimeout(() => {
+      limpiarFiltrosVisuales();
+      this.classList.add('active');
+      limpiarTodosFiltros();
+      if (selectEstado) selectEstado.value = 'vencido';
+      ejecutarFiltro();
+    }, 100);
+  });
+  
+  // 3. Por Vencer - Filtrar SOLO próximos a vencer
+  kpiProximos.addEventListener('click', function(e) {
+    createRipple(e, this);
+    if (navigator.vibrate) navigator.vibrate(10);
+    
+    const yaEstaActiva = this.classList.contains('active');
+    
+    if (yaEstaActiva) {
+      // Si ya está activo, limpiar
+      limpiarFiltrosVisuales();
+      limpiarTodosFiltros();
+      ejecutarFiltro();
+      return;
+    }
+    
+    setTimeout(() => {
+      limpiarFiltrosVisuales();
+      this.classList.add('active');
+      limpiarTodosFiltros();
+      if (selectEstado) selectEstado.value = 'proximo';
+      ejecutarFiltro();
+    }, 100);
+  });
+  
+  // 4. Materiales Disponibles - Ir a materiales filtrados por activos
+  kpiDisponibles.addEventListener('click', function(e) {
+    createRipple(e, this);
+    if (navigator.vibrate) navigator.vibrate(10);
+    
+    setTimeout(() => {
+      // Redirigir a materiales con filtro de activos
+      window.location.href = '/cotizaciones/materiales/#filtro-estado-activo';
+    }, 100);
+  });
+}
+
+// Efecto ripple
+function createRipple(event, element) {
+  const ripple = document.createElement('span');
+  const rect = element.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const x = event.clientX - rect.left - size / 2;
+  const y = event.clientY - rect.top - size / 2;
+  
+  ripple.style.width = ripple.style.height = size + 'px';
+  ripple.style.left = x + 'px';
+  ripple.style.top = y + 'px';
+  ripple.classList.add('ripple-effect');
+  
+  element.appendChild(ripple);
+  
+  setTimeout(() => {
+    ripple.remove();
+  }, 600);
+}
+
+// Event listeners para filtros
+document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
+document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
+
+// Inicializar cuando carga la página
+document.addEventListener('DOMContentLoaded', function() {
+  initFiltrosRapidosPrestamos();
+});
+
+</script>
+</body>
+</html>

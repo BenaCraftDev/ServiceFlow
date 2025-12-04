@@ -1,0 +1,1223 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Materiales - Sistema de Cotizaciones</title>
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    /* Desactivar interactividad del KPI de promedio */
+    #kpi-promedio {
+      cursor: default !important;
+    }
+    
+    #kpi-promedio:hover {
+      transform: none !important;
+      box-shadow: var(--shadow) !important;
+    }
+    
+    #kpi-promedio:active {
+      transform: none !important;
+    }
+
+    /* Botón de estado de mantenimiento clickeable */
+    .btn-estado-mantenimiento {
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      padding: 6px 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-estado-mantenimiento:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      filter: brightness(1.1);
+    }
+
+    .btn-estado-mantenimiento:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-estado-mantenimiento.rechazada:hover {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+    }
+
+    .btn-estado-mantenimiento.vencida:hover {
+      background: linear-gradient(135deg, #ea580c, #c2410c);
+    }
+
+    .btn-estado-mantenimiento.aprobada:hover {
+      background: linear-gradient(135deg, #059669, #047857);
+    }
+  </style>
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+      <!-- Alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Estadísticas -->
+      <div class="cards">
+        <div class="card" id="kpi-total-materiales">
+          <h4>Total Materiales</h4>
+          <div class="kpi">{{ materiales|length }}</div>
+          <div class="muted">Disponibles</div>
+        </div>
+        <div class="card" id="kpi-categorias">
+          <h4>Categorías</h4>
+          <div class="kpi">{{ categorias|length }}</div>
+          <div class="muted">Organizadas</div>
+        </div>
+        <div class="card" id="kpi-activos">
+          <h4>Activos</h4>
+          <div class="kpi">{{ materiales_activos|default:0 }}</div>
+          <div class="muted">En uso</div>
+        </div>
+        <div class="card" id="kpi-promedio">
+          <h4>Valor Promedio</h4>
+          <div class="kpi">${{ precio_promedio|default:0|floatformat:0 }}</div>
+          <div class="muted">Por material</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">Catálogo de Materiales</h1>
+        </div>
+        <div class="actions-right">
+          <div class="dropdown-export" style="position: relative; display: inline-block;">
+            <button type="button" class="btn secondary" onclick="toggleExportMenu('export-materiales')">
+              📥 Exportar
+            </button>
+            <div id="export-materiales" class="export-menu" style="display: none;">
+              <a href="{% url 'cotizaciones:exportar_materiales' %}?formato=excel{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if categoria_filtro %}&categoria={{ categoria_filtro }}{% endif %}">
+                📊 Exportar a Excel
+              </a>
+              <a href="{% url 'cotizaciones:exportar_materiales' %}?formato=csv{% if busqueda %}&busqueda={{ busqueda }}{% endif %}{% if categoria_filtro %}&categoria={{ categoria_filtro }}{% endif %}">
+                📄 Exportar a CSV
+              </a>
+            </div>
+          </div>
+          <button type="button" class="btn" onclick="mostrarModal('modal-material')">
+            ➕ Nuevo Material
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters">
+        <div class="filter-group">
+          <label for="categoria">🔖 Categoría</label>
+          <select id="categoria" name="categoria">
+            <option value="">Todas las categorías</option>
+            {% for categoria in categorias %}
+              <option value="{{ categoria }}" 
+                      {% if categoria == categoria_filtro %}selected{% endif %}>
+                {{ categoria }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="filtro-estado">✓ Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-mantenimiento">⚙️ Mantenimiento</label>
+          <select id="filtro-mantenimiento">
+            <option value="">Todos</option>
+            <option value="sin-mantenimiento">Sin mantenimiento</option>
+            <option value="con-mantenimiento">Con mantenimiento</option>
+            <option value="por-vencer">Por vencer</option>
+            <option value="vencido">Vencidos</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="busqueda">🔍 Buscar Material</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                placeholder="Código, nombre, descripción...">
+        </div>
+        
+        <div class="filter-group" style="align-self: end;">
+          <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+            🗑️ Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Materiales -->
+      <div class="table-wrap">
+        <table id="tabla-materiales">
+          <thead>
+            <tr>
+              <th>Código</th>
+              <th>Material</th>
+              <th>Categoría</th>
+              <th>Precio Unitario</th>
+              <th>Unidad</th>
+              <th>Mantenimiento</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for material in materiales %}
+            <tr data-estado="{% if material.activo %}activo{% else %}inactivo{% endif %}"
+                data-categoria="{{ material.categoria }}">
+              <td><strong>{{ material.codigo }}</strong></td>
+              <td>
+                <strong>{{ material.nombre }}</strong>
+                {% if material.descripcion %}
+                <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
+                  {{ material.descripcion|truncatewords:15 }}
+                </div>
+                {% endif %}
+              </td>
+              <td>
+                {% if material.categoria %}
+                  <span class="pill enviada">{{ material.categoria }}</span>
+                {% else %}
+                  <span class="pill borrador">Sin categoría</span>
+                {% endif %}
+              </td>
+              <td><strong>${{ material.precio_unitario|floatformat:0 }}</strong></td>
+              <td>{{ material.unidad }}</td>
+              <td data-mantenimiento-estado="{% if material.requiere_mantenimiento %}{% with estado=material.get_estado_mantenimiento %}{{ estado.estado }}{% endwith %}{% else %}sin-mantenimiento{% endif %}">
+                {% if material.requiere_mantenimiento %}
+                  {% with estado=material.get_estado_mantenimiento %}
+                    <button type="button" 
+                            class="btn-estado-mantenimiento pill {% if estado.clase == 'danger' %}rechazada{% elif estado.clase == 'warning' %}vencida{% elif estado.clase == 'success' %}aprobada{% else %}borrador{% endif %}" 
+                            onclick="registrarMantenimiento({{ material.id }}, '{{ material.nombre|escapejs }}', '{{ estado.tipo }}')"
+                            title="Click para registrar mantenimiento realizado - Tipo: {% if estado.tipo == 'horas' %}Horas de Uso{% else %}Días{% endif %}">
+                      {% if estado.tipo == 'horas' %}
+                        {# Mantenimiento por HORAS - con icono distintivo ⏱️ #}
+                        {% if estado.estado == 'vencido' %}
+                          🔴⏱️ {{ estado.texto }}
+                        {% elif estado.estado == 'proximo' %}
+                          🟡⏱️ {{ estado.texto }}
+                        {% elif estado.estado == 'ok' %}
+                          🟢⏱️ {{ estado.texto }}
+                        {% elif estado.estado == 'sin_inicio' %}
+                          ⚪⏱️ {{ estado.texto }}
+                        {% endif %}
+                      {% else %}
+                        {# Mantenimiento por DÍAS - diseño original #}
+                        {% if estado.estado == 'vencido' %}
+                          🔴 Vencido ({{ estado.texto }})
+                        {% elif estado.estado == 'proximo' %}
+                          🟡 {{ estado.texto }}
+                        {% elif estado.estado == 'ok' %}
+                          🟢 {{ estado.texto }}
+                        {% elif estado.estado == 'sin_fecha' %}
+                          ⚪ {{ estado.texto }}
+                        {% endif %}
+                      {% endif %}
+                    </button>
+                  {% endwith %}
+                {% else %}
+                  <span class="pill borrador" style="opacity: 0.6;">No</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="pill {% if material.activo %}activo{% else %}inactivo{% endif %}">
+                  {% if material.activo %}Activo{% else %}Inactivo{% endif %}
+                </span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                  <button type="button" class="btn small secondary" 
+                          onclick="editarMaterial({{ material.id }})" title="Editar">
+                    ✏️
+                  </button>
+                  <button type="button" class="btn small danger" 
+                          onclick="eliminarMaterial({{ material.id }}, '{{ material.nombre|escapejs }}')" title="Eliminar">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                {% if categoria_filtro or busqueda %}
+                  No se encontraron materiales que coincidan con los filtros aplicados.
+                {% else %}
+                  No hay materiales registrados aún.
+                {% endif %}
+                <br><br>
+                <button type="button" class="btn" onclick="mostrarModal('modal-material')">
+                  Crear Primer Material
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal Ver Categorías -->
+      <div id="modal-ver-categorias" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+          <div class="modal-header">
+            <h3>📦 Categorías de Materiales</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+            {% for categoria in categorias %}
+            <div class="card" style="cursor: pointer; margin: 0;" 
+                 onclick="filtrarPorCategoria('{{ categoria }}')">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                <h4 style="margin: 0; color: var(--azul-700); border: none; padding: 0;">{{ categoria }}</h4>
+                <span class="pill enviada">{{ forloop.counter }}</span>
+              </div>
+              <div style="text-align: right; margin-top: 12px;">
+                <span style="color: var(--azul-600); font-size: 0.85rem; font-weight: 600;">
+                  Ver materiales →
+                </span>
+              </div>
+            </div>
+            {% empty %}
+            <div style="text-align: center; color: var(--gris-600); padding: 40px; grid-column: 1/-1;">
+              Las categorías se crean automáticamente al agregar materiales.
+              <br><br>
+              <button type="button" class="btn" onclick="cerrarModal('modal-ver-categorias'); mostrarModal('modal-material');">
+                Crear Primer Material
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+          
+          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--gris-300);">
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Nuevo Material -->
+      <div id="modal-material" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-material-titulo">Nuevo Material</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-material')">&times;</button>
+          </div>
+          
+          <form id="form-material">
+            {% csrf_token %}
+            <input type="hidden" id="material-id" value="">
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="material-codigo">Código del Material *</label>
+                <input type="text" id="material-codigo" required 
+                      placeholder="Ej: BOM-001, EST-500L">
+              </div>
+              <div class="form-group">
+                <label for="material-categoria">Categoría</label>
+                <input type="text" id="material-categoria" 
+                      placeholder="Ej: Bombas, Estanques, Eléctrico">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="material-nombre">Nombre del Material *</label>
+              <input type="text" id="material-nombre" required 
+                    placeholder="Ej: Bomba Sumergible Franklin 7.5HP">
+            </div>
+            
+            <div class="form-group">
+              <label for="material-descripcion">Descripción</label>
+              <textarea id="material-descripcion" rows="3"
+                        placeholder="Descripción detallada del material, especificaciones técnicas..."></textarea>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="material-precio">Precio Unitario *</label>
+                <input type="number" id="material-precio" step="0.01" min="0" required
+                      placeholder="250000">
+              </div>
+              <div class="form-group">
+                <label for="material-unidad">Unidad *</label>
+                <input type="text" id="material-unidad" required
+                      placeholder="UND, MT, KG, LT, etc.">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="material-activo" checked> 
+                Material Activo
+              </label>
+            </div>
+
+            <!-- Sección de Mantenimiento -->
+            <div style="border-top: 2px solid var(--azul-200); padding-top: 20px; margin-top: 20px;">
+              <h4 style="color: var(--azul-700); margin-bottom: 16px;">⚙️ Configuración de Mantenimiento</h4>
+              
+              <div class="form-group">
+                <label>
+                  <input type="checkbox" id="material-requiere-mantenimiento"> 
+                  Este material requiere mantenimiento periódico
+                </label>
+              </div>
+
+              <div id="campos-mantenimiento" style="display: none; padding: 16px; background: var(--azul-100); border-radius: 8px; margin-top: 12px;">
+                <!-- Selector de Tipo de Mantenimiento -->
+                <div class="form-group">
+                  <label for="material-tipo-mantenimiento">Tipo de Mantenimiento *</label>
+                  <select id="material-tipo-mantenimiento" style="padding: 10px 12px; border: 1px solid var(--gris-300); border-radius: 8px; width: 100%;">
+                    <option value="dias">📅 Por Días</option>
+                    <option value="horas">⏱️ Por Horas de Uso</option>
+                  </select>
+                  <small style="color: var(--gris-600); font-size: 0.85rem;">
+                    Seleccione cómo se medirá el mantenimiento
+                  </small>
+                </div>
+
+                <!-- Campos para mantenimiento por DÍAS -->
+                <div id="campos-dias" class="campos-tipo-mantenimiento">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="material-dias-mantenimiento">Días entre Mantenimientos *</label>
+                      <input type="number" id="material-dias-mantenimiento" min="1"
+                            placeholder="Ej: 30, 60, 90, 180...">
+                      <small style="color: var(--gris-600); font-size: 0.85rem;">
+                        Cada cuántos días se debe realizar el mantenimiento
+                      </small>
+                    </div>
+                    <div class="form-group">
+                      <label for="material-dias-alerta">Días de Alerta Previa *</label>
+                      <input type="number" id="material-dias-alerta" min="1" value="7"
+                            placeholder="7">
+                      <small style="color: var(--gris-600); font-size: 0.85rem;">
+                        Días antes para enviar notificación
+                      </small>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="material-fecha-ultimo-mantenimiento">Fecha del Último Mantenimiento</label>
+                    <input type="date" id="material-fecha-ultimo-mantenimiento">
+                    <small style="color: var(--gris-600); font-size: 0.85rem;">
+                      Si ya se realizó un mantenimiento, ingrese la fecha aquí
+                    </small>
+                  </div>
+                </div>
+
+                <!-- Campos para mantenimiento por HORAS -->
+                <div id="campos-horas" class="campos-tipo-mantenimiento" style="display: none;">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="material-horas-mantenimiento">Horas entre Mantenimientos *</label>
+                      <input type="number" id="material-horas-mantenimiento" min="1" step="0.1"
+                            placeholder="Ej: 100, 500, 1000...">
+                      <small style="color: var(--gris-600); font-size: 0.85rem;">
+                        Cada cuántas horas de uso se debe realizar el mantenimiento
+                      </small>
+                    </div>
+                    <div class="form-group">
+                      <label for="material-horas-alerta">Horas de Alerta Previa *</label>
+                      <input type="number" id="material-horas-alerta" min="1" value="10" step="0.1"
+                            placeholder="10">
+                      <small style="color: var(--gris-600); font-size: 0.85rem;">
+                        Horas antes para enviar notificación
+                      </small>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="material-horas-acumuladas">Horas de Uso Acumuladas</label>
+                    <input type="number" id="material-horas-acumuladas" min="0" value="0" step="0.1"
+                          placeholder="0">
+                    <small style="color: var(--gris-600); font-size: 0.85rem;">
+                      Horas de uso actuales del material desde el último mantenimiento
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModal('modal-material')">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Guardar Material
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal Importar CSV -->
+      <div id="modal-importar" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Importar Materiales desde CSV</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-importar')">&times;</button>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h4 style="color: var(--azul-700);">Formato requerido del CSV:</h4>
+            <div style="background: var(--gris-100); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 0.85rem;">
+              codigo,nombre,categoria,precio_unitario,unidad,descripcion<br>
+              BOM-001,"Bomba Franklin 7.5HP",Bombas,850000,UND,"Bomba sumergible..."<br>
+              EST-500,"Estanque 500L",Estanques,120000,UND,"Estanque de presión..."
+            </div>
+          </div>
+          
+          <form id="form-importar" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group">
+              <label for="archivo-csv">Archivo CSV *</label>
+              <input type="file" id="archivo-csv" accept=".csv" required>
+              <small style="color: var(--gris-600);">
+                Selecciona un archivo CSV con la estructura mostrada arriba.
+              </small>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="actualizar-existentes"> 
+                Actualizar materiales existentes
+              </label>
+              <small style="color: var(--gris-600);">
+                Si está marcado, actualizará materiales con códigos existentes.
+              </small>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModal('modal-importar')">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Importar Materiales
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script src="{% static 'cotizaciones/js/sidebar-active.js' %}"></script>
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  // Funciones específicas para gestión de materiales
+  async function editarMaterial(materialId) {
+    try {
+      const response = await fetch(`/cotizaciones/material/${materialId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('modal-material-titulo').textContent = 'Editar Material';
+        document.getElementById('material-id').value = materialId;
+        
+        document.getElementById('material-codigo').value = result.material.codigo;
+        document.getElementById('material-nombre').value = result.material.nombre;
+        document.getElementById('material-categoria').value = result.material.categoria;
+        document.getElementById('material-descripcion').value = result.material.descripcion;
+        document.getElementById('material-precio').value = result.material.precio_unitario;
+        document.getElementById('material-unidad').value = result.material.unidad;
+        document.getElementById('material-activo').checked = result.material.activo;
+        
+        // Campos de mantenimiento
+        const requiereMantenimiento = result.material.requiere_mantenimiento;
+        const tipoMantenimiento = result.material.tipo_mantenimiento || 'dias';
+        
+        document.getElementById('material-requiere-mantenimiento').checked = requiereMantenimiento;
+        document.getElementById('material-tipo-mantenimiento').value = tipoMantenimiento;
+        
+        // Campos de DÍAS
+        document.getElementById('material-dias-mantenimiento').value = result.material.dias_entre_mantenimiento || '';
+        document.getElementById('material-dias-alerta').value = result.material.dias_alerta_previa || 7;
+        document.getElementById('material-fecha-ultimo-mantenimiento').value = result.material.fecha_ultimo_mantenimiento || '';
+        
+        // Campos de HORAS
+        document.getElementById('material-horas-mantenimiento').value = result.material.horas_entre_mantenimiento || '';
+        document.getElementById('material-horas-alerta').value = result.material.horas_alerta_previa || 10;
+        document.getElementById('material-horas-acumuladas').value = result.material.horas_uso_acumuladas || 0;
+        
+        // Mostrar/ocultar campos de mantenimiento
+        document.getElementById('campos-mantenimiento').style.display = requiereMantenimiento ? 'block' : 'none';
+        
+        // Mostrar campos según tipo
+        if (tipoMantenimiento === 'horas') {
+          document.getElementById('campos-dias').style.display = 'none';
+          document.getElementById('campos-horas').style.display = 'block';
+        } else {
+          document.getElementById('campos-dias').style.display = 'block';
+          document.getElementById('campos-horas').style.display = 'none';
+        }
+        
+        mostrarModal('modal-material');
+      } else {
+        alert('Error al cargar los datos del material: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando material:', error);
+      alert('Error al cargar los datos del material');
+    }
+  }
+  
+  function importarMateriales() {
+    mostrarModal('modal-importar');
+  }
+  
+  function cerrarModalMaterial() {
+    document.getElementById('modal-material-titulo').textContent = 'Nuevo Material';
+    document.getElementById('material-id').value = '';
+    document.getElementById('form-material').reset();
+    document.getElementById('material-activo').checked = true;
+    document.getElementById('material-dias-alerta').value = 7;
+    document.getElementById('material-horas-alerta').value = 10;
+    document.getElementById('material-horas-acumuladas').value = 0;
+    document.getElementById('material-tipo-mantenimiento').value = 'dias';
+    document.getElementById('campos-mantenimiento').style.display = 'none';
+    document.getElementById('campos-dias').style.display = 'block';
+    document.getElementById('campos-horas').style.display = 'none';
+    document.getElementById('modal-material').classList.remove('show');
+  }
+  
+  document.getElementById('form-material').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+    // Función helper para convertir valores vacíos a null
+    const getValueOrNull = (id) => {
+      const value = document.getElementById(id).value;
+      return value === '' || value === null || value === undefined ? null : value;
+    };
+    
+    const formData = {
+      codigo: document.getElementById('material-codigo').value,
+      nombre: document.getElementById('material-nombre').value,
+      categoria: document.getElementById('material-categoria').value || '',
+      descripcion: document.getElementById('material-descripcion').value || '',
+      precio_unitario: document.getElementById('material-precio').value,
+      unidad: document.getElementById('material-unidad').value,
+      activo: document.getElementById('material-activo').checked,
+      requiere_mantenimiento: document.getElementById('material-requiere-mantenimiento').checked,
+      tipo_mantenimiento: document.getElementById('material-tipo-mantenimiento').value,
+      
+      // ✅ USAR getValueOrNull para campos numéricos opcionales
+      // Campos para mantenimiento por DÍAS
+      dias_entre_mantenimiento: getValueOrNull('material-dias-mantenimiento'),
+      dias_alerta_previa: getValueOrNull('material-dias-alerta') || 7,
+      fecha_ultimo_mantenimiento: getValueOrNull('material-fecha-ultimo-mantenimiento'),
+      
+      // Campos para mantenimiento por HORAS
+      horas_entre_mantenimiento: getValueOrNull('material-horas-mantenimiento'),
+      horas_alerta_previa: getValueOrNull('material-horas-alerta') || 10,
+      horas_uso_acumuladas: getValueOrNull('material-horas-acumuladas') || 0
+    };
+    
+    const materialId = document.getElementById('material-id').value;
+    const isEditing = materialId !== '';
+    
+    try {
+      const url = isEditing ? 
+        `/cotizaciones/material/${materialId}/editar/` : 
+        '/cotizaciones/material/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModal('modal-material');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando material:', error);
+      alert('Error al guardar el material');
+    }
+  });
+
+  document.getElementById('form-importar').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const archivo = document.getElementById('archivo-csv').files[0];
+    const actualizar = document.getElementById('actualizar-existentes').checked;
+    
+    if (!archivo) {
+      alert('Por favor selecciona un archivo CSV');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+    formData.append('actualizar_existentes', actualizar);
+    
+    try {
+      const response = await fetch('/cotizaciones/material/importar/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`Importación completada: ${result.materiales_creados} materiales procesados`);
+        cerrarModal('modal-importar');
+        location.reload();
+      } else {
+        alert('Error en importación: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error importando archivo:', error);
+      alert('Error al importar el archivo');
+    }
+  });
+  
+  document.getElementById('material-codigo').addEventListener('blur', async function() {
+    const codigo = this.value.trim();
+    const materialId = document.getElementById('material-id').value;
+    
+    if (codigo && !materialId) {
+      try {
+        const response = await fetch(`/cotizaciones/material/validar-codigo/?codigo=${encodeURIComponent(codigo)}`);
+        const result = await response.json();
+        
+        if (!result.disponible) {
+          alert('Este código ya está en uso. Por favor elige otro.');
+          this.focus();
+        }
+      } catch (error) {
+        console.error('Error validando código:', error);
+      }
+    }
+  });
+  
+  document.querySelector('#modal-material .close').onclick = function() {
+    cerrarModalMaterial();
+  };
+
+  function toggleExportMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    const allMenus = document.querySelectorAll('.export-menu');
+    
+    allMenus.forEach(m => {
+      if (m.id !== menuId) {
+        m.style.display = 'none';
+      }
+    });
+    
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-export')) {
+      document.querySelectorAll('.export-menu').forEach(menu => {
+        menu.style.display = 'none';
+      });
+    }
+  });
+
+  // ===== SISTEMA DE FILTROS INTERACTIVOS =====
+  function aplicarFiltros() {
+    const busqueda = document.getElementById('busqueda').value.toLowerCase();
+    const categoria = document.getElementById('categoria').value;
+    const estado = document.getElementById('filtro-estado').value;
+    const mantenimiento = document.getElementById('filtro-mantenimiento').value;
+    
+    const filas = document.querySelectorAll('#tabla-materiales tbody tr');
+    let visibles = 0;
+    let sumaPrecios = 0;
+    let contadorPrecios = 0;
+    
+    filas.forEach(fila => {
+      if (fila.cells.length === 1) return; // Fila de "sin resultados"
+      
+      const textoFila = fila.textContent.toLowerCase();
+      const categoriaFila = fila.dataset.categoria;
+      const estadoFila = fila.dataset.estado;
+      
+      // Obtener estado de mantenimiento de la celda
+      const celdaMantenimiento = fila.querySelector('td[data-mantenimiento-estado]');
+      const estadoMantenimiento = celdaMantenimiento ? celdaMantenimiento.dataset.mantenimientoEstado : 'sin-mantenimiento';
+      
+      let mostrar = true;
+      
+      // Filtro de búsqueda
+      if (busqueda && !textoFila.includes(busqueda)) {
+        mostrar = false;
+      }
+      
+      // Filtro de categoría
+      if (categoria && categoriaFila !== categoria) {
+        mostrar = false;
+      }
+      
+      // Filtro de estado
+      if (estado && estadoFila !== estado) {
+        mostrar = false;
+      }
+      
+      // Filtro de mantenimiento
+      if (mantenimiento) {
+        if (mantenimiento === 'sin-mantenimiento' && estadoMantenimiento !== 'sin-mantenimiento') {
+          mostrar = false;
+        } else if (mantenimiento === 'con-mantenimiento' && estadoMantenimiento === 'sin-mantenimiento') {
+          mostrar = false;
+        } else if (mantenimiento === 'por-vencer' && estadoMantenimiento !== 'proximo') {
+          mostrar = false;
+        } else if (mantenimiento === 'vencido' && estadoMantenimiento !== 'vencido') {
+          mostrar = false;
+        }
+      }
+      
+      fila.style.display = mostrar ? '' : 'none';
+      
+      if (mostrar) {
+        visibles++;
+        // Obtener el precio del material visible (está en la columna 4)
+        const precioTexto = fila.cells[3].textContent.replace('$', '').replace(/\./g, '').replace(',', '.');
+        const precio = parseFloat(precioTexto);
+        if (!isNaN(precio)) {
+          sumaPrecios += precio;
+          contadorPrecios++;
+        }
+      }
+    });
+    
+    actualizarMensajeSinResultados(visibles);
+    actualizarPromedio(sumaPrecios, contadorPrecios);
+  }
+  
+  function actualizarPromedio(sumaPrecios, contadorPrecios) {
+    const kpiPromedio = document.querySelector('#kpi-promedio .kpi');
+    if (kpiPromedio && contadorPrecios > 0) {
+      const promedio = Math.round(sumaPrecios / contadorPrecios);
+      kpiPromedio.textContent = '$' + promedio.toLocaleString('es-CL');
+    } else if (kpiPromedio) {
+      kpiPromedio.textContent = '$0';
+    }
+  }
+  
+  function actualizarMensajeSinResultados(visibles) {
+    const tbody = document.querySelector('#tabla-materiales tbody');
+    let filaMensaje = tbody.querySelector('.fila-sin-resultados');
+    
+    if (visibles === 0) {
+      if (!filaMensaje) {
+        filaMensaje = document.createElement('tr');
+        filaMensaje.className = 'fila-sin-resultados';
+        filaMensaje.innerHTML = `
+          <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+            No se encontraron materiales que coincidan con los filtros aplicados.
+            <br><br>
+            <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+              Limpiar Filtros
+            </button>
+          </td>
+        `;
+        tbody.appendChild(filaMensaje);
+      }
+    } else if (filaMensaje) {
+      filaMensaje.remove();
+    }
+  }
+  
+  function limpiarFiltros() {
+    document.getElementById('busqueda').value = '';
+    document.getElementById('categoria').value = '';
+    document.getElementById('filtro-estado').value = '';
+    
+    document.querySelectorAll('.cards .card').forEach(card => {
+      card.classList.remove('active');
+    });
+    
+    aplicarFiltros();
+  }
+  
+  function filtrarPorCategoria(categoria) {
+    cerrarModal('modal-ver-categorias');
+    
+    // Limpiar búsqueda y estado, mantener solo categoría
+    document.getElementById('busqueda').value = '';
+    document.getElementById('filtro-estado').value = '';
+    document.getElementById('categoria').value = categoria;
+    
+    aplicarFiltros();
+    
+    // Marcar KPI de categorías como activo
+    const kpiCategorias = document.getElementById('kpi-categorias');
+    document.querySelectorAll('.cards .card').forEach(card => card.classList.remove('active'));
+    kpiCategorias.classList.add('active');
+  }
+  
+  // ===== FUNCIONALIDAD DE KPIs INTERACTIVOS =====
+  function initFiltrosRapidosMateriales() {
+    const kpiTotal = document.querySelector('#kpi-total-materiales');
+    const kpiCategorias = document.querySelector('#kpi-categorias');
+    const kpiActivos = document.querySelector('#kpi-activos');
+    
+    const inputBusqueda = document.querySelector('#busqueda');
+    const selectCategoria = document.querySelector('#categoria');
+    const selectEstado = document.querySelector('#filtro-estado');
+    
+    if (!kpiTotal || !inputBusqueda) return;
+    
+    function limpiarFiltrosVisuales() {
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+    }
+    
+    function limpiarTodosFiltros() {
+      if (inputBusqueda) inputBusqueda.value = '';
+      if (selectCategoria) selectCategoria.value = '';
+      if (selectEstado) selectEstado.value = '';
+    }
+    
+    function ejecutarFiltro() {
+      aplicarFiltros();
+    }
+    
+    // 1. Total Materiales
+    kpiTotal.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 2. Categorías - Mostrar modal de categorías
+    kpiCategorias.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      setTimeout(() => {
+        mostrarModal('modal-ver-categorias');
+      }, 100);
+    });
+    
+    // 3. Activos - Filtrar solo activos
+    kpiActivos.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        if (selectEstado) selectEstado.value = 'activo';
+        ejecutarFiltro();
+      }, 100);
+    });
+  }
+
+  // Efecto ripple
+  function createRipple(event, element) {
+    const ripple = document.createElement('span');
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+    
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.classList.add('ripple-effect');
+    
+    element.appendChild(ripple);
+    
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  }
+  
+  // Event listeners para filtros
+  document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
+  document.getElementById('categoria').addEventListener('change', aplicarFiltros);
+  document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
+  document.getElementById('filtro-mantenimiento').addEventListener('change', aplicarFiltros);
+  
+  // Event listener para mostrar/ocultar campos de mantenimiento
+  document.getElementById('material-requiere-mantenimiento').addEventListener('change', function() {
+    const camposMantenimiento = document.getElementById('campos-mantenimiento');
+    camposMantenimiento.style.display = this.checked ? 'block' : 'none';
+    
+    // Si se desmarca, limpiar los campos
+    if (!this.checked) {
+      document.getElementById('material-dias-mantenimiento').value = '';
+      document.getElementById('material-dias-alerta').value = 7;
+      document.getElementById('material-fecha-ultimo-mantenimiento').value = '';
+      document.getElementById('material-horas-mantenimiento').value = '';
+      document.getElementById('material-horas-alerta').value = 10;
+      document.getElementById('material-horas-acumuladas').value = 0;
+    }
+  });
+  
+  // Event listener para cambiar entre tipo de mantenimiento (días/horas)
+  document.getElementById('material-tipo-mantenimiento').addEventListener('change', function() {
+    const tipoDias = document.getElementById('campos-dias');
+    const tipoHoras = document.getElementById('campos-horas');
+    
+    if (this.value === 'horas') {
+      tipoDias.style.display = 'none';
+      tipoHoras.style.display = 'block';
+    } else {
+      tipoDias.style.display = 'block';
+      tipoHoras.style.display = 'none';
+    }
+  });
+  
+  // Función para registrar mantenimiento realizado
+  async function registrarMantenimiento(materialId, nombreMaterial, tipoMantenimiento = 'dias') {
+    const mensaje = tipoMantenimiento === 'horas' 
+      ? `¿Confirmar que se realizó el mantenimiento de "${nombreMaterial}"?\n\nEsto reiniciará el contador de horas de uso a 0.`
+      : `¿Confirmar que se realizó el mantenimiento de "${nombreMaterial}"?\n\nEsto actualizará la fecha de último mantenimiento a hoy.`;
+    
+    if (!confirm(mensaje)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/cotizaciones/material/${materialId}/registrar-mantenimiento/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(`✓ Mantenimiento registrado exitosamente para "${nombreMaterial}"\n\nFecha: ${result.nueva_fecha}`);
+        location.reload();
+      } else {
+        alert('Error al registrar mantenimiento: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al registrar el mantenimiento');
+    }
+  }
+
+  // Función auxiliar para obtener el CSRF token
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const hash = window.location.hash;
+    
+    if (hash === '#filtro-estado-activo') {
+      // Seleccionar "Activo" en el filtro
+      const filtroEstado = document.getElementById('filtro-estado');
+      if (filtroEstado) {
+        filtroEstado.value = 'activo';
+        
+        // Aplicar filtros (si existe la función)
+        if (typeof aplicarFiltros === 'function') {
+          aplicarFiltros();
+        }
+        
+        // Marcar KPI de activos como seleccionado
+        const kpiActivos = document.getElementById('kpi-activos');
+        if (kpiActivos) {
+          document.querySelectorAll('.cards .card').forEach(card => card.classList.remove('active'));
+          kpiActivos.classList.add('active');
+        }
+        
+        // Scroll al filtro
+        setTimeout(() => {
+          const filters = document.querySelector('.filters');
+          if (filters) {
+            filters.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+      }
+    }
+
+    // ===== LÓGICA DE MANTENIMIENTO =====
+    initFiltrosRapidosMateriales();
+    
+    const diasEntreInput = document.getElementById('id_dias_entre_mantenimiento');
+    const diasAlertaInput = document.getElementById('id_dias_alerta_previa');
+    const requiereMantenimiento = document.getElementById('id_requiere_mantenimiento');
+    
+    if (diasEntreInput && diasAlertaInput) {
+      function calcularDiasAlerta(diasEntre) {
+        if (diasEntre >= 365) {
+          return 30;  // 1 año o más → 30 días antes
+        } else if (diasEntre >= 30) {
+          return 7;   // 1 mes a 1 año → 7 días antes
+        } else {
+          return Math.ceil(diasEntre * 0.25);  // Menos de 1 mes → 25%
+        }
+      }
+      
+      diasEntreInput.addEventListener('input', function() {
+        const diasEntre = parseInt(this.value);
+        
+        if (diasEntre && diasEntre > 0) {
+          const diasAlertaSugerido = calcularDiasAlerta(diasEntre);
+          
+          // Solo auto-completar si el campo está vacío o es 0
+          if (!diasAlertaInput.value || diasAlertaInput.value === '0') {
+            diasAlertaInput.value = diasAlertaSugerido;
+            diasAlertaInput.setAttribute('placeholder', `Sugerido: ${diasAlertaSugerido} días`);
+            
+            // Feedback visual
+            diasAlertaInput.style.borderColor = '#10b981';
+            setTimeout(() => {
+              diasAlertaInput.style.borderColor = '';
+            }, 1000);
+          } else {
+            // Si ya tiene valor, solo mostrar sugerencia
+            const valorActual = diasAlertaInput.value;
+            diasAlertaInput.setAttribute(
+              'placeholder', 
+              `Sugerido: ${diasAlertaSugerido} días (tienes: ${valorActual})`
+            );
+          }
+        }
+      });
+      
+      diasAlertaInput.addEventListener('dblclick', function() {
+        const diasEntre = parseInt(diasEntreInput.value);
+        
+        if (diasEntre && diasEntre > 0) {
+          const diasAlertaSugerido = calcularDiasAlerta(diasEntre);
+          
+          if (confirm(`¿Usar el valor sugerido automáticamente (${diasAlertaSugerido} días)?`)) {
+            this.value = diasAlertaSugerido;
+            
+            // Feedback visual
+            this.style.borderColor = '#10b981';
+            this.style.backgroundColor = '#f0fdf4';
+            setTimeout(() => {
+              this.style.borderColor = '';
+              this.style.backgroundColor = '';
+            }, 1500);
+          }
+        }
+      });
+      
+      if (requiereMantenimiento) {
+        function toggleCamposMantenimiento() {
+          // Obtener contenedores de los campos de mantenimiento
+          const camposIds = [
+            'id_dias_entre_mantenimiento',
+            'id_fecha_ultimo_mantenimiento', 
+            'id_dias_alerta_previa'
+          ];
+          
+          camposIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+              // Buscar el contenedor padre (form-group, div, etc)
+              let formGroup = input.closest('.form-group');
+              if (!formGroup) formGroup = input.closest('div');
+              if (!formGroup) formGroup = input.parentElement;
+              
+              if (formGroup) {
+                formGroup.style.display = requiereMantenimiento.checked ? 'block' : 'none';
+              }
+            }
+          });
+          
+          // Si se activa mantenimiento, calcular valor sugerido
+          if (requiereMantenimiento.checked && diasEntreInput.value) {
+            diasEntreInput.dispatchEvent(new Event('input'));
+          }
+        }
+        
+        requiereMantenimiento.addEventListener('change', toggleCamposMantenimiento);
+        toggleCamposMantenimiento(); // Ejecutar al cargar página
+      }
+      
+      if (diasEntreInput.value && (!diasAlertaInput.value || diasAlertaInput.value === '0')) {
+        diasEntreInput.dispatchEvent(new Event('input'));
+      }
+    }
+    
+    if (diasAlertaInput) {
+      diasAlertaInput.title = 'Se calcula automáticamente. Haz doble-click para usar el valor sugerido.';
+    }
+  });
+
+</script>
+</body>
+</html>

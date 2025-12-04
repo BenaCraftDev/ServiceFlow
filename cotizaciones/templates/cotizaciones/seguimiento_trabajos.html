@@ -1,0 +1,671 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seguimiento de Trabajos</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+  
+  <main>
+    <!-- KPIs Generales -->
+    <div class="cards">
+      <div class="card" id="kpi-total-aprobadas">
+        <h4>Cotizaciones Aprobadas</h4>
+        <div class="kpi">{{ stats.total_cotizaciones_aprobadas }}</div>
+        <div class="muted">Con trabajos activos</div>
+      </div>
+      <div class="card" id="kpi-pendientes">
+        <h4>Trabajos Pendientes</h4>
+        <div class="kpi">{{ stats.trabajos_pendientes }}</div>
+        <div class="muted">Sin iniciar</div>
+      </div>
+      <div class="card" id="kpi-en-progreso">
+        <h4>En Progreso</h4>
+        <div class="kpi">{{ stats.trabajos_en_progreso }}</div>
+        <div class="muted">En ejecución</div>
+      </div>
+      <div class="card" id="kpi-completados">
+        <h4>Completados</h4>
+        <div class="kpi">{{ stats.trabajos_completados }}</div>
+        <div class="muted">Finalizados</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">📊 Seguimiento de Trabajos</h1>
+      </div>
+      <div class="actions-right">
+        <div class="dropdown-export" style="position: relative; display: inline-block;">
+          <button type="button" class="btn secondary" onclick="toggleExportMenu('export-trabajos')">
+            📥 Exportar
+          </button>
+          <div id="export-trabajos" class="export-menu" style="display: none;">
+            <a href="{% url 'cotizaciones:exportar_trabajos' %}?formato=excel{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}">
+              📊 Exportar a Excel
+            </a>
+            <a href="{% url 'cotizaciones:exportar_trabajos' %}?formato=csv{% if filtro_estado %}&estado={{ filtro_estado }}{% endif %}">
+              📄 Exportar a CSV
+            </a>
+          </div>
+        </div>
+        <button class="btn secondary" onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="filtro-estado">Estado</label>
+        <select id="filtro-estado">
+          <option value="">Todos</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="en_progreso">En Progreso</option>
+          <option value="completado">Completados</option>
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="filtro-empleado">Empleado</label>
+        <select id="filtro-empleado">
+          <option value="">Todos</option>
+          {% for cotizacion in cotizaciones %}
+            {% for trabajo in cotizacion.trabajos %}
+              <option value="{{ trabajo.empleado.id }}">{{ trabajo.empleado.nombre_completo }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="busqueda">Buscar</label>
+        <input type="text" id="busqueda" placeholder="Cotización, cliente, descripción...">
+      </div>
+      
+      <div class="filter-group" style="align-self: end;">
+        <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+          🗑️ Limpiar
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabla de Trabajos -->
+    <div class="table-wrap">
+      <table id="tabla-trabajos">
+        <thead>
+          <tr>
+            <th>Cotización</th>
+            <th>Cliente</th>
+            <th>Trabajo</th>
+            <th>Empleado</th>
+            <th>Estado</th>
+            <th>Progreso</th>
+            <th>Horas</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cotizacion in cotizaciones %}
+            {% for trabajo in cotizacion.trabajos %}
+            <tr data-estado="{{ trabajo.estado }}" 
+                data-empleado="{{ trabajo.empleado.id }}"
+                data-cotizacion="{{ cotizacion.numero }}"
+                data-cliente="{{ cotizacion.get_nombre_cliente|lower }}"
+                data-descripcion="{{ trabajo.item_mano_obra.descripcion|lower }}">
+              <td>
+                <strong style="color: var(--azul-700);">{{ cotizacion.numero }}</strong>
+                <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 2px;">
+                  {{ cotizacion.lugar|truncatewords:6 }}
+                </div>
+              </td>
+              <td>
+                <strong>{{ cotizacion.get_nombre_cliente }}</strong>
+              </td>
+              <td>
+                <strong>{{ trabajo.item_mano_obra.descripcion|truncatewords:10 }}</strong>
+                <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 2px;">
+                  ${{ trabajo.item_mano_obra.precio_hora|floatformat:0 }}/hora
+                </div>
+              </td>
+              <td>
+                <div class="user-info">
+                  <div class="avatar">{{ trabajo.empleado.user.first_name|first|upper }}</div>
+                  <div>
+                    <strong>{{ trabajo.empleado.nombre_completo }}</strong><br>
+                    <small>{{ trabajo.empleado.get_cargo_display }}</small>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="pill {% if trabajo.estado == 'completado' %}activo{% elif trabajo.estado == 'en_progreso' %}enviada{% else %}borrador{% endif %}">
+                  {% if trabajo.estado == 'completado' %}✓ Completado
+                  {% elif trabajo.estado == 'en_progreso' %}⚙️ En Progreso
+                  {% else %}⏳ Pendiente
+                  {% endif %}
+                </span>
+              </td>
+              <td>
+                <div style="width: 100%; background: var(--gris-300); border-radius: 8px; height: 8px; overflow: hidden;">
+                  <div style="height: 100%; background: linear-gradient(90deg, var(--azul-500), var(--azul-600)); 
+                              width: {% if trabajo.estado == 'completado' %}100{% elif trabajo.estado == 'en_progreso' %}{{ trabajo.progreso_estimado|floatformat:0 }}{% else %}0{% endif %}%; 
+                              transition: width 0.3s ease;">
+                  </div>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--gris-600); margin-top: 4px; text-align: center;">
+                  {% if trabajo.estado == 'completado' %}100%
+                  {% elif trabajo.estado == 'en_progreso' %}~{{ trabajo.progreso_estimado|floatformat:0 }}%
+                  {% else %}0%
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <strong style="font-size: 1.1rem;">{{ trabajo.horas_trabajadas|floatformat:1 }}</strong>
+                <small style="color: var(--gris-600);">hrs</small>
+              </td>
+              <td>
+                <button type="button" class="btn small secondary" 
+                        onclick="verDetalleCompleto({{ cotizacion.id }}, {{ trabajo.id }})" 
+                        title="Ver detalle">
+                  👁️
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% empty %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                No hay trabajos registrados
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal Detalle Completo del Trabajo -->
+  <div id="modal-detalle-trabajo" class="modal">
+    <div class="modal-content" style="max-width: 900px;">
+      <div class="modal-header">
+        <h3>📋 Detalle del Trabajo</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-detalle-trabajo')">&times;</button>
+      </div>
+      
+      <div id="contenido-detalle-trabajo">
+        <!-- Se llenará dinámicamente -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Toggle export menu
+    function toggleExportMenu(menuId) {
+      const menu = document.getElementById(menuId);
+      const todosMenus = document.querySelectorAll('.export-menu');
+      todosMenus.forEach(m => {
+        if (m.id !== menuId) m.style.display = 'none';
+      });
+      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+    
+    // Cerrar menú al hacer click fuera
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.dropdown-export')) {
+        document.querySelectorAll('.export-menu').forEach(menu => {
+          menu.style.display = 'none';
+        });
+      }
+    });
+
+    // Modales
+    function mostrarModal(modalId) {
+      document.getElementById(modalId).classList.add('show');
+    }
+    
+    function cerrarModal(modalId) {
+      document.getElementById(modalId).classList.remove('show');
+    }
+    
+    // Cerrar modal al hacer click fuera
+    window.addEventListener('click', function(event) {
+      if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('show');
+      }
+    });
+
+    // Aplicar Filtros
+    function aplicarFiltros() {
+      const busqueda = document.getElementById('busqueda').value.toLowerCase();
+      const estado = document.getElementById('filtro-estado').value;
+      const empleado = document.getElementById('filtro-empleado').value;
+      
+      const filas = document.querySelectorAll('#tabla-trabajos tbody tr[data-estado]');
+      let visibles = 0;
+      
+      filas.forEach(fila => {
+        let mostrar = true;
+        
+        const estadoFila = fila.getAttribute('data-estado');
+        const empleadoFila = fila.getAttribute('data-empleado');
+        const cotizacion = fila.getAttribute('data-cotizacion').toLowerCase();
+        const cliente = fila.getAttribute('data-cliente');
+        const descripcion = fila.getAttribute('data-descripcion');
+        
+        // Filtro de búsqueda
+        if (busqueda) {
+          if (!cotizacion.includes(busqueda) && 
+              !cliente.includes(busqueda) && 
+              !descripcion.includes(busqueda)) {
+            mostrar = false;
+          }
+        }
+        
+        // Filtro de estado
+        if (estado && estadoFila !== estado) {
+          mostrar = false;
+        }
+        
+        // Filtro de empleado
+        if (empleado && empleadoFila !== empleado) {
+          mostrar = false;
+        }
+        
+        fila.style.display = mostrar ? '' : 'none';
+        if (mostrar) visibles++;
+      });
+      
+      actualizarMensajeSinResultados(visibles);
+    }
+    
+    function actualizarMensajeSinResultados(visibles) {
+      const tbody = document.querySelector('#tabla-trabajos tbody');
+      let filaMensaje = tbody.querySelector('.fila-sin-resultados');
+      
+      if (visibles === 0) {
+        if (!filaMensaje) {
+          filaMensaje = document.createElement('tr');
+          filaMensaje.className = 'fila-sin-resultados';
+          filaMensaje.innerHTML = `
+            <td colspan="8" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              No se encontraron trabajos que coincidan con los filtros aplicados.
+              <br><br>
+              <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+                Limpiar Filtros
+              </button>
+            </td>
+          `;
+          tbody.appendChild(filaMensaje);
+        }
+      } else if (filaMensaje) {
+        filaMensaje.remove();
+      }
+    }
+    
+    function limpiarFiltros() {
+      document.getElementById('busqueda').value = '';
+      document.getElementById('filtro-estado').value = '';
+      document.getElementById('filtro-empleado').value = '';
+      
+      // Limpiar KPIs activos
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+      
+      aplicarFiltros();
+    }
+
+    // Ver detalle completo del trabajo
+    function verDetalleCompleto(cotizacionId, trabajoId) {
+      // Obtener datos desde el backend
+      fetch(`/cotizaciones/seguimiento-trabajos/${cotizacionId}/trabajo/${trabajoId}/detalle/`)
+        .then(response => response.json())
+        .then(data => {
+          const contenido = document.getElementById('contenido-detalle-trabajo');
+          
+          contenido.innerHTML = `
+            <!-- Info General de la Cotización -->
+            <div style="background: linear-gradient(135deg, var(--azul-100), var(--blanco)); padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+              <div style="display: flex; justify-content: space-between; align-items: start; gap: 20px;">
+                <div style="flex: 1;">
+                  <h2 style="margin: 0 0 12px 0; color: var(--azul-700);">
+                    <a href="/cotizaciones/${cotizacionId}/" style="color: var(--azul-700); text-decoration: none;">
+                      ${data.cotizacion.numero}
+                    </a>
+                  </h2>
+                  <p style="margin: 0 0 8px 0; color: var(--gris-700);">
+                    <strong>Cliente:</strong> ${data.cotizacion.cliente}
+                  </p>
+                  <p style="margin: 0 0 8px 0; color: var(--gris-700);">
+                    <strong>Lugar:</strong> ${data.cotizacion.lugar}
+                  </p>
+                  <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+                    ${data.cotizacion.referencia}
+                  </p>
+                </div>
+                <div style="text-align: right;">
+                  <div class="pill aprobada" style="margin-bottom: 8px;">✓ Aprobada</div>
+                  <div style="font-size: 0.85rem; color: var(--gris-600);">
+                    Creada: ${data.cotizacion.fecha_creacion}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Barra de Progreso General -->
+              <div style="margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                  <span style="font-weight: 600;">Progreso General de Cotización</span>
+                  <span style="font-weight: 600; color: var(--azul-700);">${data.cotizacion.progreso}%</span>
+                </div>
+                <div style="width: 100%; height: 24px; background: var(--gris-300); border-radius: 12px; overflow: hidden;">
+                  <div style="height: 100%; background: linear-gradient(90deg, var(--azul-500), var(--azul-600)); width: ${data.cotizacion.progreso}%; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.85rem; color: var(--gris-600);">
+                  <span>${data.cotizacion.trabajos_completados} de ${data.cotizacion.total_trabajos} trabajos completados</span>
+                  <span>${data.cotizacion.horas_totales} hrs totales</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Info del Trabajo Específico -->
+            <div class="card">
+              <h3>🔧 Información del Trabajo</h3>
+              
+              <div class="info-grid" style="margin-bottom: 20px;">
+                <div class="user-info-card" style="margin: 0;">
+                  <div class="info-section">
+                    <h5>Descripción</h5>
+                    <div class="info-item">
+                      <span class="info-label">Trabajo</span>
+                      <span class="info-value">${data.trabajo.descripcion}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">Precio/hora</span>
+                      <span class="info-value">$${data.trabajo.precio_hora}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="user-info-card" style="margin: 0;">
+                  <div class="info-section">
+                    <h5>Empleado Asignado</h5>
+                    <div class="info-item">
+                      <span class="info-label">Nombre</span>
+                      <span class="info-value">${data.trabajo.empleado.nombre}</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">Cargo</span>
+                      <span class="info-value">${data.trabajo.empleado.cargo}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Estado y Progreso -->
+              <div class="info-grid">
+                <div class="user-info-card" style="margin: 0;">
+                  <div class="info-section">
+                    <h5>Estado y Avance</h5>
+                    <div class="info-item">
+                      <span class="info-label">Estado</span>
+                      <span class="pill ${data.trabajo.estado === 'completado' ? 'activo' : data.trabajo.estado === 'en_progreso' ? 'enviada' : 'borrador'}">
+                        ${data.trabajo.estado_display}
+                      </span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">Progreso</span>
+                      <div style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                          <span class="info-value" style="font-size: 1.5rem; font-weight: 800; color: var(--azul-700);">
+                            ${data.trabajo.progreso}%
+                          </span>
+                        </div>
+                        <div style="width: 100%; height: 16px; background: var(--gris-300); border-radius: 8px; overflow: hidden;">
+                          <div style="height: 100%; background: linear-gradient(90deg, 
+                                      ${data.trabajo.progreso >= 100 ? 'var(--verde-600)' : 'var(--azul-500)'}, 
+                                      ${data.trabajo.progreso >= 100 ? 'var(--verde-600)' : 'var(--azul-600)'}); 
+                                      width: ${data.trabajo.progreso}%; 
+                                      transition: width 0.3s ease;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-label">Horas Trabajadas</span>
+                      <span class="info-value" style="font-size: 1.2rem; font-weight: 700; color: var(--azul-700);">
+                        ${data.trabajo.horas_trabajadas} hrs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="user-info-card" style="margin: 0;">
+                  <div class="info-section">
+                    <h5>Fechas</h5>
+                    ${data.trabajo.fecha_inicio ? `
+                      <div class="info-item">
+                        <span class="info-label">Inicio</span>
+                        <span class="info-value">${data.trabajo.fecha_inicio}</span>
+                      </div>
+                    ` : ''}
+                    ${data.trabajo.fecha_fin ? `
+                      <div class="info-item">
+                        <span class="info-label">Finalización</span>
+                        <span class="info-value">${data.trabajo.fecha_fin}</span>
+                      </div>
+                    ` : ''}
+                    ${data.trabajo.estado === 'en_progreso' && !data.trabajo.fecha_fin ? `
+                      <div class="info-item">
+                        <span class="info-label">Estado</span>
+                        <span class="info-value" style="color: var(--naranja-600);">En curso...</span>
+                      </div>
+                    ` : ''}
+                    ${!data.trabajo.fecha_inicio ? `
+                      <div class="info-item">
+                        <span class="info-label">Estado</span>
+                        <span class="info-value" style="color: var(--gris-500);">No iniciado</span>
+                      </div>
+                    ` : ''}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Observaciones -->
+              ${data.trabajo.observaciones ? `
+                <div style="margin-top: 20px; padding: 16px; background: var(--azul-100); border-radius: 12px; border-left: 4px solid var(--azul-600);">
+                  <h5 style="margin: 0 0 8px 0; color: var(--azul-700);">💬 Observaciones del Empleado</h5>
+                  <p style="margin: 0; color: var(--gris-700); line-height: 1.6;">${data.trabajo.observaciones}</p>
+                </div>
+              ` : ''}
+            </div>
+
+            <!-- Botones de Acción -->
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+              <a href="/cotizaciones/${cotizacionId}/" class="btn secondary">
+                Ver Cotización Completa
+              </a>
+              <button type="button" class="btn" onclick="cerrarModal('modal-detalle-trabajo')">
+                Cerrar
+              </button>
+            </div>
+          `;
+          
+          mostrarModal('modal-detalle-trabajo');
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al cargar el detalle del trabajo');
+        });
+    }
+
+    // Sistema de Filtros Rápidos para KPIs
+    function initFiltrosRapidosTrabajos() {
+      const kpiTotal = document.querySelector('#kpi-total-aprobadas');
+      const kpiPendientes = document.querySelector('#kpi-pendientes');
+      const kpiEnProgreso = document.querySelector('#kpi-en-progreso');
+      const kpiCompletados = document.querySelector('#kpi-completados');
+      
+      const selectEstado = document.querySelector('#filtro-estado');
+      const inputBusqueda = document.querySelector('#busqueda');
+      const selectEmpleado = document.querySelector('#filtro-empleado');
+      
+      if (!kpiTotal || !selectEstado) return;
+      
+      function limpiarFiltrosVisuales() {
+        document.querySelectorAll('.cards .card').forEach(card => {
+          card.classList.remove('active');
+        });
+      }
+      
+      function limpiarTodosFiltros() {
+        if (inputBusqueda) inputBusqueda.value = '';
+        if (selectEstado) selectEstado.value = '';
+        if (selectEmpleado) selectEmpleado.value = '';
+      }
+      
+      function ejecutarFiltro() {
+        aplicarFiltros();
+      }
+      
+      // Total - Limpiar todo
+      kpiTotal.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // Pendientes
+      kpiPendientes.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          if (selectEstado) selectEstado.value = 'pendiente';
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // En Progreso
+      kpiEnProgreso.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          if (selectEstado) selectEstado.value = 'en_progreso';
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // Completados
+      kpiCompletados.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          if (selectEstado) selectEstado.value = 'completado';
+          ejecutarFiltro();
+        }, 100);
+      });
+    }
+
+    // Efecto ripple
+    function createRipple(event, element) {
+      const ripple = document.createElement('span');
+      const rect = element.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+      
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple-effect');
+      
+      element.appendChild(ripple);
+      
+      setTimeout(() => {
+        ripple.remove();
+      }, 600);
+    }
+    
+    // Event listeners
+    document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
+    document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-empleado').addEventListener('change', aplicarFiltros);
+    
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+      initFiltrosRapidosTrabajos();
+      
+      // Eliminar duplicados del select de empleados
+      const selectEmpleado = document.getElementById('filtro-empleado');
+      const empleadosVistos = new Set();
+      const opcionesEmpleados = Array.from(selectEmpleado.options);
+      
+      opcionesEmpleados.forEach(option => {
+        if (option.value !== '') {
+          if (empleadosVistos.has(option.value)) {
+            option.remove();
+          } else {
+            empleadosVistos.add(option.value);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

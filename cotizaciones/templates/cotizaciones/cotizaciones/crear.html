@@ -1,0 +1,258 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nueva Cotización - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Nueva Cotización</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:dashboard' %}">📊 Menú</a>
+      <a href="{% url 'cotizaciones:lista' %}">📄 Lista</a>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700); margin-bottom: 20px;">Nueva Cotización</h1>
+      </div>
+      <div class="actions-right">
+        <button type="submit" form="cotizacion-form" class="btn success">
+          ✅ Crear Cotización
+        </button>
+        <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">
+          ❌ Cancelar
+        </a>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card">
+      <h3>📋 Información Básica de la Cotización</h3>
+      
+      <form method="post" id="cotizacion-form">
+        {% csrf_token %}
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.cliente.id_for_label }}">Cliente *</label>
+            {{ form.cliente }}
+            {% if form.cliente.errors %}
+              <span style="color: var(--rojo-600); font-size: 0.85rem;">
+                {{ form.cliente.errors.0 }}
+              </span>
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.representante.id_for_label }}">Atención / Representante</label>
+            {{ form.representante }}
+            <small style="color: var(--gris-600);">
+              Selecciona un representante del cliente (opcional)
+            </small>
+            {% if form.representante.errors %}
+              <span style="color: var(--rojo-600); font-size: 0.85rem;">
+                {{ form.representante.errors.0 }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.tipo_trabajo.id_for_label }}">Tipo de Trabajo *</label>
+          {{ form.tipo_trabajo }}
+          {% if form.tipo_trabajo.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem;">
+              {{ form.tipo_trabajo.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.referencia.id_for_label }}">Referencia del Trabajo *</label>
+          {{ form.referencia }}
+          <small style="color: var(--gris-600);">
+            Describe brevemente el trabajo a realizar (ej: "INSTALACIÓN DE EQUIPO DE BOMBEO PARA POZO PROFUNDO")
+          </small>
+          {% if form.referencia.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem;">
+              {{ form.referencia.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="{{ form.lugar.id_for_label }}">Lugar del Trabajo *</label>
+            {{ form.lugar }}
+            <small style="color: var(--gris-600);">
+              Ubicación donde se realizará el trabajo (ej: "PUERTO VARAS", "BUENA VENTURA")
+            </small>
+            {% if form.lugar.errors %}
+              <span style="color: var(--rojo-600); font-size: 0.85rem;">
+                {{ form.lugar.errors.0 }}
+              </span>
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha de Vencimiento</label>
+            {{ form.fecha_vencimiento }}
+            <small style="color: var(--gris-600);">
+              Fecha hasta cuando es válida la cotización (opcional)
+            </small>
+            {% if form.fecha_vencimiento.errors %}
+              <span style="color: var(--rojo-600); font-size: 0.85rem;">
+                {{ form.fecha_vencimiento.errors.0 }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+          {{ form.observaciones }}
+          <small style="color: var(--gris-600);">
+            Notas adicionales o condiciones especiales (opcional)
+          </small>
+          {% if form.observaciones.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem;">
+              {{ form.observaciones.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+
+    <!-- Información de ayuda -->
+    <div class="card">
+      <h3>💡 Información Importante</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">📋 Después de Crear</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            Una vez creada la cotización, podrás agregar servicios, materiales y mano de obra en el modo de edición.
+          </p>
+        </div>
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">🔧 Servicios Automáticos</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            El sistema tiene catálogos parametrizables para bombas, tableros, estanques y otros servicios.
+          </p>
+        </div>
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">💰 Cálculos Automáticos</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            Los totales, IVA y valores finales se calculan automáticamente al agregar items.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <div class="card">
+      <h3>🚀 Accesos Rápidos</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+        <a href="{% url 'cotizaciones:gestionar_clientes' %}" class="btn secondary">
+          👥 Nuevo Cliente
+        </a>
+        <a href="{% url 'cotizaciones:gestionar_servicios' %}" class="btn secondary">
+          🔧 Ver Servicios
+        </a>
+        <a href="{% url 'cotizaciones:gestionar_materiales' %}" class="btn secondary">
+          📦 Ver Materiales
+        </a>
+        <a href="{% url 'cotizaciones:lista' %}" class="btn secondary">
+          📄 Ver Cotizaciones
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'cotizaciones/js/main.js' %}"></script>
+  <script>
+    // IMPORTANTE: Cargar representantes cuando se selecciona un cliente
+    document.addEventListener('DOMContentLoaded', function() {
+      const clienteSelect = document.getElementById('id_cliente');
+      const representanteSelect = document.getElementById('id_representante');
+      
+      if (clienteSelect && representanteSelect) {
+        clienteSelect.addEventListener('change', function() {
+          const clienteId = this.value;
+          
+          // Limpiar opciones actuales
+          representanteSelect.innerHTML = '<option value="">Seleccionar representante...</option>';
+          
+          if (!clienteId) {
+            representanteSelect.disabled = true;
+            return;
+          }
+          
+          // Cargar representantes del cliente seleccionado
+          fetch(`/cotizaciones/cliente/${clienteId}/representantes/`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.success && data.representantes.length > 0) {
+                representanteSelect.disabled = false;
+                data.representantes.forEach(rep => {
+                  const option = document.createElement('option');
+                  option.value = rep.id;
+                  option.textContent = rep.nombre;
+                  representanteSelect.appendChild(option);
+                });
+              } else {
+                representanteSelect.disabled = true;
+                representanteSelect.innerHTML = '<option value="">No hay representantes disponibles</option>';
+              }
+            })
+            .catch(error => {
+              console.error('Error cargando representantes:', error);
+              representanteSelect.disabled = true;
+            });
+        });
+      }
+      
+      // Validación del formulario en tiempo real
+      const form = document.getElementById('cotizacion-form');
+      const requeridos = form.querySelectorAll('[required]');
+      
+      requeridos.forEach(campo => {
+        campo.addEventListener('blur', function() {
+          if (!this.value.trim()) {
+            this.style.borderColor = 'var(--rojo-600)';
+          } else {
+            this.style.borderColor = 'var(--verde-600)';
+          }
+        });
+      });
+      
+      // Validación al enviar
+      form.addEventListener('submit', function(e) {
+        let esValido = true;
+        
+        requeridos.forEach(campo => {
+          if (!campo.value.trim()) {
+            campo.style.borderColor = 'var(--rojo-600)';
+            esValido = false;
+          }
+        });
+        
+        if (!esValido) {
+          e.preventDefault();
+          alert('Por favor completa todos los campos requeridos');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

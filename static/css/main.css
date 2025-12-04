@@ -1,0 +1,15 @@
+/* ============================================
+   MAIN.CSS - Archivo principal del sistema
+   ============================================ */
+
+/* 1. BASE - Variables, reset y tipografía */
+@import 'base.css';
+
+/* 2. LAYOUT - Estructura general (topbar, sidebar, containers) */
+@import 'layout.css';
+
+/* 3. COMPONENTS - Todos los componentes reutilizables */
+@import 'components.css';
+
+/* 4. NOTIFICATIONS.CSS - Sistema de Notificaciones */
+@import 'notifications.css';

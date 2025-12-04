@@ -1,0 +1,613 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Clientes - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+        <!-- Alerts -->
+        {% if messages %}
+          {% for message in messages %}
+            <div class="alert {{ message.tags }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        <!-- Estadísticas -->
+        <div class="cards">
+          <div class="card" id="kpi-total-clientes" style="margin: 0;">
+            <h4>Total Clientes</h4>
+            <div class="kpi" id="stat-con-nom">-</div>
+            <div class="muted">Registrados</div>
+          </div>
+          <div class="card" id="kpi-con-rep" style="margin: 0;">
+            <h4>Con Representantes</h4>
+            <div class="kpi" id="stat-con-rep">-</div>
+            <div class="muted">Asignados</div>
+          </div>
+          <div class="card" id="kpi-con-email" style="margin: 0;">
+            <h4>Con Email</h4>
+            <div class="kpi" id="stat-con-email">-</div>
+            <div class="muted">Contactables</div>
+          </div>
+          <div class="card" id="kpi-con-tel" style="margin: 0;">
+            <h4>Con Teléfono</h4>
+            <div class="kpi" id="stat-con-tel">-</div>
+            <div class="muted">Comunicables</div>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="actions">
+          <div class="actions-left">
+            <h1 style="margin: 0; color: var(--azul-700);">Gestión de Clientes</h1>
+          </div>
+          <div class="actions-right">
+            <div class="dropdown-export" style="position: relative; display: inline-block;">
+              <button type="button" class="btn secondary" onclick="toggleExportMenu('export-clientes')">
+                📥 Exportar
+              </button>
+              <div id="export-clientes" class="export-menu" style="display: none;">
+                <a href="{% url 'cotizaciones:exportar_clientes' %}?formato=excel{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">
+                  📊 Exportar a Excel
+                </a>
+                <a href="{% url 'cotizaciones:exportar_clientes' %}?formato=csv{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">
+                  📄 Exportar a CSV
+                </a>
+              </div>
+            </div>
+            <button type="button" class="btn" onclick="mostrarModal('modal-cliente')">
+              ➕ Nuevo Cliente
+            </button>
+          </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters">
+          <div class="filter-group">
+            <label for="busqueda"> Buscar Cliente</label>
+            <input type="text" id="busqueda" 
+                  placeholder="Nombre, RUT, email, representante...">
+          </div>
+          
+          <div class="filter-group">
+            <label for="filtro-representante"> Representantes</label>
+            <select id="filtro-representante">
+              <option value="">Todos</option>
+              <option value="con">Con representantes</option>
+              <option value="sin">Sin representantes</option>
+            </select>
+          </div>
+          
+          <div class="filter-group">
+            <label for="filtro-contacto"> Contacto</label>
+            <select id="filtro-contacto">
+              <option value="">Todos</option>
+              <option value="email">Con email</option>
+              <option value="telefono">Con teléfono</option>
+              <option value="ambos">Email y teléfono</option>
+              <option value="ninguno">Sin contacto</option>
+            </select>
+          </div>
+          
+          <div class="filter-group" style="align-self: end;">
+            <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+              🗑️ Limpiar
+            </button>
+          </div>
+          
+        </div>
+
+        <!-- Tabla de Clientes -->
+        <div class="table-wrap">
+          <table id="tabla-clientes">
+            <thead>
+              <tr>
+                <th>Nombre Cliente</th>
+                <th>Representantes</th>
+                <th>RUT</th>
+                <th>Teléfono</th>
+                <th>Email</th>
+                <th>Fecha Registro</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cliente in clientes %}
+              <tr>
+                <td><strong>{{ cliente.nombre }}</strong></td>
+                <td>
+                  {% if cliente.representantes.all %}
+                    {% for rep in cliente.representantes.all %}
+                      <div style="padding: 2px 0;">• {{ rep.nombre }}</div>
+                    {% endfor %}
+                  {% else %}
+                    <span style="color: #9ca3af;">Sin representantes</span>
+                  {% endif %}
+                </td>
+                <td>{{ cliente.rut|default:"-" }}</td>
+                <td>{{ cliente.telefono|default:"-" }}</td>
+                <td>{{ cliente.email|default:"-" }}</td>
+                <td>{{ cliente.fecha_creacion|date:"d/m/Y" }}</td>
+                <td>
+                  <div style="display: flex; gap: 4px;">
+                    <button type="button" class="btn small secondary" 
+                            onclick="editarCliente({{ cliente.id }})" title="Editar">
+                      ✏️
+                    </button>
+                    <button type="button" class="btn small danger" 
+                            onclick="eliminarCliente({{ cliente.id }}, '{{ cliente.nombre }}')" title="Eliminar">
+                      🗑️
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                  {% if busqueda %}
+                    No se encontraron clientes que coincidan con "{{ busqueda }}".
+                  {% else %}
+                    No hay clientes registrados aún.
+                  {% endif %}
+                  <br><br>
+                  <button type="button" class="btn" onclick="mostrarModal('modal-cliente')">
+                    Crear Primer Cliente
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if clientes.has_other_pages %}
+        <div class="pagination">
+          {% if clientes.has_previous %}
+            <a href="?page=1{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">&laquo; Primera</a>
+            <a href="?page={{ clientes.previous_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">&lsaquo; Anterior</a>
+          {% endif %}
+          
+          <span class="current">
+            Página {{ clientes.number }} de {{ clientes.paginator.num_pages }}
+          </span>
+          
+          {% if clientes.has_next %}
+            <a href="?page={{ clientes.next_page_number }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">Siguiente &rsaquo;</a>
+            <a href="?page={{ clientes.paginator.num_pages }}{% if busqueda %}&busqueda={{ busqueda }}{% endif %}">Última &raquo;</a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+
+
+      <!-- Modal Cliente -->
+      <div id="modal-cliente" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-cliente-titulo">Nuevo Cliente</h3>
+            <button type="button" class="close" onclick="cerrarModalCliente()">&times;</button>
+          </div>
+          
+          <form id="form-cliente">
+            {% csrf_token %}
+            <input type="hidden" id="cliente-id" value="">
+            
+            <div class="form-group">
+              <label for="cliente-nombre">Nombre del Cliente *</label>
+              <input type="text" id="cliente-nombre" required 
+                    placeholder="Ej: LOTEO LAUREL, PATRICIO MUÑOZ">
+            </div>
+            
+            <div class="form-group">
+              <label>Representantes del Cliente</label>
+              <div id="representantes-container" class="representantes-list">
+                <!-- Los representantes se agregarán dinámicamente aquí -->
+              </div>
+              <button type="button" class="btn-add-rep" onclick="agregarRepresentante()">
+                ➕ Agregar Representante
+              </button>
+            </div>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="cliente-rut">RUT</label>
+                <input type="text" id="cliente-rut" 
+                      placeholder="12.345.678-9">
+              </div>
+              <div class="form-group">
+                <label for="cliente-telefono">Teléfono</label>
+                <input type="text" id="cliente-telefono" 
+                      placeholder="+56 9 1234 5678">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label for="cliente-email">Email</label>
+              <input type="email" id="cliente-email" 
+                    placeholder="cliente@email.com">
+            </div>
+            
+            <div class="form-group">
+              <label for="cliente-direccion">Dirección</label>
+              <textarea id="cliente-direccion" rows="3" 
+                        placeholder="Dirección completa del cliente"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModalCliente()">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Guardar Cliente
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  let representanteCount = 0;
+
+  // Agregar representante al formulario
+  function agregarRepresentante(nombre = '') {
+    const container = document.getElementById('representantes-container');
+    const index = representanteCount++;
+    
+    const div = document.createElement('div');
+    div.className = 'representante-item';
+    div.id = `rep-${index}`;
+    div.innerHTML = `
+      <input type="text" 
+             class="representante-input" 
+             placeholder="Nombre del representante"
+             value="${nombre}"
+             data-index="${index}">
+      <button type="button" class="btn-remove-rep" onclick="eliminarRepresentante(${index})">
+        ✕
+      </button>
+    `;
+    
+    container.appendChild(div);
+  }
+
+  // Eliminar representante del formulario
+  function eliminarRepresentante(index) {
+    const element = document.getElementById(`rep-${index}`);
+    if (element) {
+      element.remove();
+    }
+  }
+
+  // Obtener todos los representantes del formulario
+  function obtenerRepresentantes() {
+    const inputs = document.querySelectorAll('.representante-input');
+    const representantes = [];
+    
+    inputs.forEach(input => {
+      const valor = input.value.trim();
+      if (valor) {
+        representantes.push(valor);
+      }
+    });
+    
+    return representantes;
+  }
+
+  // Limpiar formulario de representantes
+  function limpiarRepresentantes() {
+    const container = document.getElementById('representantes-container');
+    container.innerHTML = '';
+    representanteCount = 0;
+  }
+
+  // Cerrar modal y limpiar (solo para el botón X)
+  function cerrarModalCliente() {
+    document.getElementById('modal-cliente-titulo').textContent = 'Nuevo Cliente';
+    document.getElementById('cliente-id').value = '';
+    document.getElementById('form-cliente').reset();
+    limpiarRepresentantes();
+    agregarRepresentante(); // Agregar uno vacío por defecto
+    document.getElementById('modal-cliente').classList.remove('show');
+  }
+
+  // Abrir modal para nuevo cliente
+  function abrirModalNuevoCliente() {
+    document.getElementById('modal-cliente-titulo').textContent = 'Nuevo Cliente';
+    document.getElementById('cliente-id').value = '';
+    document.getElementById('form-cliente').reset();
+    limpiarRepresentantes();
+    agregarRepresentante();
+    mostrarModal('modal-cliente');
+  }
+
+  // Editar cliente
+  async function editarCliente(clienteId) {
+    try {
+      const response = await fetch(`/cotizaciones/cliente/${clienteId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('modal-cliente-titulo').textContent = 'Editar Cliente';
+        document.getElementById('cliente-id').value = clienteId;
+        
+        // Llenar campos básicos
+        document.getElementById('cliente-nombre').value = result.cliente.nombre;
+        document.getElementById('cliente-rut').value = result.cliente.rut;
+        document.getElementById('cliente-telefono').value = result.cliente.telefono;
+        document.getElementById('cliente-email').value = result.cliente.email;
+        document.getElementById('cliente-direccion').value = result.cliente.direccion;
+        
+        // Llenar representantes
+        limpiarRepresentantes();
+        if (result.cliente.representantes && result.cliente.representantes.length > 0) {
+          result.cliente.representantes.forEach(rep => {
+            agregarRepresentante(rep);
+          });
+        } else {
+          agregarRepresentante();
+        }
+        
+        mostrarModal('modal-cliente');
+      } else {
+        alert('Error al cargar los datos del cliente: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando cliente:', error);
+      alert('Error al cargar los datos del cliente');
+    }
+  }
+  
+  // Guardar cliente
+  document.getElementById('form-cliente').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const representantes = obtenerRepresentantes();
+    
+    const formData = {
+      nombre: document.getElementById('cliente-nombre').value,
+      rut: document.getElementById('cliente-rut').value,
+      telefono: document.getElementById('cliente-telefono').value,
+      email: document.getElementById('cliente-email').value,
+      direccion: document.getElementById('cliente-direccion').value,
+      representantes: representantes
+    };
+    
+    const clienteId = document.getElementById('cliente-id').value;
+    const isEditing = clienteId !== '';
+    
+    try {
+      const url = isEditing ? 
+        `/cotizaciones/cliente/${clienteId}/editar/` : 
+        '/cotizaciones/cliente/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModalCliente(); // Limpiar y cerrar
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando cliente:', error);
+      alert('Error al guardar el cliente');
+    }
+  });
+
+  // Toggle menú de exportación
+  function toggleExportMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    const allMenus = document.querySelectorAll('.export-menu');
+    
+    allMenus.forEach(m => {
+      if (m.id !== menuId) {
+        m.style.display = 'none';
+      }
+    });
+    
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+
+  // Cerrar menús al hacer clic fuera
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.dropdown-export')) {
+      document.querySelectorAll('.export-menu').forEach(menu => {
+        menu.style.display = 'none';
+      });
+    }
+  });
+
+  // Evitar que el modal se cierre al hacer clic fuera
+  document.getElementById('modal-cliente').addEventListener('click', function(e) {
+    // Solo cerrar si se hace clic directamente en el fondo del modal
+    // PERO no hacemos nada aquí, dejamos que solo el botón X cierre
+    if (e.target === this) {
+      e.stopPropagation(); // Evitar que se cierre
+    }
+  });
+
+  // Calcular y mostrar estadísticas
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof calcularEstadisticasClientes === 'function') {
+      calcularEstadisticasClientes();
+    }
+  });
+
+  // FILTROS RÁPIDOS PARA KPIs DE CLIENTES
+  function initFiltrosRapidosClientes() {
+    const kpiTotal = document.querySelector('#kpi-total-clientes');
+    const kpiRep = document.querySelector('#kpi-con-rep');
+    const kpiEmail = document.querySelector('#kpi-con-email');
+    const kpiTel = document.querySelector('#kpi-con-tel');
+    
+    const inputBusqueda = document.querySelector('#busqueda');
+    const selectRepresentante = document.querySelector('#filtro-representante');
+    const selectContacto = document.querySelector('#filtro-contacto');
+    
+    if (!kpiTotal || !inputBusqueda) return;
+    
+    function limpiarFiltrosVisuales() {
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+    }
+    
+    function limpiarTodosFiltros() {
+      if (inputBusqueda) inputBusqueda.value = '';
+      if (selectRepresentante) selectRepresentante.value = '';
+      if (selectContacto) selectContacto.value = '';
+    }
+    
+    function ejecutarFiltro() {
+      const event = new Event('input', { bubbles: true });
+      inputBusqueda.dispatchEvent(event);
+    }
+    
+    // 1. Total Clientes
+    kpiTotal.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 2. Con Representantes
+    kpiRep.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        if (selectRepresentante) selectRepresentante.value = 'con';
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 3. Con Email
+    kpiEmail.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        if (selectContacto) selectContacto.value = 'email';
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 4. Con Teléfono
+    kpiTel.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        if (selectContacto) selectContacto.value = 'telefono';
+        ejecutarFiltro();
+      }, 100);
+    });
+  }
+
+  // Efecto ripple
+  function createRipple(event, element) {
+    const ripple = document.createElement('span');
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+    
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.classList.add('ripple-effect');
+    
+    element.appendChild(ripple);
+    
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  }
+
+  // Inicializar al cargar la página
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof calcularEstadisticasClientes === 'function') {
+      calcularEstadisticasClientes();
+    }
+    initFiltrosRapidosClientes();
+  });  
+
+</script>
+</body>
+</html>

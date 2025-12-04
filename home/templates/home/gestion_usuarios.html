@@ -1,0 +1,921 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de Usuarios - Gestión de Empleados</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <!-- Main -->
+    <main>
+      <!-- Mensajes -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}⚠️{% endif %}
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- KPIs -->
+      <div class="cards">
+        <div class="card" id="kpi-total">
+          <h4>Total Empleados</h4>
+          <div class="kpi">{{ total_empleados }}</div>
+          <div class="muted">Usuarios registrados</div>
+        </div>
+        <div class="card" id="kpi-activos">
+          <h4>Activos</h4>
+          <div class="kpi">{{ empleados_activos }}</div>
+          <div class="muted">{{ porcentaje_activos }}% del total</div>
+        </div>
+        <div class="card" id="kpi-inactivos">
+          <h4>Inactivos</h4>
+          <div class="kpi">{{ empleados_inactivos }}</div>
+          <div class="muted">Cuentas suspendidas</div>
+        </div>
+        <div class="card" id="kpi-recientes">
+          <h4>Recientes (30d)</h4>
+          <div class="kpi">{{ nuevos_mes }}</div>
+          <div class="muted">Últimos 30 días</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <section class="filters">
+        <form method="GET" style="display:contents">
+          <div class="filter-group">
+            <label for="busqueda">Buscar Usuario</label>
+            <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                  placeholder="Nombre, RUT, email...">
+          </div>
+          <div class="filter-group">
+            <label>Cargo</label>
+            <select name="cargo" id="filtro-cargo">
+              <option value="">Todos los cargos</option>
+              {% for cargo_key, cargo_label in cargos_choices %}
+                <option value="{{ cargo_key }}" {% if request.GET.cargo == cargo_key %}selected{% endif %}>
+                  {{ cargo_label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Estado</label>
+            <select name="activo" id="filtro-activo">
+              <option value="">Todos</option>
+              <option value="1" {% if request.GET.activo == '1' %}selected{% endif %}>Activos</option>
+              <option value="0" {% if request.GET.activo == '0' %}selected{% endif %}>Inactivos</option>
+            </select>
+          </div>
+          <!-- Filtro de rango de fechas - SIEMPRE VISIBLE -->
+          <div class="filter-group">
+            <label>Fecha desde</label>
+            <input type="date" name="fecha_desde" id="filtro-fecha-desde">
+          </div>
+          <div class="filter-group">
+            <label>Fecha hasta</label>
+            <input type="date" name="fecha_hasta" id="filtro-fecha-hasta">
+          </div>
+          <div class="filter-group" style="align-self: end;">
+            <button type="button" class="btn secondary" id="btn-limpiar" style="height: 38px; line-height: 22px;">🗑️ Limpiar</button>
+          </div>
+        </form>
+        
+        <!-- Mensaje de error de fechas -->
+        <div id="error-fechas" style="display: none; width: 100%; padding: 8px 12px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; color: #991b1b; font-size: 0.9rem; margin-top: 8px; animation: slideDown 0.3s ease;">
+          <span style="font-weight: 600;">⚠️ Error:</span> La fecha "desde" no puede ser posterior a la fecha "hasta"
+        </div>
+      </section>
+
+      <style>
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .fecha-error {
+        border-color: #dc2626 !important;
+        background-color: #fef2f2 !important;
+      }
+      </style>
+
+      <!-- Acciones -->
+      <section class="actions">
+        <div class="actions-left">
+          <button class="btn" onclick="openModal('crear')">➕ Nuevo Empleado</button>
+          <a href="{% url 'home:export_usuarios_csv' %}" class="btn secondary">📤 Exportar CSV</a>
+        </div>
+        <div class="actions-right">
+          <span class="muted" id="contador-resultados">{{ empleados.count }} resultado(s)</span>
+        </div>
+      </section>
+
+      <!-- Loading -->
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Cargando...</p>
+      </div>
+
+      <!-- Tabla -->
+      <section class="table-wrap" aria-label="Tabla de empleados">
+        <table class="tabla-usuarios">
+          <thead>
+            <tr>
+              <th>Empleado</th>
+              <th>Email</th>
+              <th>Cargo</th>
+              <th>Fecha Ingreso</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for perfil in empleados %}
+            <tr data-fecha-ingreso="{{ perfil.fecha_ingreso|date:'Y-m-d' }}">
+              <td>
+                <div class="user-info">
+                  <div class="avatar">
+                    {{ perfil.user.first_name.0|default:perfil.user.username.0|upper }}
+                  </div>
+                  <div>
+                    <div><strong>{{ perfil.nombre_completo }}</strong></div>
+                    <div class="muted">@{{ perfil.user.username }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>{{ perfil.user.email }}</td>
+              <td>
+                <span class="pill cargo-{{ perfil.cargo }}">
+                  {{ perfil.get_cargo_display }}
+                </span>
+              </td>
+              <td>{{ perfil.fecha_ingreso|date:"d/m/Y" }}</td>
+              <td>
+                <span class="pill {% if perfil.activo %}activo{% else %}inactivo{% endif %}">
+                  {% if perfil.activo %}✅ Activo{% else %}❌ Inactivo{% endif %}
+                </span>
+              </td>
+              <td>
+                <button class="btn small secondary" data-action="edit" data-user-id="{{ perfil.id }}">
+                  ✏️ Editar
+                </button>
+                {% if user.id != perfil.user.id %}
+                  {% if perfil.activo %}
+                    <button class="btn small warning" data-action="toggle" data-user-id="{{ perfil.id }}" data-status="false">
+                      🚫 Desactivar
+                    </button>
+                  {% else %}
+                    <button class="btn small success" data-action="toggle" data-user-id="{{ perfil.id }}" data-status="true">
+                      ✅ Activar
+                    </button>
+                  {% endif %}
+                  <button class="btn small danger" data-action="delete" data-user-id="{{ perfil.id }}">
+                    🗑️ Eliminar
+                  </button>
+                {% else %}
+                  <span class="muted">Tu cuenta</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" style="text-align:center; padding:40px;">
+                <div class="muted">
+                  <h3>No se encontraron empleados</h3>
+                  <p>Intenta cambiar los filtros o crear un nuevo empleado.</p>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Paginación -->
+      {% if empleados.has_other_pages %}
+      <div class="pagination">
+        {% if empleados.has_previous %}
+          <a href="?page=1{{ url_params }}">&laquo; Primera</a>
+          <a href="?page={{ empleados.previous_page_number }}{{ url_params }}">‹ Anterior</a>
+        {% endif %}
+        
+        {% for num in empleados.paginator.page_range %}
+          {% if empleados.number == num %}
+            <span class="current">{{ num }}</span>
+          {% elif num > empleados.number|add:'-3' and num < empleados.number|add:'3' %}
+            <a href="?page={{ num }}{{ url_params }}">{{ num }}</a>
+          {% endif %}
+        {% endfor %}
+        
+        {% if empleados.has_next %}
+          <a href="?page={{ empleados.next_page_number }}{{ url_params }}">Siguiente ›</a>
+          <a href="?page={{ empleados.paginator.num_pages }}{{ url_params }}">Última &raquo;</a>
+        {% endif %}
+      </div>
+      {% endif %}
+    </main>
+  </div>
+
+  <!-- Modal Crear/Editar Usuario -->
+  <div class="modal" id="userModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalTitle">Nuevo Empleado</h3>
+        <button class="close" onclick="closeModal()">&times;</button>
+      </div>
+      <form id="userForm" method="POST">
+        {% csrf_token %}
+        <input type="hidden" id="userId" name="user_id" value="">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="username">Usuario*</label>
+            <input type="text" id="username" name="username" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email*</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="first_name">Nombre*</label>
+            <input type="text" id="first_name" name="first_name" required>
+          </div>
+          <div class="form-group">
+            <label for="last_name">Apellido*</label>
+            <input type="text" id="last_name" name="last_name" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="rut">RUT*</label>
+            <input type="text" id="rut" name="rut" placeholder="12.345.678-9" required>
+            <small class="muted">Formato: 12.345.678-9 o 12345678-9</small>
+          </div>
+          <div class="form-group">
+            <label for="telefono">Teléfono</label>
+            <input type="tel" id="telefono" name="telefono" placeholder="+56912345678">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Contraseña*</label>
+          <input type="password" id="password" name="password">
+          <small class="muted">Dejar vacío para mantener la contraseña actual (solo edición)</small>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cargo">Cargo*</label>
+            <select id="cargo" name="cargo" required>
+              {% for cargo_key, cargo_label in cargos_choices %}
+                <option value="{{ cargo_key }}">{{ cargo_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="fecha_ingreso">Fecha Ingreso*</label>
+            <input type="date" id="fecha_ingreso" name="fecha_ingreso" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="salario">Salario</label>
+          <input type="number" id="salario" name="salario" step="1000">
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="activo" name="activo" checked>
+            Usuario activo
+          </label>
+        </div>
+        
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:20px;">
+          <button type="button" class="btn secondary" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script src="{% static 'cotizaciones/js/main.js' %}"></script>
+<script>
+  // Variables globales
+  let editingUserId = null;
+
+  // Funciones del modal
+  function openModal(action, userId = null) {
+    const modal = document.getElementById('userModal');
+    const title = document.getElementById('modalTitle');
+    const form = document.getElementById('userForm');
+    const userIdField = document.getElementById('userId');
+
+    if (action === 'crear') {
+      title.textContent = 'Nuevo Empleado';
+      form.reset();
+      userIdField.value = '';
+      document.getElementById('activo').checked = true;
+      document.getElementById('fecha_ingreso').value = new Date().toISOString().split('T')[0];
+    }
+
+    modal.classList.add('show');
+    editingUserId = userId;
+  }
+
+  function closeModal() {
+    document.getElementById('userModal').classList.remove('show');
+    editingUserId = null;
+  }
+
+  // Editar usuario
+  async function editUser(userId) {
+    try {
+      showLoading(true);
+      const response = await fetch(`/usuarios/api/get/${userId}/`);
+      const data = await response.json();
+      
+      if (data.success) {
+        const user = data.user;
+        const perfil = data.perfil;
+
+        document.getElementById('modalTitle').textContent = 'Editar Empleado';
+        document.getElementById('userId').value = userId;
+        document.getElementById('username').value = user.username;
+        document.getElementById('email').value = user.email;
+        document.getElementById('first_name').value = user.first_name;
+        document.getElementById('last_name').value = user.last_name;
+        document.getElementById('rut').value = perfil.rut;
+        document.getElementById('cargo').value = perfil.cargo;
+        document.getElementById('fecha_ingreso').value = perfil.fecha_ingreso;
+        document.getElementById('telefono').value = perfil.telefono || '';
+        document.getElementById('salario').value = perfil.salario || '';
+        document.getElementById('activo').checked = perfil.activo;
+        document.getElementById('password').value = '';
+
+        openModal('editar', userId);
+      }
+    } catch (error) {
+      alert('Error al cargar los datos del usuario');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // Cambiar estado del usuario
+  async function toggleUserStatus(userId, newStatus) {
+    const action = newStatus ? 'activar' : 'desactivar';
+    if (!confirm(`¿Estás seguro de ${action} este usuario?`)) return;
+
+    try {
+      showLoading(true);
+      const response = await fetch(`/usuarios/api/toggle-status/${userId}/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({ activo: newStatus })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error al cambiar el estado del usuario');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // Eliminar usuario
+  async function deleteUser(userId) {
+    if (!confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.')) return;
+
+    try {
+      showLoading(true);
+      const response = await fetch(`/usuarios/api/delete/${userId}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Error al eliminar el usuario');
+      }
+    } catch (error) {
+      alert('Error de conexión');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // Funciones auxiliares
+  function showLoading(show) {
+    const loading = document.getElementById('loading');
+    loading.style.display = show ? 'block' : 'none';
+  }
+
+  // Formatear RUT automáticamente
+  function formatRut(rut) {
+    rut = rut.replace(/[^0-9kK]/g, '');
+    if (rut.length <= 1) return rut;
+    
+    let cuerpo = rut.slice(0, -1);
+    let dv = rut.slice(-1).toUpperCase();
+    cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    return `${cuerpo}-${dv}`;
+  }
+  
+  // Calcular Estadísticas de USUARIOS
+  function calcularEstadisticasUsuarios() {
+    const tabla = document.querySelector('.tabla-usuarios tbody');
+    if (!tabla) return;
+    
+    const filasVisibles = Array.from(tabla.querySelectorAll('tr'))
+      .filter(f => f.style.display !== 'none' && !f.querySelector('td[colspan]'));
+    
+    let totalEmpleados = filasVisibles.length;
+    let empleadosActivos = 0;
+    let empleadosInactivos = 0;
+
+    filasVisibles.forEach(fila => {
+      const celdas = fila.querySelectorAll('td');
+      
+      // Estado (columna 4)
+      const estadoPill = celdas[4]?.querySelector('.pill');
+      if (estadoPill) {
+        if (estadoPill.classList.contains('activo')) {
+          empleadosActivos++;
+        } else {
+          empleadosInactivos++;
+        }
+      }
+    });
+
+    // Calcular porcentaje de activos
+    const porcentajeActivos = totalEmpleados > 0 
+      ? Math.round((empleadosActivos / totalEmpleados) * 100) 
+      : 0;
+
+    // Actualizar KPIs
+    const kpiTotal = document.querySelector('#kpi-total .kpi');
+    const kpiActivos = document.querySelector('#kpi-activos .kpi');
+    const kpiInactivos = document.querySelector('#kpi-inactivos .kpi');
+    const mutedActivos = document.querySelector('#kpi-activos .muted');
+    
+    if (kpiTotal) kpiTotal.textContent = totalEmpleados;
+    if (kpiActivos) kpiActivos.textContent = empleadosActivos;
+    if (kpiInactivos) kpiInactivos.textContent = empleadosInactivos;
+    if (mutedActivos) mutedActivos.textContent = `${porcentajeActivos}% del total`;
+  }
+
+  // Función principal de filtrado
+  function initFiltrosUsuarios() {
+    const inputBusqueda = document.querySelector('#busqueda');
+    const selectCargo = document.querySelector('#filtro-cargo');
+    const selectActivo = document.querySelector('#filtro-activo');
+    const inputFechaDesde = document.querySelector('#filtro-fecha-desde');
+    const inputFechaHasta = document.querySelector('#filtro-fecha-hasta');
+    const errorFechas = document.querySelector('#error-fechas');
+    const tabla = document.querySelector('.tabla-usuarios tbody');
+    
+    if (!inputBusqueda || !tabla) return;
+    
+    const todasLasFilas = Array.from(tabla.querySelectorAll('tr'));
+    
+    // ✅ NUEVA FUNCIÓN: Validar rango de fechas
+    function validarRangoFechas() {
+      const desde = inputFechaDesde.value;
+      const hasta = inputFechaHasta.value;
+      
+      // Si alguna está vacía, no hay error
+      if (!desde || !hasta) {
+        if (errorFechas) errorFechas.style.display = 'none';
+        inputFechaDesde.classList.remove('fecha-error');
+        inputFechaHasta.classList.remove('fecha-error');
+        return true;
+      }
+      
+      // Comparar fechas
+      if (desde > hasta) {
+        // Mostrar error
+        if (errorFechas) {
+          errorFechas.style.display = 'block';
+        }
+        inputFechaDesde.classList.add('fecha-error');
+        inputFechaHasta.classList.add('fecha-error');
+        return false;
+      } else {
+        // Ocultar error
+        if (errorFechas) errorFechas.style.display = 'none';
+        inputFechaDesde.classList.remove('fecha-error');
+        inputFechaHasta.classList.remove('fecha-error');
+        return true;
+      }
+    }
+    
+    function filtrarTabla() {
+      // Validar fechas antes de filtrar
+      const fechasValidas = validarRangoFechas();
+      
+      const textoBusqueda = inputBusqueda.value.toLowerCase().trim();
+      const cargoSeleccionado = selectCargo ? selectCargo.value : '';
+      const estadoSeleccionado = selectActivo ? selectActivo.value : '';
+      const fechaDesde = inputFechaDesde ? inputFechaDesde.value : '';
+      const fechaHasta = inputFechaHasta ? inputFechaHasta.value : '';
+      
+      let filasVisibles = 0;
+      
+      todasLasFilas.forEach(function(fila) {
+        if (fila.querySelector('td[colspan]')) {
+          fila.style.display = 'none';
+          return;
+        }
+        
+        const textoFila = fila.textContent.toLowerCase();
+        const coincideTexto = textoBusqueda === '' || textoFila.includes(textoBusqueda);
+        
+        let coincideCargo = true;
+        if (cargoSeleccionado) {
+          const cargoPill = fila.querySelector('.pill[class*="cargo-"]');
+          if (cargoPill) {
+            coincideCargo = cargoPill.className.includes('cargo-' + cargoSeleccionado);
+          }
+        }
+        
+        let coincideEstado = true;
+        if (estadoSeleccionado) {
+          const estadoPill = fila.querySelectorAll('.pill')[1];
+          if (estadoPill) {
+            const esActivo = estadoPill.classList.contains('activo');
+            coincideEstado = (estadoSeleccionado === '1') ? esActivo : !esActivo;
+          }
+        }
+        
+        // Filtro por rango de fechas de ingreso
+        let coincideFecha = true;
+        const fechaIngreso = fila.getAttribute('data-fecha-ingreso');
+        
+        // ✅ Solo aplicar filtro si las fechas son válidas
+        if (fechasValidas && fechaIngreso) {
+          if (fechaDesde && fechaIngreso < fechaDesde) {
+            coincideFecha = false;
+          }
+          if (fechaHasta && fechaIngreso > fechaHasta) {
+            coincideFecha = false;
+          }
+        }
+        
+        if (coincideTexto && coincideCargo && coincideEstado && coincideFecha) {
+          fila.style.display = '';
+          filasVisibles++;
+        } else {
+          fila.style.display = 'none';
+        }
+      });
+      
+      // Actualizar contador
+      const contador = document.querySelector('#contador-resultados');
+      if (contador) {
+        contador.textContent = `${filasVisibles} resultado(s)`;
+      }
+      
+      // Mostrar mensaje si no hay resultados
+      let filaSinResultados = tabla.querySelector('.fila-sin-resultados');
+      if (filasVisibles === 0) {
+        if (!filaSinResultados) {
+          filaSinResultados = document.createElement('tr');
+          filaSinResultados.className = 'fila-sin-resultados';
+          filaSinResultados.innerHTML = `
+            <td colspan="6" style="text-align:center; padding:40px;">
+              <div class="muted">
+                <h3>😕 No se encontraron resultados</h3>
+                <p>Intenta cambiar los filtros de búsqueda.</p>
+              </div>
+            </td>
+          `;
+          tabla.appendChild(filaSinResultados);
+        }
+        filaSinResultados.style.display = '';
+      } else if (filaSinResultados) {
+        filaSinResultados.style.display = 'none';
+      }
+      
+      calcularEstadisticasUsuarios();
+    }
+    
+    // Eventos
+    inputBusqueda.addEventListener('input', filtrarTabla);
+    if (selectCargo) selectCargo.addEventListener('change', filtrarTabla);
+    if (selectActivo) selectActivo.addEventListener('change', filtrarTabla);
+    if (inputFechaDesde) inputFechaDesde.addEventListener('change', filtrarTabla);
+    if (inputFechaHasta) inputFechaHasta.addEventListener('change', filtrarTabla);
+    
+    // Botón limpiar
+    const btnLimpiar = document.querySelector('#btn-limpiar');
+    if (btnLimpiar) {
+      btnLimpiar.addEventListener('click', function(e) {
+        e.preventDefault();
+        inputBusqueda.value = '';
+        if (selectCargo) selectCargo.value = '';
+        if (selectActivo) selectActivo.value = '';
+        if (inputFechaDesde) inputFechaDesde.value = '';
+        if (inputFechaHasta) inputFechaHasta.value = '';
+        
+        // Limpiar error de fechas
+        if (errorFechas) errorFechas.style.display = 'none';
+        inputFechaDesde.classList.remove('fecha-error');
+        inputFechaHasta.classList.remove('fecha-error');
+        
+        // Limpiar indicador visual de cards
+        document.querySelectorAll('.cards .card').forEach(card => {
+          card.classList.remove('active');
+        });
+        
+        filtrarTabla();
+      });
+    }
+    
+    calcularEstadisticasUsuarios();
+  }
+
+  // Efecto ripple al hacer click
+  function createRipple(event, element) {
+    const ripple = document.createElement('span');
+    const rect = element.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = event.clientX - rect.left - size / 2;
+    const y = event.clientY - rect.top - size / 2;
+    
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    ripple.classList.add('ripple-effect');
+    
+    element.appendChild(ripple);
+    
+    setTimeout(() => {
+      ripple.remove();
+    }, 600);
+  }
+
+  // FILTROS RÁPIDOS PARA KPIs
+  function initFiltrosRapidosUsuarios() {
+    const kpiTotal = document.querySelector('#kpi-total');
+    const kpiActivos = document.querySelector('#kpi-activos');
+    const kpiInactivos = document.querySelector('#kpi-inactivos');
+    const kpiRecientes = document.querySelector('#kpi-recientes');
+    
+    const inputBusqueda = document.querySelector('#busqueda');
+    const selectCargo = document.querySelector('#filtro-cargo');
+    const selectActivo = document.querySelector('#filtro-activo');
+    const inputFechaDesde = document.querySelector('#filtro-fecha-desde');
+    const inputFechaHasta = document.querySelector('#filtro-fecha-hasta');
+    
+    if (!kpiTotal || !inputBusqueda) return;
+    
+    function limpiarFiltrosVisuales() {
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+    }
+    
+    function limpiarTodosFiltros() {
+      if (inputBusqueda) inputBusqueda.value = '';
+      if (selectCargo) selectCargo.value = '';
+      if (selectActivo) selectActivo.value = '';
+      if (inputFechaDesde) inputFechaDesde.value = '';
+      if (inputFechaHasta) inputFechaHasta.value = '';
+    }
+    
+    function ejecutarFiltro() {
+      const event = new Event('input', { bubbles: true });
+      inputBusqueda.dispatchEvent(event);
+    }
+    
+    // 1. TOTAL - Limpiar todos los filtros
+    kpiTotal.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 2. ACTIVOS
+    kpiActivos.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        
+        if (selectActivo) selectActivo.value = '1';
+        if (inputFechaDesde) inputFechaDesde.value = '';
+        if (inputFechaHasta) inputFechaHasta.value = '';
+        
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 3. INACTIVOS
+    kpiInactivos.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        
+        if (selectActivo) selectActivo.value = '0';
+        if (inputFechaDesde) inputFechaDesde.value = '';
+        if (inputFechaHasta) inputFechaHasta.value = '';
+        
+        ejecutarFiltro();
+      }, 100);
+    });
+    
+    // 4. RECIENTES (30 días) - Rango de fechas
+    kpiRecientes.addEventListener('click', function(e) {
+      createRipple(e, this);
+      if (navigator.vibrate) navigator.vibrate(10);
+      
+      const yaEstaActiva = this.classList.contains('active');
+      
+      if (yaEstaActiva) {
+        limpiarFiltrosVisuales();
+        limpiarTodosFiltros();
+        ejecutarFiltro();
+        return;
+      }
+      
+      setTimeout(() => {
+        limpiarFiltrosVisuales();
+        this.classList.add('active');
+        
+        // Calcular rango: desde hace 30 días hasta hoy
+        const hoy = new Date();
+        const hace30Dias = new Date(hoy);
+        hace30Dias.setDate(hoy.getDate() - 30);
+        
+        const fechaDesdeISO = hace30Dias.toISOString().split('T')[0];
+        const fechaHastaISO = hoy.toISOString().split('T')[0];
+        
+        if (inputFechaDesde) inputFechaDesde.value = fechaDesdeISO;
+        if (inputFechaHasta) inputFechaHasta.value = fechaHastaISO;
+        
+        ejecutarFiltro();
+      }, 100);
+    });
+  }
+  
+  // INICIALIZACIÓN
+  document.addEventListener('DOMContentLoaded', function() {
+    
+    // Inicializar filtros
+    initFiltrosUsuarios();
+    initFiltrosRapidosUsuarios();
+    
+    // Formulario de usuario
+    document.getElementById('userForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      const userId = document.getElementById('userId').value;
+      const url = userId ? `/usuarios/api/update/${userId}/` : '/usuarios/api/create/';
+      
+      try {
+        showLoading(true);
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          closeModal();
+          location.reload();
+        } else {
+          alert(data.message || 'Error al guardar el usuario');
+        }
+      } catch (error) {
+        alert('Error de conexión');
+      } finally {
+        showLoading(false);
+      }
+    });
+    
+    // Botones de acción
+    document.addEventListener('click', function(e) {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+
+      const action = target.dataset.action;
+      const userId = target.dataset.userId;
+
+      switch(action) {
+        case 'edit':
+          editUser(parseInt(userId));
+          break;
+        case 'toggle':
+          const status = target.dataset.status === 'true';
+          toggleUserStatus(parseInt(userId), status);
+          break;
+        case 'delete':
+          deleteUser(parseInt(userId));
+          break;
+      }
+    });
+
+    // Formato RUT
+    const rutInput = document.getElementById('rut');
+    if (rutInput) {
+      rutInput.addEventListener('input', function(e) {
+        let valor = e.target.value.replace(/[^0-9kK]/g, '');
+        if (valor.length > 1) {
+          e.target.value = formatRut(valor);
+        }
+      });
+    }
+
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // Cerrar modal clickeando fuera
+    document.getElementById('userModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    // Fecha por defecto
+    const fechaInput = document.getElementById('fecha_ingreso');
+    if (fechaInput && !fechaInput.value) {
+      fechaInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    showLoading(false);
+  });
+
+</script>
+</body>
+</html>

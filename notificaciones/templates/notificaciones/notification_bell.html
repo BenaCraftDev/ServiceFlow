@@ -1,0 +1,511 @@
+<div class="notification-wrapper" id="notificationWrapper">
+  <button class="notification-bell" id="notificationBell" type="button" aria-label="Notificaciones">
+    🔔
+    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+  </button>
+  
+  <div class="notification-dropdown" id="notificationDropdown">
+    <div class="notification-header">
+      <h4>Notificaciones</h4>
+      <button class="btn-mark-all" id="markAllRead" type="button">Marcar todas como leídas</button>
+    </div>
+    
+    <div class="notification-list" id="notificationList">
+      <div class="notification-loading">
+        <div class="spinner"></div>
+        <p>Cargando notificaciones...</p>
+      </div>
+    </div>
+    
+    <div class="notification-footer">
+      <a href="{% url 'notificaciones:lista' %}">Ver todas las notificaciones</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.notification-wrapper {
+  position: relative;
+  display: inline-block;
+  z-index: 1000;
+}
+
+.notification-bell {
+  background: transparent;
+  border: none;
+  color: var(--blanco, #ffffff);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.notification-bell:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.notification-bell:active {
+  animation: bellRing 0.5s ease;
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(10deg); }
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #dc2626;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #174678;
+  animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.notification-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 380px;
+  max-height: 500px;
+  display: none;
+  flex-direction: column;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.notification-dropdown.show {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.notification-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #eaf3ff, white);
+}
+
+.notification-header h4 {
+  margin: 0;
+  color: #174678;
+  font-size: 1rem;
+}
+
+.btn-mark-all {
+  background: transparent;
+  border: none;
+  color: #1f5fa5;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-mark-all:hover {
+  background: #eaf3ff;
+}
+
+.notification-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 380px;
+}
+
+.notification-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #4b5563;
+}
+
+.notification-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.notification-item:hover {
+  background: #f5f7fb;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item.unread {
+  background: #eaf3ff;
+  border-left: 4px solid #1f5fa5;
+}
+
+.notification-item.unread::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: #1f5fa5;
+  border-radius: 50%;
+}
+
+.notification-item h5 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  color: #174678;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notification-item p {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  color: #1f2937;
+  line-height: 1.4;
+}
+
+.notification-item small {
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.notification-icon {
+  display: inline-block;
+  font-size: 1rem;
+}
+
+.notification-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #4b5563;
+}
+
+.notification-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.notification-footer {
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  background: #f5f7fb;
+}
+
+.notification-footer a {
+  color: #1f5fa5;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.notification-footer a:hover {
+  text-decoration: underline;
+}
+
+.spinner {
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #1f5fa5;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+(function() {
+  
+  
+  // Esperar a que el DOM esté completamente cargado
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initNotifications);
+  } else {
+    initNotifications();
+  }
+  
+  function initNotifications() {
+    
+    
+    const bell = document.getElementById('notificationBell');
+    const dropdown = document.getElementById('notificationDropdown');
+    const badge = document.getElementById('notificationBadge');
+    const list = document.getElementById('notificationList');
+    const markAllBtn = document.getElementById('markAllRead');
+    
+    // Verificar que los elementos existen
+    if (!bell || !dropdown || !badge || !list || !markAllBtn) {
+      console.error('❌ Error: No se encontraron todos los elementos necesarios');
+      
+      return;
+    }
+    
+    
+    
+    // URLs desde Django
+    const urlObtener = "{% url 'notificaciones:obtener' %}";
+    const urlMarcarTodas = "{% url 'notificaciones:marcar_todas_leidas' %}";
+    const urlMarcarLeida = "/notificaciones/marcar-leida/";
+  
+    
+    let notificaciones = [];
+    
+    // Obtener iconos según tipo
+    function getIconoTipo(tipo) {
+      const iconos = {
+        'info': 'ℹ️',
+        'success': '✅',
+        'warning': '⚠️',
+        'danger': '🚨'
+      };
+      return iconos[tipo] || 'ℹ️';
+    }
+    
+    // Obtener CSRF token
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    const csrftoken = getCookie('csrftoken');
+    
+    
+    // Cargar notificaciones
+    function cargarNotificaciones() {
+      
+      
+      fetch(urlObtener)
+        .then(res => {
+          
+          if (!res.ok) throw new Error('Error en la red: ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          
+          notificaciones = data.notificaciones;
+          actualizarBadge(data.no_leidas);
+          renderizarNotificaciones();
+        })
+        .catch(err => {
+          console.error('❌ Error al cargar notificaciones:', err);
+          list.innerHTML = '<div class="notification-empty"><p>Error al cargar notificaciones</p></div>';
+        });
+    }
+    
+    // Actualizar badge
+    function actualizarBadge(count) {
+      
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    
+    // Renderizar notificaciones
+    function renderizarNotificaciones() {
+      
+      
+      if (notificaciones.length === 0) {
+        list.innerHTML = `
+          <div class="notification-empty">
+            <div class="notification-empty-icon">🔔</div>
+            <p>No tienes notificaciones</p>
+          </div>
+        `;
+        return;
+      }
+      
+      list.innerHTML = notificaciones.map(n => `
+        <div class="notification-item ${!n.leida ? 'unread' : ''}" data-id="${n.id}" data-url="${n.url || ''}">
+          <h5>
+            <span class="notification-icon">${getIconoTipo(n.tipo)}</span>
+            ${n.titulo}
+          </h5>
+          <p>${n.mensaje}</p>
+          <small>${n.fecha}</small>
+        </div>
+      `).join('');
+      
+      // Agregar eventos a cada notificación
+      document.querySelectorAll('.notification-item').forEach(item => {
+        item.addEventListener('click', function() {
+          const id = this.dataset.id;
+          const url = this.dataset.url;
+          
+          marcarLeida(id, url);
+        });
+      });
+    }
+    
+    // Marcar como leída
+    function marcarLeida(id, url) {
+      
+      
+      fetch(`${urlMarcarLeida}${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        
+        actualizarBadge(data.no_leidas);
+        if (url && url !== 'null' && url !== 'None' && url !== '') {
+          window.location.href = url;
+        } else {
+          cargarNotificaciones();
+        }
+      })
+      .catch(err => {
+        console.error('❌ Error al marcar como leída:', err);
+      });
+    }
+    
+    // Marcar todas como leídas
+    markAllBtn.addEventListener('click', function() {
+      
+      
+      fetch(urlMarcarTodas, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrftoken,
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        
+        actualizarBadge(0);
+        cargarNotificaciones();
+      })
+      .catch(err => {
+        console.error('❌ Error al marcar todas:', err);
+      });
+    });
+    
+    // Toggle dropdown
+    bell.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const isShowing = dropdown.classList.contains('show');
+      
+      
+      if (isShowing) {
+        dropdown.classList.remove('show');
+        
+      } else {
+        dropdown.classList.add('show');
+        
+        cargarNotificaciones();
+      }
+    });
+    
+    // Cerrar al hacer click fuera
+    document.addEventListener('click', function(e) {
+      if (!bell.contains(e.target) && !dropdown.contains(e.target)) {
+        if (dropdown.classList.contains('show')) {
+          
+          dropdown.classList.remove('show');
+        }
+      }
+    });
+    
+    // Cargar badge inicial
+    
+    cargarNotificaciones();
+    
+    // Actualizar cada 30 segundos
+    setInterval(function() {
+      
+      cargarNotificaciones();
+    }, 30000);
+    
+    
+  }
+})();
+</script>
+
+<!-- FIX PARA MENÚ NO VISIBLE - Z-INDEX -->
+<style>
+/* Forzar que el menú esté visible y por encima de todo */
+.notification-wrapper {
+  position: relative !important;
+  z-index: 99999 !important;
+}
+
+.notification-dropdown {
+  position: absolute !important;
+  z-index: 99999 !important;
+  background: white !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
+}
+
+.notification-dropdown.show {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
+}
+
+/* Override para asegurar visibilidad */
+body .notification-dropdown.show {
+  z-index: 999999 !important;
+}
+</style>

@@ -1,0 +1,43 @@
+/* ============================================
+   PANEL PAGE - Estilos específicos del panel de empleados
+   ============================================ */
+
+/* Este archivo solo contiene estilos específicos del panel
+   que NO se usan en otras partes del sistema */
+
+.actions-bottom {
+  text-align: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--gris-300);
+}
+
+.logout-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+@media (max-width: 768px) {
+  .user-info-card {
+    padding: 20px;
+  }
+
+  .logout-btn {
+    position: static;
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .funcion-card {
+    min-height: 120px;
+    padding: 16px;
+  }
+
+  .funcion-icono {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+}

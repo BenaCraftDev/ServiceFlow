@@ -1,0 +1,525 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="{{ config.tema }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - Panel de Empleados</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/pages/panel.css' %}">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --border-color: #dee2e6;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --border-color: #495057;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        body {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .config-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .config-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .config-tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .config-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .config-tab.active {
+            color: #046de5;
+            border-bottom-color: #046de5;
+        }
+
+        .config-section {
+            display: none;
+        }
+
+        .config-section.active {
+            display: block;
+        }
+
+        .config-card {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .config-card h3 {
+            margin: 0 0 20px 0;
+            color: #046de5;
+            font-size: 18px;
+        }
+
+        .config-group {
+            margin-bottom: 25px;
+        }
+
+        .config-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .config-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .config-group .description {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .config-group select,
+        .config-group input[type="number"] {
+            width: 100%;
+            max-width: 300px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .switch-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .switch-info {
+            flex: 1;
+        }
+
+        .switch-info strong {
+            display: block;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .switch-info small {
+            color: var(--text-secondary);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 26px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #046de5;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .theme-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .theme-option {
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .theme-option:hover {
+            border-color: #046de5;
+            transform: translateY(-2px);
+        }
+
+        .theme-option.selected {
+            border-color: #046de5;
+            background: rgba(4, 109, 229, 0.1);
+        }
+
+        .theme-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .btn-save {
+            background: linear-gradient(to bottom, #046de5, #4c9dfa);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(4, 109, 229, 0.3);
+        }
+
+        .font-preview {
+            margin-top: 15px;
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        body.font-small { font-size: 14px; }
+        body.font-medium { font-size: 16px; }
+        body.font-large { font-size: 18px; }
+    </style>
+</head>
+<body class="font-{{ config.tamano_fuente }}">
+    <div class="employee-header">
+        <div class="container">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                    <h1>Configuración</h1>
+                    <p>Personaliza tu experiencia</p>
+                </div>
+                <div>
+                    <a href="{% url 'home:panel_empleados' %}" class="btn secondary">
+                        Volver al Panel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="config-container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {{ message.tags }}">
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="config-tabs">
+            <button class="config-tab active" data-tab="apariencia">Apariencia</button>
+            <button class="config-tab" data-tab="herramientas">Herramientas</button>
+            <button class="config-tab" data-tab="notificaciones">Notificaciones</button>
+            <button class="config-tab" data-tab="preferencias">Preferencias</button>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <!-- Apariencia -->
+            <div class="config-section active" data-section="apariencia">
+                <div class="config-card">
+                    <h3>Tema de Color</h3>
+                    <div class="theme-preview">
+                        <div class="theme-option {% if config.tema == 'light' %}selected{% endif %}" 
+                             onclick="selectTheme('light')">
+                            <div class="theme-icon">☀️</div>
+                            <strong>Claro</strong>
+                            <input type="radio" name="tema" value="light" 
+                                   {% if config.tema == 'light' %}checked{% endif %} style="display:none;">
+                        </div>
+                        <div class="theme-option {% if config.tema == 'dark' %}selected{% endif %}" 
+                             onclick="selectTheme('dark')">
+                            <div class="theme-icon">🌙</div>
+                            <strong>Oscuro</strong>
+                            <input type="radio" name="tema" value="dark" 
+                                   {% if config.tema == 'dark' %}checked{% endif %} style="display:none;">
+                        </div>
+                        <div class="theme-option {% if config.tema == 'auto' %}selected{% endif %}" 
+                             onclick="selectTheme('auto')">
+                            <div class="theme-icon">🔄</div>
+                            <strong>Automático</strong>
+                            <input type="radio" name="tema" value="auto" 
+                                   {% if config.tema == 'auto' %}checked{% endif %} style="display:none;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h3>Tamaño de Fuente</h3>
+                    <div class="config-group">
+                        <select name="tamano_fuente" id="fontSizeSelect" onchange="previewFontSize(this.value)">
+                            <option value="small" {% if config.tamano_fuente == 'small' %}selected{% endif %}>Pequeño</option>
+                            <option value="medium" {% if config.tamano_fuente == 'medium' %}selected{% endif %}>Mediano</option>
+                            <option value="large" {% if config.tamano_fuente == 'large' %}selected{% endif %}>Grande</option>
+                        </select>
+                        <div class="font-preview">
+                            <p>Vista previa del texto con el tamaño seleccionado.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h3>Idioma</h3>
+                    <div class="config-group">
+                        <select name="idioma">
+                            <option value="es" {% if config.idioma == 'es' %}selected{% endif %}>Español</option>
+                            <option value="en" {% if config.idioma == 'en' %}selected{% endif %}>English</option>
+                        </select>
+                        <small class="description">El cambio de idioma se aplicará en futuras versiones</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Herramientas -->
+            <div class="config-section" data-section="herramientas">
+                <div class="config-card">
+                    <h3>Herramientas Habilitadas</h3>
+                    <p style="margin-bottom: 20px; color: var(--text-secondary);">
+                        Activa o desactiva las herramientas que deseas ver en tu panel
+                    </p>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Calculadora</strong>
+                            <small>Calculadora rápida integrada</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="herramienta_calculadora" 
+                                   {% if config.herramienta_calculadora %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Bloc de Notas</strong>
+                            <small>Toma notas rápidas desde cualquier lugar</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="herramienta_notas" 
+                                   {% if config.herramienta_notas %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Recordatorios</strong>
+                            <small>Crea y gestiona recordatorios</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="herramienta_recordatorios" 
+                                   {% if config.herramienta_recordatorios %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Conversor de Unidades</strong>
+                            <small>Convierte entre diferentes unidades de medida</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="herramienta_conversor" 
+                                   {% if config.herramienta_conversor %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notificaciones -->
+            <div class="config-section" data-section="notificaciones">
+                <div class="config-card">
+                    <h3>Preferencias de Notificaciones</h3>
+                    
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Notificaciones por Email</strong>
+                            <small>Recibe notificaciones importantes en tu correo</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="notificaciones_email" 
+                                   {% if config.notificaciones_email %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Notificaciones del Sistema</strong>
+                            <small>Muestra alertas y notificaciones en el panel</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="notificaciones_sistema" 
+                                   {% if config.notificaciones_sistema %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preferencias -->
+            <div class="config-section" data-section="preferencias">
+                <div class="config-card">
+                    <h3>Preferencias de Visualización</h3>
+                    
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Mostrar Tutorial Inicial</strong>
+                            <small>Muestra el tutorial al iniciar sesión</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="mostrar_tutorial" 
+                                   {% if config.mostrar_tutorial %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="switch-container">
+                        <div class="switch-info">
+                            <strong>Sidebar Compacta</strong>
+                            <small>Muestra el menú lateral en modo compacto</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="compactar_sidebar" 
+                                   {% if config.compactar_sidebar %}checked{% endif %}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="config-group" style="margin-top: 20px;">
+                        <label>Items por Página</label>
+                        <span class="description">Cantidad de elementos a mostrar en tablas y listados</span>
+                        <input type="number" name="items_por_pagina" 
+                               value="{{ config.items_por_pagina }}" 
+                               min="5" max="100" step="5">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 30px;">
+                <button type="submit" class="btn-save">
+                    Guardar Configuración
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Tabs
+        document.querySelectorAll('.config-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.dataset.tab;
+                
+                document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
+                
+                this.classList.add('active');
+                document.querySelector(`[data-section="${targetTab}"]`).classList.add('active');
+            });
+        });
+
+        // Theme selection
+        function selectTheme(theme) {
+            document.querySelectorAll('.theme-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            document.querySelector(`input[value="${theme}"]`).checked = true;
+            
+            // Preview theme
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+
+        // Font size preview
+        function previewFontSize(size) {
+            document.body.className = document.body.className.replace(/font-\w+/, '');
+            document.body.classList.add(`font-${size}`);
+        }
+
+        // Apply theme on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentTheme = '{{ config.tema }}';
+            if (currentTheme === 'auto') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+            }
+        });
+    </script>
+</body>
+</html>

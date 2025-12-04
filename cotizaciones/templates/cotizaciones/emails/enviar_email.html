@@ -1,0 +1,136 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enviar Cotización por Email - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📧 Enviar Cotización
+      <span class="badge">{{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">👁️ Ver Cotización</a>
+      <a href="{% url 'cotizaciones:lista' %}">📄 Lista</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Alerts -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert {{ message.tags }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card">
+      <h3>📧 Enviar Cotización por Email</h3>
+      
+      <!-- Info de la cotización -->
+      <div style="background: var(--azul-100); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <h4 style="margin: 0 0 10px;">Cotización N° {{ cotizacion.numero }}</h4>
+        <p style="margin: 5px 0;"><strong>Cliente:</strong> {{ cotizacion.get_nombre_cliente }}</p>
+        <p style="margin: 5px 0;"><strong>Referencia:</strong> {{ cotizacion.referencia|truncatewords:10 }}</p>
+        <p style="margin: 5px 0;"><strong>Valor Total:</strong> ${{ cotizacion.valor_total|floatformat:0 }}</p>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="email">Email del Cliente *</label>
+          <input 
+            type="email" 
+            id="email" 
+            name="email" 
+            required
+            value="{{ email_sugerido }}"
+            placeholder="cliente@ejemplo.com">
+          <small style="color: var(--gris-600);">
+            El cliente recibirá la cotización y podrá responder directamente desde el email
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label for="mensaje_adicional">Mensaje Adicional (Opcional)</label>
+          <textarea 
+            id="mensaje_adicional" 
+            name="mensaje_adicional" 
+            rows="5"
+            placeholder="Agregue un mensaje personalizado que se incluirá en el email..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input 
+                    type="checkbox" 
+                    name="enviar_copia" 
+                    checked
+                    style="width: auto; cursor: pointer;"
+                >
+                <span>Enviar copia a mi correo ({{ request.user.email }})</span>
+            </label>
+            <small class="muted">Recibirás una copia del email enviado al cliente</small>
+        </div>
+
+        <!-- Preview de lo que se enviará -->
+        <div style="background: var(--gris-100); padding: 16px; border-radius: 8px; margin-top: 20px;">
+          <h4 style="margin: 0 0 10px;">✅ El cliente recibirá:</h4>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li>✉️ Email con los detalles de la cotización</li>
+            <li>👁️ Enlace para ver la cotización completa</li>
+            <li>✅ Botón para aprobar la cotización</li>
+            <li>📝 Botón para solicitar cambios</li>
+            <li>❌ Botón para rechazar</li>
+          </ul>
+          <p style="margin: 10px 0 0; color: var(--gris-600); font-size: 0.9rem;">
+            <strong>Nota:</strong> Una vez enviada, recibirás una notificación automática cuando el cliente responda.
+          </p>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 30px; justify-content: flex-end;">
+          <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn secondary">
+            ❌ Cancelar
+          </a>
+          <button type="submit" class="btn success">
+            📧 Enviar Cotización
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="card">
+      <h3>ℹ️ Información Importante</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">🔒 Seguridad</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            Se generará un enlace único y seguro para que el cliente pueda responder sin necesidad de login.
+          </p>
+        </div>
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">📬 Notificaciones</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            Recibirás un email automáticamente cuando el cliente apruebe, rechace o solicite cambios.
+          </p>
+        </div>
+        <div>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">🔄 Estado</h4>
+          <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+            La cotización cambiará automáticamente a "Enviada" y no podrá ser editada hasta recibir respuesta.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

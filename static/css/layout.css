@@ -1,0 +1,265 @@
+/* ============================================
+   LAYOUT.CSS - Topbar, Sidebar, Containers
+   ============================================ */
+
+/* TOPBAR */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: linear-gradient(90deg, var(--azul-700), var(--azul-500));
+  color: var(--blanco);
+  box-shadow: var(--shadow);
+}
+
+.topbar .logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.badge {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.search {
+  max-width: 380px;
+  width: 100%;
+  position: relative;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--blanco);
+  outline: none;
+}
+
+.search input::placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-menu a {
+  color: var(--blanco);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.user-menu a:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* EMPLOYEE HEADER */
+.employee-header {
+  background: linear-gradient(135deg, var(--azul-700), var(--azul-500));
+  color: var(--blanco);
+  padding: 24px 0;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow);
+}
+
+.employee-header h1 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.employee-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1.1rem;
+}
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  background: var(--blanco);
+  border: 1px solid var(--gris-300);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  height: fit-content;
+}
+
+.contenido {
+  margin-left: 250px; /* espacio para la sidebar */
+  padding: 1.5rem;
+}
+
+.sidebar h3 {
+  margin: 0;
+  padding: 16px;
+  background: var(--azul-600);
+  color: var(--blanco);
+  font-size: 1rem;
+  letter-spacing: 0.3px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.nav a {
+  text-decoration: none;
+  color: var(--negro);
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: var(--transition);
+}
+
+.nav a:hover {
+  background: var(--gris-100);
+}
+
+.nav a.active {
+  background: var(--azul-100);
+  color: var(--azul-600);
+  font-weight: 600;
+}
+
+/* CONTAINERS & GRIDS */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  padding: 20px;
+  min-height: calc(100vh - 80px);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px; 
+  margin-bottom: 24px; /* AGREGADO */
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.funciones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ACTIONS BAR */
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.actions-left {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.actions-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .sidebar {
+    order: 2;
+  }
+  
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px; 
+  }
+}
+
+@media (max-width: 768px) {
+  .employee-header {
+    padding: 20px 0;
+  }
+
+  .employee-header h1 {
+    font-size: 1.75rem;
+  }
+  
+  .search {
+    display: none;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .cards {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .funciones-grid {
+    grid-template-columns: 1fr;
+  }
+}

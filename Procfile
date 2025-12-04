@@ -1,1 +1,1 @@
-web: gunicorn tesis2.wsgi
+web: python manage.py migrate && python manage.py collectstatic --noinput && gunicorn tesis2.wsgi --bind 0.0.0.0:$PORT

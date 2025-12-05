@@ -2362,6 +2362,29 @@ def mis_trabajos_empleado(request):
         'perfil_empleado': perfil_empleado,
         'model_exists': True,
     }
+
+    # Detectar si la petición es desde la app móvil
+    if request.headers.get('Accept') == 'application/json':
+        trabajos_data = []
+        
+        for trabajo in trabajos:
+            trabajos_data.append({
+                'id': trabajo.id,
+                'numero_cotizacion': trabajo.cotizacion.numero_cotizacion,
+                'cliente': trabajo.cotizacion.cliente.nombre,
+                'descripcion': trabajo.item_mano_obra.categoria_empleado.nombre if trabajo.item_mano_obra else 'Sin descripción',
+                'estado': trabajo.estado,
+                'fecha_asignacion': trabajo.fecha_asignacion.strftime('%Y-%m-%d') if trabajo.fecha_asignacion else None,
+                'fecha_entrega': trabajo.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.cotizacion.fecha_estimada else None,
+                'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
+                'observaciones': trabajo.observaciones_empleado or '',
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'trabajos': trabajos_data,
+            'estadisticas': stats
+        })
     
     return render(request, 'cotizaciones/mis_trabajos_empleado.html', context)
 

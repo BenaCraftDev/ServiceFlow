@@ -39,6 +39,20 @@ def login_view(request):
                 perfil = PerfilEmpleado.objects.get(user=user)
                 if perfil.activo:
                     login(request, user)
+                    
+                    # ========== DETECTAR PETICIÓN DE APP MÓVIL ==========
+                    if request.headers.get('Accept') == 'application/json':
+                        return JsonResponse({
+                            'success': True,
+                            'usuario': {
+                                'username': user.username,
+                                'nombre': user.get_full_name(),
+                                'email': user.email,
+                                'cargo': perfil.cargo
+                            }
+                        })
+                    # ========== FIN ==========
+                    
                     return redirect('home:panel_empleados')
                 else:
                     messages.error(request, 'Tu cuenta está desactivada. Contacta al administrador.')
@@ -46,6 +60,14 @@ def login_view(request):
                 messages.error(request, 'No tienes permisos de empleado.')
         else:
             messages.error(request, 'Usuario o contraseña incorrectos.')
+            
+            # ========== DETECTAR PETICIÓN DE APP MÓVIL CON ERROR ==========
+            if request.headers.get('Accept') == 'application/json':
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Usuario o contraseña incorrectos'
+                }, status=401)
+            # ========== FIN ==========
     
     return render(request, 'home/login.html')
 

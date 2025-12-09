@@ -13,7 +13,7 @@ load_dotenv()
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-in-production")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "False") == "True"
+DEBUG = os.environ.get("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'serviceflow-production.up.railway.app']
 
@@ -41,7 +41,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # IMPORTANTE: Para archivos estáticos
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -71,14 +71,29 @@ TEMPLATES = [
 WSGI_APPLICATION = 'tesis2.wsgi.application'
 
 
-# Database - PostgreSQL en Railway
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL", "sqlite:///db.sqlite3"),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+# Database - Configuración inteligente según el entorno
+# Detecta si estamos en Railway o en desarrollo local
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    # PRODUCCIÓN: Railway (usa DATABASE_URL automáticamente)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get("DATABASE_URL"),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    # DESARROLLO LOCAL: Usa la configuración local antigua
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'electromecanicos_db',
+            'USER': 'django_user',
+            'PASSWORD': '246eb866f69f',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

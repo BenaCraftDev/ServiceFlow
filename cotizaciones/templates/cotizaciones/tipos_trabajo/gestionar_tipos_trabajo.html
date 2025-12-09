@@ -1,0 +1,633 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestionar Tipos de Trabajo - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+      <!-- Alerts -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert {{ message.tags }}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- Estadísticas -->
+      <div class="cards">
+        <div class="card" id="kpi-total" style="margin: 0;">
+          <h4>Total Tipos</h4>
+          <div class="kpi" id="stat-total">-</div>
+          <div class="muted">Registrados</div>
+        </div>
+        <div class="card" id="kpi-activos" style="margin: 0;">
+          <h4>Activos</h4>
+          <div class="kpi" id="stat-activos">-</div>
+          <div class="muted">En uso</div>
+        </div>
+        <div class="card" id="kpi-inactivos" style="margin: 0;">
+          <h4>Inactivos</h4>
+          <div class="kpi" id="stat-inactivos">-</div>
+          <div class="muted">Deshabilitados</div>
+        </div>
+        <div class="card" id="kpi-cotizaciones" style="margin: 0;">
+          <h4>Cotizaciones</h4>
+          <div class="kpi" id="stat-cotizaciones">-</div>
+          <div class="muted">Asociadas</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">Tipos de Trabajo</h1>
+        </div>
+        <div class="actions-right">
+          <div class="dropdown-export" style="position: relative; display: inline-block;">
+            <button type="button" class="btn secondary" onclick="toggleExportMenu('export-tipos')">
+              📥 Exportar
+            </button>
+            <div id="export-tipos" class="export-menu" style="display: none;">
+              <a href="{% url 'cotizaciones:exportar_tipos_trabajo' %}?formato=excel{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
+                📊 Exportar a Excel
+              </a>
+              <a href="{% url 'cotizaciones:exportar_tipos_trabajo' %}?formato=csv{% if estado_filtro %}&estado={{ estado_filtro }}{% endif %}">
+                📄 Exportar a CSV
+              </a>
+            </div>
+          </div>
+          <button type="button" class="btn" onclick="mostrarModal('modal-tipo')">
+            ➕ Nuevo Tipo de Trabajo
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filtro-estado">Estado</label>
+          <select id="filtro-estado">
+            <option value="">Todos</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="busqueda">Buscar Tipo</label>
+          <input type="text" id="busqueda" name="busqueda" value="{{ busqueda }}" 
+                placeholder="Nombre, descripción...">
+        </div>
+        
+        <div class="filter-group" style="align-self: end;">
+          <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+            🗑️ Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabla de Tipos -->
+      <div class="table-wrap">
+        <table id="tabla-tipos">
+          <thead>
+            <tr>
+              <th>Tipo de Trabajo</th>
+              <th>Descripción</th>
+              <th>Estado</th>
+              <th>Cotizaciones</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tipo in tipos %}
+            <tr data-estado="{% if tipo.activo %}activo{% else %}inactivo{% endif %}"
+                data-cotizaciones="{{ tipo.cotizacion_set.count }}">
+              <td>
+                <strong style="color: var(--azul-700); font-size: 1rem;">{{ tipo.nombre }}</strong>
+              </td>
+              <td>
+                <div style="font-size: 0.9rem; color: var(--gris-600);">
+                  {% if tipo.descripcion %}
+                    {{ tipo.descripcion|truncatewords:20 }}
+                  {% else %}
+                    <span style="font-style: italic; color: var(--gris-500);">Sin descripción</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td>
+                <span class="pill {% if tipo.activo %}activo{% else %}inactivo{% endif %}">
+                  {% if tipo.activo %}✓ Activo{% else %}✗ Inactivo{% endif %}
+                </span>
+              </td>
+              <td>
+                <span class="pill enviada">{{ tipo.cotizacion_set.count }} cotizaciones</span>
+              </td>
+              <td>
+                <div style="display: flex; gap: 4px;">
+                  <button type="button" class="btn small secondary" 
+                          onclick="editarTipo({{ tipo.id }})" title="Editar">
+                    ✏️ Editar
+                  </button>
+                  {% if tipo.cotizacion_set.count == 0 %}
+                    <button type="button" class="btn small danger" 
+                            onclick="eliminarTipo({{ tipo.id }}, '{{ tipo.nombre }}')" title="Eliminar">
+                      🗑️ Eliminar
+                    </button>
+                  {% else %}
+                    <button type="button" class="btn small secondary" 
+                            onclick="alert('No se puede eliminar: hay {{ tipo.cotizacion_set.count }} cotizaciones asociadas')" 
+                            title="No se puede eliminar" disabled style="opacity: 0.5;">
+                      🔒 Bloqueado
+                    </button>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                {% if busqueda or estado_filtro %}
+                  No se encontraron tipos de trabajo que coincidan con los filtros aplicados.
+                {% else %}
+                  No hay tipos de trabajo registrados aún.
+                {% endif %}
+                <br><br>
+                <button type="button" class="btn" onclick="mostrarModal('modal-tipo')">
+                  Crear Primer Tipo de Trabajo
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Información de ayuda -->
+      <div class="card">
+        <h3>💡 Información sobre Tipos de Trabajo</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+          <div>
+            <h4 style="color: var(--azul-600); margin: 0 0 8px;">🔧 ¿Qué son?</h4>
+            <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+              Los tipos de trabajo clasifican las cotizaciones según el servicio principal (ej: Riego, Pozos Profundos, Instalación Eléctrica).
+            </p>
+          </div>
+          <div>
+            <h4 style="color: var(--azul-600); margin: 0 0 8px;">📋 Uso en Cotizaciones</h4>
+            <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+              Al crear una cotización, se debe seleccionar un tipo de trabajo para categorizar el proyecto.
+            </p>
+          </div>
+          <div>
+            <h4 style="color: var(--azul-600); margin: 0 0 8px;">⚠️ Eliminación</h4>
+            <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
+              Solo se pueden eliminar tipos de trabajo que no tengan cotizaciones asociadas.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  <!-- Modal Crear/Editar Tipo de Trabajo -->
+  <div id="modal-tipo" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="modal-tipo-titulo">➕ Nuevo Tipo de Trabajo</h3>
+        <button type="button" class="close" onclick="cerrarModal('modal-tipo')">&times;</button>
+      </div>
+      
+      <form method="post" id="form-tipo" action="{% url 'cotizaciones:crear_tipo_trabajo' %}">
+        {% csrf_token %}
+        <input type="hidden" id="tipo-id" name="tipo_id">
+        
+        <div class="form-group">
+          <label for="tipo-nombre">Nombre del Tipo de Trabajo *</label>
+          <input type="text" id="tipo-nombre" name="nombre" required 
+                 placeholder="ej: Sistema de Riego, Pozo Profundo, Instalación Eléctrica"
+                 maxlength="100">
+          <small style="color: var(--gris-600);">
+            Nombre descriptivo y conciso del tipo de trabajo
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label for="tipo-descripcion">Descripción</label>
+          <textarea id="tipo-descripcion" name="descripcion" rows="4" 
+                    placeholder="Descripción detallada del tipo de trabajo (opcional)"></textarea>
+          <small style="color: var(--gris-600);">
+            Información adicional sobre este tipo de trabajo
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="tipo-activo" name="activo" checked>
+            <span>Tipo de Trabajo Activo</span>
+          </label>
+          <small style="color: var(--gris-600); margin-left: 28px;">
+            Solo los tipos activos aparecerán disponibles al crear cotizaciones
+          </small>
+        </div>
+        
+        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+          <button type="button" class="btn secondary" onclick="cerrarModal('modal-tipo')">
+            Cancelar
+          </button>
+          <button type="submit" class="btn success" id="btn-guardar-tipo">
+            ✓ Guardar Tipo
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="{% static 'cotizaciones/js/main.js' %}"></script>
+  <script>
+    // ===== FUNCIONES MODALES =====
+    
+    function mostrarModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+    
+    function cerrarModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = 'auto';
+        
+        // Limpiar formulario si es el modal de tipo
+        if (modalId === 'modal-tipo') {
+          limpiarFormularioTipo();
+        }
+      }
+    }
+    
+    function limpiarFormularioTipo() {
+      document.getElementById('form-tipo').action = "{% url 'cotizaciones:crear_tipo_trabajo' %}";
+      document.getElementById('modal-tipo-titulo').textContent = '➕ Nuevo Tipo de Trabajo';
+      document.getElementById('btn-guardar-tipo').textContent = '✓ Guardar Tipo';
+      document.getElementById('tipo-id').value = '';
+      document.getElementById('tipo-nombre').value = '';
+      document.getElementById('tipo-descripcion').value = '';
+      document.getElementById('tipo-activo').checked = true;
+    }
+    
+    // ===== EDITAR TIPO =====
+    
+    function editarTipo(tipoId) {
+      fetch(`/cotizaciones/tipos-trabajo/${tipoId}/datos/`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            document.getElementById('form-tipo').action = `/cotizaciones/tipos-trabajo/${tipoId}/editar/`;
+            document.getElementById('modal-tipo-titulo').textContent = '✏️ Editar Tipo de Trabajo';
+            document.getElementById('btn-guardar-tipo').textContent = '✓ Actualizar Tipo';
+            document.getElementById('tipo-id').value = tipoId;
+            document.getElementById('tipo-nombre').value = data.tipo.nombre;
+            document.getElementById('tipo-descripcion').value = data.tipo.descripcion || '';
+            document.getElementById('tipo-activo').checked = data.tipo.activo;
+            
+            mostrarModal('modal-tipo');
+          } else {
+            alert('Error al cargar los datos del tipo de trabajo');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al cargar los datos');
+        });
+    }
+    
+    // ===== ELIMINAR TIPO =====
+    
+    function eliminarTipo(tipoId, tipoNombre) {
+      if (confirm(`¿Estás seguro de eliminar el tipo de trabajo "${tipoNombre}"?\n\nEsta acción no se puede deshacer.`)) {
+        fetch(`/cotizaciones/tipos-trabajo/${tipoId}/eliminar/`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert(data.mensaje || 'Error al eliminar el tipo de trabajo');
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('Error al eliminar el tipo de trabajo');
+        });
+      }
+    }
+    
+    // ===== CALCULAR ESTADÍSTICAS DE TIPOS DE TRABAJO =====
+    
+    function calcularEstadisticasTipos() {
+      const tabla = document.querySelector('#tabla-tipos tbody');
+      if (!tabla) return;
+      
+      const filasVisibles = Array.from(tabla.querySelectorAll('tr'))
+        .filter(f => f.style.display !== 'none' && !f.querySelector('td[colspan]'));
+      
+      let totalTipos = filasVisibles.length;
+      let tiposActivos = 0;
+      let tiposInactivos = 0;
+      let totalCotizaciones = 0;
+
+      filasVisibles.forEach(fila => {
+        // Verificar estado (activo/inactivo)
+        const estado = fila.getAttribute('data-estado');
+        if (estado === 'activo') {
+          tiposActivos++;
+        } else if (estado === 'inactivo') {
+          tiposInactivos++;
+        }
+        
+        // Sumar cotizaciones
+        const numCotizaciones = parseInt(fila.getAttribute('data-cotizaciones')) || 0;
+        totalCotizaciones += numCotizaciones;
+      });
+
+      // Actualizar KPIs
+      const statTotal = document.getElementById('stat-total');
+      const statActivos = document.getElementById('stat-activos');
+      const statInactivos = document.getElementById('stat-inactivos');
+      const statCotizaciones = document.getElementById('stat-cotizaciones');
+      
+      if (statTotal) statTotal.textContent = totalTipos;
+      if (statActivos) statActivos.textContent = tiposActivos;
+      if (statInactivos) statInactivos.textContent = tiposInactivos;
+      if (statCotizaciones) statCotizaciones.textContent = totalCotizaciones;
+    }
+    
+    // ===== SISTEMA DE FILTROS =====
+    
+    function aplicarFiltros() {
+      const busqueda = document.getElementById('busqueda').value.toLowerCase();
+      const estado = document.getElementById('filtro-estado').value;
+      
+      const filas = document.querySelectorAll('#tabla-tipos tbody tr[data-estado]');
+      let visibles = 0;
+      
+      filas.forEach(fila => {
+        const texto = fila.textContent.toLowerCase();
+        const estadoFila = fila.getAttribute('data-estado');
+        
+        let mostrar = true;
+        
+        // Filtro de búsqueda
+        if (busqueda && !texto.includes(busqueda)) {
+          mostrar = false;
+        }
+        
+        // Filtro de estado
+        if (estado && estadoFila !== estado) {
+          mostrar = false;
+        }
+        
+        fila.style.display = mostrar ? '' : 'none';
+        if (mostrar) visibles++;
+      });
+      
+      actualizarMensajeSinResultados(visibles);
+      calcularEstadisticasTipos(); // ACTUALIZAR ESTADÍSTICAS DESPUÉS DE FILTRAR
+    }
+    
+    function actualizarMensajeSinResultados(visibles) {
+      const tbody = document.querySelector('#tabla-tipos tbody');
+      let filaMensaje = tbody.querySelector('.fila-sin-resultados');
+      
+      if (visibles === 0) {
+        if (!filaMensaje) {
+          filaMensaje = document.createElement('tr');
+          filaMensaje.className = 'fila-sin-resultados';
+          filaMensaje.innerHTML = `
+            <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+              No se encontraron tipos de trabajo que coincidan con los filtros aplicados.
+              <br><br>
+              <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+                Limpiar Filtros
+              </button>
+            </td>
+          `;
+          tbody.appendChild(filaMensaje);
+        }
+      } else if (filaMensaje) {
+        filaMensaje.remove();
+      }
+    }
+    
+    function limpiarFiltros() {
+      document.getElementById('busqueda').value = '';
+      document.getElementById('filtro-estado').value = '';
+      
+      // Limpiar visuales de KPIs
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+      
+      aplicarFiltros();
+    }
+    
+    // ===== FILTROS RÁPIDOS DE KPIs =====
+    
+    function initFiltrosRapidos() {
+      const kpiTotal = document.querySelector('#kpi-total');
+      const kpiActivos = document.querySelector('#kpi-activos');
+      const kpiInactivos = document.querySelector('#kpi-inactivos');
+      const kpiCotizaciones = document.querySelector('#kpi-cotizaciones');
+      
+      const selectEstado = document.querySelector('#filtro-estado');
+      const inputBusqueda = document.querySelector('#busqueda');
+      
+      if (!kpiTotal || !selectEstado) return;
+      
+      function limpiarFiltrosVisuales() {
+        document.querySelectorAll('.cards .card').forEach(card => {
+          card.classList.remove('active');
+        });
+      }
+      
+      function limpiarTodosFiltros() {
+        if (inputBusqueda) inputBusqueda.value = '';
+        if (selectEstado) selectEstado.value = '';
+      }
+      
+      function ejecutarFiltro() {
+        aplicarFiltros();
+      }
+      
+      // Total - Limpiar todo
+      kpiTotal.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // Activos
+      kpiActivos.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          if (selectEstado) selectEstado.value = 'activo';
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // Inactivos
+      kpiInactivos.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+        
+        const yaEstaActiva = this.classList.contains('active');
+        
+        if (yaEstaActiva) {
+          limpiarFiltrosVisuales();
+          limpiarTodosFiltros();
+          ejecutarFiltro();
+          return;
+        }
+        
+        setTimeout(() => {
+          limpiarFiltrosVisuales();
+          this.classList.add('active');
+          limpiarTodosFiltros();
+          if (selectEstado) selectEstado.value = 'inactivo';
+          ejecutarFiltro();
+        }, 100);
+      });
+      
+      // Cotizaciones - Solo mostrar info
+      kpiCotizaciones.addEventListener('click', function(e) {
+        createRipple(e, this);
+        if (navigator.vibrate) navigator.vibrate(10);
+      });
+    }
+    
+    // Efecto ripple
+    function createRipple(event, element) {
+      const ripple = document.createElement('span');
+      const rect = element.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+      
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      ripple.classList.add('ripple-effect');
+      
+      element.appendChild(ripple);
+      
+      setTimeout(() => {
+        ripple.remove();
+      }, 600);
+    }
+    
+    // ===== UTILIDADES =====
+    
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    function toggleExportMenu(menuId) {
+      const menu = document.getElementById(menuId);
+      if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+    
+    // Cerrar menu de exportar al hacer click fuera
+    document.addEventListener('click', function(event) {
+      if (!event.target.closest('.dropdown-export')) {
+        document.querySelectorAll('.export-menu').forEach(menu => {
+          menu.style.display = 'none';
+        });
+      }
+    });
+    
+    // ===== EVENT LISTENERS =====
+    
+    document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
+    document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
+    
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal.show').forEach(modal => {
+          cerrarModal(modal.id);
+        });
+      }
+    });
+    
+    // Cerrar modal al hacer click fuera
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+          cerrarModal(this.id);
+        }
+      });
+    });
+    
+    // ===== INICIALIZAR =====
+    document.addEventListener('DOMContentLoaded', function() {
+      initFiltrosRapidos();
+      calcularEstadisticasTipos(); // Calcular estadísticas al cargar
+    });
+  </script>
+</body>
+</html>

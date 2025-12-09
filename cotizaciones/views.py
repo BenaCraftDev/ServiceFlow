@@ -1359,7 +1359,299 @@ def obtener_representantes_cliente(request, cliente_id):
             'error': str(e)
         })
 
+# === Crud Tipos de Trabajo =====
+
+@login_required
+@requiere_gerente_o_superior
+def gestionar_tipos_trabajo(request):
+    """Vista principal para gestionar tipos de trabajo"""
+    
+    busqueda = request.GET.get('busqueda', '').strip()
+    estado_filtro = request.GET.get('estado', '').strip()
+    
+    # Query base
+    tipos = TipoTrabajo.objects.all()
+    
+    # Aplicar filtros
+    if busqueda:
+        tipos = tipos.filter(
+            Q(nombre__icontains=busqueda) |
+            Q(descripcion__icontains=busqueda)
+        )
+    
+    if estado_filtro == 'activo':
+        tipos = tipos.filter(activo=True)
+    elif estado_filtro == 'inactivo':
+        tipos = tipos.filter(activo=False)
+    
+    # Estadísticas
+    tipos_activos = TipoTrabajo.objects.filter(activo=True).count()
+    tipos_inactivos = TipoTrabajo.objects.filter(activo=False).count()
+    cotizaciones_count = Cotizacion.objects.count()
+    
+    # Prefetch para optimizar consultas
+    tipos = tipos.prefetch_related('cotizacion_set').order_by('nombre')
+    
+    context = {
+        'tipos': tipos,
+        'tipos_activos': tipos_activos,
+        'tipos_inactivos': tipos_inactivos,
+        'cotizaciones_count': cotizaciones_count,
+        'busqueda': busqueda,
+        'estado_filtro': estado_filtro,
+    }
+    
+    return render(request, 'cotizaciones/tipos_trabajo/gestionar_tipos_trabajo.html', context)
+
+@login_required
+@requiere_gerente_o_superior
+def crear_tipo_trabajo(request):
+    """Crear nuevo tipo de trabajo"""
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        activo = request.POST.get('activo') == 'on'
+        
+        if not nombre:
+            messages.error(request, 'El nombre del tipo de trabajo es obligatorio')
+            return redirect('cotizaciones:gestionar_tipos_trabajo')
+        
+        # Verificar si ya existe
+        if TipoTrabajo.objects.filter(nombre__iexact=nombre).exists():
+            messages.error(request, f'Ya existe un tipo de trabajo con el nombre "{nombre}"')
+            return redirect('cotizaciones:gestionar_tipos_trabajo')
+        
+        try:
+            tipo = TipoTrabajo.objects.create(
+                nombre=nombre,
+                descripcion=descripcion if descripcion else None,
+                activo=activo
+            )
+            
+            messages.success(request, f'Tipo de trabajo "{tipo.nombre}" creado exitosamente')
+            
+            # Crear notificación
+            crear_notificacion(
+                request.user,
+                tipo='success',
+                titulo='Tipo de Trabajo Creado',
+                mensaje=f'Se ha creado el tipo de trabajo "{tipo.nombre}"',
+                url=f'/cotizaciones/tipos-trabajo/'
+            )
+            
+        except Exception as e:
+            messages.error(request, f'Error al crear el tipo de trabajo: {str(e)}')
+        
+        return redirect('cotizaciones:gestionar_tipos_trabajo')
+    
+    return redirect('cotizaciones:gestionar_tipos_trabajo')
+
+@login_required
+@requiere_gerente_o_superior
+def editar_tipo_trabajo(request, tipo_id):
+    """Editar tipo de trabajo existente"""
+    tipo = get_object_or_404(TipoTrabajo, id=tipo_id)
+    
+    if request.method == 'POST':
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        activo = request.POST.get('activo') == 'on'
+        
+        if not nombre:
+            messages.error(request, 'El nombre del tipo de trabajo es obligatorio')
+            return redirect('cotizaciones:gestionar_tipos_trabajo')
+        
+        # Verificar si el nuevo nombre ya existe (excepto el actual)
+        if TipoTrabajo.objects.filter(nombre__iexact=nombre).exclude(id=tipo_id).exists():
+            messages.error(request, f'Ya existe otro tipo de trabajo con el nombre "{nombre}"')
+            return redirect('cotizaciones:gestionar_tipos_trabajo')
+        
+        try:
+            tipo.nombre = nombre
+            tipo.descripcion = descripcion if descripcion else None
+            tipo.activo = activo
+            tipo.save()
+            
+            messages.success(request, f'Tipo de trabajo "{tipo.nombre}" actualizado exitosamente')
+            
+            # Crear notificación
+            crear_notificacion(
+                request.user,
+                tipo='info',
+                titulo='Tipo de Trabajo Actualizado',
+                mensaje=f'Se ha actualizado el tipo de trabajo "{tipo.nombre}"',
+                url=f'/cotizaciones/tipos-trabajo/'
+            )
+            
+        except Exception as e:
+            messages.error(request, f'Error al actualizar el tipo de trabajo: {str(e)}')
+        
+        return redirect('cotizaciones:gestionar_tipos_trabajo')
+    
+    return redirect('cotizaciones:gestionar_tipos_trabajo')
+
+@login_required
+@requiere_gerente_o_superior
+def obtener_datos_tipo_trabajo(request, tipo_id):
+    """Obtener datos de un tipo de trabajo para edición (JSON)"""
+    try:
+        tipo = TipoTrabajo.objects.get(id=tipo_id)
+        
+        data = {
+            'success': True,
+            'tipo': {
+                'id': tipo.id,
+                'nombre': tipo.nombre,
+                'descripcion': tipo.descripcion or '',
+                'activo': tipo.activo,
+            }
+        }
+        return JsonResponse(data)
+        
+    except TipoTrabajo.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Tipo de trabajo no encontrado'
+        }, status=404)
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["POST"])
+def eliminar_tipo_trabajo(request, tipo_id):
+    """Eliminar tipo de trabajo"""
+    try:
+        tipo = TipoTrabajo.objects.get(id=tipo_id)
+        
+        # Verificar si tiene cotizaciones asociadas
+        if tipo.cotizacion_set.exists():
+            return JsonResponse({
+                'success': False,
+                'mensaje': f'No se puede eliminar: el tipo de trabajo "{tipo.nombre}" tiene {tipo.cotizacion_set.count()} cotizaciones asociadas'
+            })
+        
+        nombre = tipo.nombre
+        tipo.delete()
+        
+        messages.success(request, f'Tipo de trabajo "{nombre}" eliminado exitosamente')
+        
+        # Crear notificación
+        crear_notificacion(
+            request.user,
+            tipo='warning',
+            titulo='Tipo de Trabajo Eliminado',
+            mensaje=f'Se ha eliminado el tipo de trabajo "{nombre}"',
+            url=f'/cotizaciones/tipos-trabajo/'
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'mensaje': 'Tipo de trabajo eliminado exitosamente'
+        })
+        
+    except TipoTrabajo.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'mensaje': 'Tipo de trabajo no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Error al eliminar: {str(e)}'
+        }, status=500)
+
+@login_required
+@requiere_gerente_o_superior
+def exportar_tipos_trabajo(request):
+    """Exportar tipos de trabajo a Excel o CSV"""
+    
+    formato = request.GET.get('formato', 'excel')
+    estado_filtro = request.GET.get('estado', '').strip()
+    
+    # Query
+    tipos = TipoTrabajo.objects.all()
+    
+    if estado_filtro == 'activo':
+        tipos = tipos.filter(activo=True)
+    elif estado_filtro == 'inactivo':
+        tipos = tipos.filter(activo=False)
+    
+    tipos = tipos.order_by('nombre')
+    
+    if formato == 'csv':
+        # Exportar CSV
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="tipos_trabajo_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+        
+        # BOM para UTF-8
+        response.write('\ufeff')
+        
+        writer = csv.writer(response)
+        writer.writerow(['Nombre', 'Descripción', 'Estado', 'Cotizaciones Asociadas'])
+        
+        for tipo in tipos:
+            writer.writerow([
+                tipo.nombre,
+                tipo.descripcion or '',
+                'Activo' if tipo.activo else 'Inactivo',
+                tipo.cotizacion_set.count()
+            ])
+        
+        return response
+    
+    else:
+        # Exportar Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Tipos de Trabajo"
+        
+        # Estilos
+        header_fill = PatternFill(start_color='2575C0', end_color='2575C0', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF', size=12)
+        border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
+        
+        # Headers
+        headers = ['Nombre', 'Descripción', 'Estado', 'Cotizaciones Asociadas']
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.value = header
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = border
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Datos
+        for row_num, tipo in enumerate(tipos, 2):
+            ws.cell(row=row_num, column=1, value=tipo.nombre).border = border
+            ws.cell(row=row_num, column=2, value=tipo.descripcion or '').border = border
+            ws.cell(row=row_num, column=3, value='Activo' if tipo.activo else 'Inactivo').border = border
+            ws.cell(row=row_num, column=4, value=tipo.cotizacion_set.count()).border = border
+        
+        # Ajustar anchos
+        ws.column_dimensions['A'].width = 30
+        ws.column_dimensions['B'].width = 50
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 20
+        
+        # Guardar
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="tipos_trabajo_{timezone.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+        
+        return response
+
 # === Crud Servicios === 
+
 @login_required
 @requiere_gerente_o_superior
 @require_http_methods(["POST"])
@@ -1597,8 +1889,8 @@ def gestionar_parametros_servicio(request, servicio_id):
     
     return render(request, 'cotizaciones/gestionar_parametros.html', context)
 
-
 # === Crud Materiales === 
+
 @login_required
 @requiere_gerente_o_superior
 @require_http_methods(["POST"])
@@ -2462,7 +2754,7 @@ def completar_trabajo_empleado(request, trabajo_id):
             'success': False,
             'error': str(e)
         })
-    
+
 # === Reportes ===
 
 @login_required
@@ -2665,7 +2957,7 @@ def datos_dashboard_reportes(request):
         return JsonResponse(data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    
+
 @login_required
 @requiere_gerente_o_superior
 def reportes_dashboard(request):
@@ -4296,7 +4588,6 @@ def lista_prestamos(request):
     
     return render(request, 'cotizaciones/prestamos/lista_prestamos.html', context)
 
-
 @login_required
 @requiere_gerente_o_superior
 @require_http_methods(["POST"])
@@ -4340,7 +4631,6 @@ def crear_prestamo(request):
             'error': str(e)
         })
 
-
 @login_required
 @requiere_gerente_o_superior
 def obtener_datos_prestamo(request, pk):
@@ -4360,7 +4650,6 @@ def obtener_datos_prestamo(request, pk):
             'observaciones': prestamo.observaciones or ''
         }
     })
-
 
 @login_required
 @requiere_gerente_o_superior
@@ -4388,7 +4677,6 @@ def editar_prestamo(request, pk):
             'success': False,
             'error': str(e)
         })
-
 
 @login_required
 @requiere_gerente_o_superior
@@ -4442,7 +4730,6 @@ def eliminar_prestamo(request, pk):
             'error': str(e)
         }, status=500)
 
-
 @login_required
 def verificar_material_disponible(request):
     """Verifica si un material está disponible (activo)"""
@@ -4477,7 +4764,6 @@ def verificar_material_disponible(request):
     
     except Material.DoesNotExist:
         return JsonResponse({'disponible': False, 'mensaje': 'Material no encontrado'})
-
 
 @login_required
 @requiere_gerente_o_superior

@@ -95,6 +95,14 @@ urlpatterns = [
     path('<int:cotizacion_pk>/item-mano-obra/<int:item_pk>/empleado/agregar/', views.agregar_empleado_mano_obra, name='agregar_empleado_mano_obra'),
     path('<int:cotizacion_pk>/item-mano-obra/<int:item_pk>/empleado/<int:empleado_id>/eliminar/', views.eliminar_empleado_mano_obra, name='eliminar_empleado_mano_obra'),
     
+    # Tipos de Trabajo
+    path('tipos-trabajo/', views.gestionar_tipos_trabajo, name='gestionar_tipos_trabajo'),
+    path('tipos-trabajo/crear/', views.crear_tipo_trabajo, name='crear_tipo_trabajo'),
+    path('tipos-trabajo/<int:tipo_id>/editar/', views.editar_tipo_trabajo, name='editar_tipo_trabajo'),
+    path('tipos-trabajo/<int:tipo_id>/datos/', views.obtener_datos_tipo_trabajo, name='obtener_datos_tipo_trabajo'),
+    path('tipos-trabajo/<int:tipo_id>/eliminar/', views.eliminar_tipo_trabajo, name='eliminar_tipo_trabajo'),
+    path('tipos-trabajo/exportar/', views.exportar_tipos_trabajo, name='exportar_tipos_trabajo'),
+
     # Vista de empleados - Sus trabajos
     path('mis-trabajos/', views.mis_trabajos_empleado, name='mis_trabajos_empleado'),
     path('trabajo/<int:trabajo_id>/actualizar/', views.actualizar_trabajo_empleado, name='actualizar_trabajo_empleado'),

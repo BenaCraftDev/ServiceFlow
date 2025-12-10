@@ -6,7 +6,7 @@
   
   <div class="notification-dropdown" id="notificationDropdown">
     <div class="notification-header">
-      <h4>Notificaciones</h4>
+      <h4>🔔 Notificaciones</h4>
       <button class="btn-mark-all" id="markAllRead" type="button">Marcar todas como leídas</button>
     </div>
     
@@ -18,7 +18,7 @@
     </div>
     
     <div class="notification-footer">
-      <a href="{% url 'notificaciones:lista' %}">Ver todas las notificaciones</a>
+      <a href="{% url 'notificaciones:lista' %}">Ver todas las notificaciones →</a>
     </div>
   </div>
 </div>
@@ -155,32 +155,19 @@
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  background: #eaf3ff;
+  border-left: 4px solid #1f5fa5;
 }
 
 .notification-item:hover {
-  background: #f5f7fb;
+  background: #dce9ff;
 }
 
 .notification-item:last-child {
   border-bottom: none;
 }
 
-.notification-item.unread {
-  background: #eaf3ff;
-  border-left: 4px solid #1f5fa5;
-}
-
-.notification-item.unread::after {
-  content: '';
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 8px;
-  background: #1f5fa5;
-  border-radius: 50%;
-}
+/* Sin punto azul - diferenciación por borde y fondo es suficiente */
 
 .notification-item h5 {
   margin: 0 0 4px;
@@ -189,18 +176,21 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  padding-right: 20px;
 }
 
 .notification-item p {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: 0.85rem;
   color: #1f2937;
   line-height: 1.4;
+  padding-right: 20px;
 }
 
 .notification-item small {
   font-size: 0.75rem;
-  color: #4b5563;
+  color: #1f5fa5;
+  font-weight: 600;
 }
 
 .notification-icon {
@@ -252,13 +242,26 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* Override z-index */
+.notification-wrapper {
+  z-index: 99999 !important;
+}
+
+.notification-dropdown {
+  z-index: 99999 !important;
+}
+
+.notification-dropdown.show {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
 </style>
 
 <script>
 (function() {
-  
-  
-  // Esperar a que el DOM esté completamente cargado
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initNotifications);
   } else {
@@ -266,32 +269,23 @@
   }
   
   function initNotifications() {
-    
-    
     const bell = document.getElementById('notificationBell');
     const dropdown = document.getElementById('notificationDropdown');
     const badge = document.getElementById('notificationBadge');
     const list = document.getElementById('notificationList');
     const markAllBtn = document.getElementById('markAllRead');
     
-    // Verificar que los elementos existen
     if (!bell || !dropdown || !badge || !list || !markAllBtn) {
       console.error('❌ Error: No se encontraron todos los elementos necesarios');
-      
       return;
     }
     
-    
-    
-    // URLs desde Django
     const urlObtener = "{% url 'notificaciones:obtener' %}";
     const urlMarcarTodas = "{% url 'notificaciones:marcar_todas_leidas' %}";
     const urlMarcarLeida = "/notificaciones/marcar-leida/";
   
-    
     let notificaciones = [];
     
-    // Obtener iconos según tipo
     function getIconoTipo(tipo) {
       const iconos = {
         'info': 'ℹ️',
@@ -302,7 +296,6 @@
       return iconos[tipo] || 'ℹ️';
     }
     
-    // Obtener CSRF token
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {
@@ -320,19 +313,13 @@
     
     const csrftoken = getCookie('csrftoken');
     
-    
-    // Cargar notificaciones
     function cargarNotificaciones() {
-      
-      
       fetch(urlObtener)
         .then(res => {
-          
           if (!res.ok) throw new Error('Error en la red: ' + res.status);
           return res.json();
         })
         .then(data => {
-          
           notificaciones = data.notificaciones;
           actualizarBadge(data.no_leidas);
           renderizarNotificaciones();
@@ -343,9 +330,7 @@
         });
     }
     
-    // Actualizar badge
     function actualizarBadge(count) {
-      
       if (count > 0) {
         badge.textContent = count > 99 ? '99+' : count;
         badge.style.display = 'flex';
@@ -354,46 +339,41 @@
       }
     }
     
-    // Renderizar notificaciones
     function renderizarNotificaciones() {
-      
-      
       if (notificaciones.length === 0) {
         list.innerHTML = `
           <div class="notification-empty">
-            <div class="notification-empty-icon">🔔</div>
-            <p>No tienes notificaciones</p>
+            <div class="notification-empty-icon">✅</div>
+            <p style="margin: 0; font-size: 0.95rem; color: var(--gris-700);">
+              <strong>Todo al día</strong><br>
+              No tienes notificaciones pendientes
+            </p>
           </div>
         `;
         return;
       }
       
       list.innerHTML = notificaciones.map(n => `
-        <div class="notification-item ${!n.leida ? 'unread' : ''}" data-id="${n.id}" data-url="${n.url || ''}">
+        <div class="notification-item" data-id="${n.id}" data-url="${n.url || ''}">
           <h5>
             <span class="notification-icon">${getIconoTipo(n.tipo)}</span>
             ${n.titulo}
           </h5>
           <p>${n.mensaje}</p>
-          <small>${n.fecha}</small>
+          <small>⏱️ ${n.hace}</small>
         </div>
       `).join('');
       
-      // Agregar eventos a cada notificación
       document.querySelectorAll('.notification-item').forEach(item => {
         item.addEventListener('click', function() {
           const id = this.dataset.id;
           const url = this.dataset.url;
-          
           marcarLeida(id, url);
         });
       });
     }
     
-    // Marcar como leída
     function marcarLeida(id, url) {
-      
-      
       fetch(`${urlMarcarLeida}${id}/`, {
         method: 'POST',
         headers: {
@@ -403,7 +383,6 @@
       })
       .then(res => res.json())
       .then(data => {
-        
         actualizarBadge(data.no_leidas);
         if (url && url !== 'null' && url !== 'None' && url !== '') {
           window.location.href = url;
@@ -416,10 +395,7 @@
       });
     }
     
-    // Marcar todas como leídas
     markAllBtn.addEventListener('click', function() {
-      
-      
       fetch(urlMarcarTodas, {
         method: 'POST',
         headers: {
@@ -429,7 +405,6 @@
       })
       .then(res => res.json())
       .then(data => {
-        
         actualizarBadge(0);
         cargarNotificaciones();
       })
@@ -438,74 +413,30 @@
       });
     });
     
-    // Toggle dropdown
     bell.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
       const isShowing = dropdown.classList.contains('show');
       
-      
       if (isShowing) {
         dropdown.classList.remove('show');
-        
       } else {
         dropdown.classList.add('show');
-        
         cargarNotificaciones();
       }
     });
     
-    // Cerrar al hacer click fuera
     document.addEventListener('click', function(e) {
       if (!bell.contains(e.target) && !dropdown.contains(e.target)) {
         if (dropdown.classList.contains('show')) {
-          
           dropdown.classList.remove('show');
         }
       }
     });
     
-    // Cargar badge inicial
-    
     cargarNotificaciones();
-    
-    // Actualizar cada 30 segundos
-    setInterval(function() {
-      
-      cargarNotificaciones();
-    }, 30000);
-    
-    
+    setInterval(cargarNotificaciones, 30000);
   }
 })();
 </script>
-
-<!-- FIX PARA MENÚ NO VISIBLE - Z-INDEX -->
-<style>
-/* Forzar que el menú esté visible y por encima de todo */
-.notification-wrapper {
-  position: relative !important;
-  z-index: 99999 !important;
-}
-
-.notification-dropdown {
-  position: absolute !important;
-  z-index: 99999 !important;
-  background: white !important;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4) !important;
-}
-
-.notification-dropdown.show {
-  display: flex !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  transform: translateY(0) !important;
-  pointer-events: auto !important;
-}
-
-/* Override para asegurar visibilidad */
-body .notification-dropdown.show {
-  z-index: 999999 !important;
-}
-</style>

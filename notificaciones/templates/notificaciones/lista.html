@@ -8,77 +8,141 @@
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
 </head>
 <body>
-  <!-- Header -->
-  <div class="topbar">
-    <div class="logo">
-      🔔 Notificaciones
-      <span class="badge">Sistema</span>
-    </div>
-    <div class="spacer"></div>
-    <div class="user-menu">
-      {% include 'notificaciones/notification_bell.html' %}
-      <a href="{% url 'home:mi_perfil' %}">{{ user.get_full_name|default:user.username }}</a>
-      <a href="{% url 'home:logout' %}">🚪 Cerrar Sesión</a>
-    </div>
-  </div>
-
-  <div class="layout">
-    <!-- Sidebar -->
-    <aside class="sidebar" aria-label="Navegación del panel">
-      <h3>☰ Navegación</h3>
-      <nav class="nav">
-        <a href="{% url 'home:panel_empleados' %}">🏠 Panel Principal</a>
-        <a href="{% url 'home:gestion_usuarios' %}">👥 Usuarios</a>
-        <a href="{% url 'cotizaciones:dashboard' %}">📊 Menu Cotizaciones</a>
-        <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
-        <a href="{% url 'cotizaciones:gestionar_clientes' %}">🤵 Clientes</a>
-        <a href="{% url 'cotizaciones:gestionar_servicios' %}">🔧 Servicios</a>
-        <a href="{% url 'cotizaciones:gestionar_materiales' %}">📦 Materiales</a>
-        <a href="{% url 'cotizaciones:gestionar_categorias_empleados' %}">👷 Mano de Obra</a>
-        <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
-        <a href="{% url 'cotizaciones:reportes_dashboard' %}">📈 Reportes Generales</a>
-      </nav>
-    </aside>
-
-    <div class="contenido"></div>
+  {% include 'notificaciones/helmet.html' %}
 
     <!-- Main Content -->
     <main>
+      <!-- Header con stats -->
+      <div class="notifications-page-header">
+        <div>
+          <h1>📬 Todas mis Notificaciones</h1>
+          <div style="display: flex; gap: 16px; margin-top: 12px;">
+            <span class="pill activo">Total: {{ stats.total }}</span>
+            <span class="pill enviada">No leídas: {{ stats.no_leidas }}</span>
+            <span class="pill aprobada">Importantes: {{ stats.importantes }}</span>
+          </div>
+        </div>
+        
+        <!-- Filtros -->
+        <div class="notification-filters">
+          <button class="filter-btn {% if filtro_actual == 'todas' %}active{% endif %}" 
+                  onclick="filtrar('todas')">
+            📋 Todas
+          </button>
+          <button class="filter-btn {% if filtro_actual == 'no_leidas' %}active{% endif %}" 
+                  onclick="filtrar('no_leidas')">
+            🔵 No leídas
+          </button>
+          <button class="filter-btn {% if filtro_actual == 'importantes' %}active{% endif %}" 
+                  onclick="filtrar('importantes')">
+            ⭐ Importantes
+          </button>
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="actions" style="margin-bottom: 20px;">
         <div class="actions-left">
-          <h2 style="margin: 0; color: var(--azul-700);">Todas mis Notificaciones</h2>
+          <button class="btn secondary" onclick="marcarTodasLeidas()">
+            ✓ Marcar todas como leídas
+          </button>
         </div>
         <div class="actions-right">
-          <button class="btn secondary" onclick="marcarTodasLeidas()">Marcar todas como leídas</button>
+          <button class="btn warning" onclick="confirmarLimpiar()">
+            🗑️ Limpiar antiguas
+          </button>
         </div>
       </div>
 
       <!-- Notificaciones Card -->
-      <div class="card">
+      <div class="notifications-page-list">
         {% if notificaciones %}
           {% for notif in notificaciones %}
-          <div class="notification-item-full {% if not notif.leida %}unread{% endif %}" data-id="{{ notif.id }}" data-url="{{ notif.url }}">
-            <div class="notif-header">
-              <h4>
-                {% if notif.tipo == 'info' %}ℹ️{% elif notif.tipo == 'success' %}✅{% elif notif.tipo == 'warning' %}⚠️{% elif notif.tipo == 'danger' %}🚨{% endif %}
-                {{ notif.titulo }}
-              </h4>
-              <span class="notif-date">{{ notif.fecha_creacion|date:"d/m/Y H:i" }}</span>
+          <div class="notification-item {% if not notif.leida %}unread{% endif %}" 
+               data-id="{{ notif.id }}" 
+               data-url="{{ notif.url }}"
+               style="padding: 20px 24px; position: relative; display: flex; gap: 12px;">
+            
+            <!-- Icono de tipo - Izquierda -->
+            <div class="notification-type-icon {{ notif.tipo }}" style="flex-shrink: 0;">
+              {% if notif.tipo == 'info' %}ℹ️
+              {% elif notif.tipo == 'success' %}✅
+              {% elif notif.tipo == 'warning' %}⚠️
+              {% elif notif.tipo == 'danger' %}🚨
+              {% endif %}
             </div>
-            <p>{{ notif.mensaje }}</p>
-            {% if notif.url %}
-            <a href="{{ notif.url }}" class="btn small secondary" onclick="marcarLeida({{ notif.id }}, event)">
-              Ver detalle →
-            </a>
-            {% endif %}
+            
+            <!-- Contenido principal -->
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding-right: 140px;">
+              
+              <!-- Fila 1: Título + Estado + (Fecha y Estrella en esquina) -->
+              <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; position: relative;">
+                <!-- Título -->
+                <h4 style="margin: 0; color: var(--azul-700); font-size: 1rem; flex: 1; min-width: 0;">
+                  🎉 {{ notif.titulo }}
+                </h4>
+                
+                <!-- Estado (Badge) -->
+                {% if not notif.leida %}
+                  <span class="pill enviada" style="font-size: 0.75rem; flex-shrink: 0;">🔵 No leída</span>
+                {% else %}
+                  <span class="pill activo" style="font-size: 0.75rem; flex-shrink: 0;">✓ Leída</span>
+                {% endif %}
+              </div>
+              
+              <!-- Fila 2: Mensaje -->
+              <p style="margin: 0 0 12px 0; color: var(--gris-800); line-height: 1.5;">
+                {{ notif.mensaje }}
+              </p>
+              
+              <!-- Fila 3: Botón "Ver detalle" + Importante badge (abajo izquierda) -->
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                  {% if notif.url %}
+                  <a href="{{ notif.url }}" 
+                     class="btn small secondary" 
+                     onclick="marcarLeida({{ notif.id }}, event)">
+                    Ver detalle →
+                  </a>
+                  {% endif %}
+                  
+                  {% if notif.importante %}
+                    <span class="pill aprobada" style="font-size: 0.75rem;">⭐ Importante</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <!-- ESQUINA SUPERIOR DERECHA: Fecha + Estrella -->
+            <div style="position: absolute; top: 20px; right: 24px; display: flex; gap: 8px; align-items: center;">
+              <!-- Fecha -->
+              <span style="font-size: 0.8rem; color: var(--gris-500); white-space: nowrap;">
+                {{ notif.fecha_creacion|date:"d/m/y H:i" }}
+              </span>
+              
+              <!-- Estrella -->
+              <button class="btn-star {% if notif.importante %}starred{% endif %}" 
+                      onclick="toggleImportante({{ notif.id }}, this); event.stopPropagation();"
+                      title="{% if notif.importante %}Quitar de importantes{% else %}Marcar como importante{% endif %}">
+                {% if notif.importante %}⭐{% else %}☆{% endif %}
+              </button>
+            </div>
+            
           </div>
           {% endfor %}
         {% else %}
-          <div style="text-align: center; padding: 60px 20px; color: var(--gris-600);">
-            <div style="font-size: 4rem; margin-bottom: 20px;">🔔</div>
-            <h3>No tienes notificaciones</h3>
-            <p>Cuando recibas notificaciones aparecerán aquí</p>
+          <div style="text-align: center; padding: 80px 20px; color: var(--gris-600);">
+            <div style="font-size: 5rem; margin-bottom: 20px;">📭</div>
+            <h3>No hay notificaciones</h3>
+            <p>
+              {% if filtro_actual == 'no_leidas' %}
+                No tienes notificaciones sin leer
+              {% elif filtro_actual == 'importantes' %}
+                No has marcado ninguna notificación como importante
+              {% else %}
+                Cuando recibas notificaciones aparecerán aquí
+              {% endif %}
+            </p>
           </div>
         {% endif %}
       </div>
@@ -86,51 +150,105 @@
   </div>
 
   <style>
-    .notification-item-full {
-      padding: 20px;
-      border-bottom: 1px solid var(--gris-300);
-      transition: all 0.3s;
+    /* NOTIFICACIÓN LEÍDA - Estilo sutil y apagado */
+    .notification-item {
+      background: var(--blanco);
+      border-left: 3px solid var(--gris-300);
+      transition: all 0.3s ease;
     }
 
-    .notification-item-full:last-child {
-      border-bottom: none;
-    }
-
-    .notification-item-full:hover {
+    .notification-item:hover {
       background: var(--gris-100);
+      border-left-color: var(--gris-400);
     }
 
-    .notification-item-full.unread {
-      background: var(--azul-100);
+    /* NOTIFICACIÓN NO LEÍDA - Destacada con azul */
+    .notification-item.unread {
+      background: linear-gradient(90deg, rgba(37, 117, 192, 0.08), var(--blanco));
       border-left: 4px solid var(--azul-600);
+      box-shadow: 0 2px 8px rgba(37, 117, 192, 0.12);
     }
 
-    .notif-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
+    .notification-item.unread:hover {
+      background: linear-gradient(90deg, rgba(37, 117, 192, 0.12), var(--gris-100));
+      border-left-color: var(--azul-700);
     }
 
-    .notif-header h4 {
-      margin: 0;
+    /* Sin punto indicador - removido para evitar confusión */
+
+    /* Títulos */
+    .notification-item h4 {
+      color: var(--gris-700);
+    }
+
+    .notification-item.unread h4 {
       color: var(--azul-700);
-      font-size: 1rem;
+      font-weight: 700;
     }
 
-    .notif-date {
-      font-size: 0.85rem;
-      color: var(--gris-500);
+    /* Mensaje */
+    .notification-item p {
+      color: var(--gris-600);
     }
 
-    .notification-item-full p {
-      margin: 8px 0;
+    .notification-item.unread p {
       color: var(--gris-800);
-      line-height: 1.5;
+    }
+
+    /* Botón de estrella - Compacto */
+    .btn-star {
+      background: transparent;
+      border: 2px solid var(--gris-400);
+      color: var(--gris-500);
+      font-size: 1.1rem;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      flex-shrink: 0;
+    }
+
+    .btn-star:hover {
+      border-color: var(--naranja-600);
+      color: var(--naranja-600);
+      transform: scale(1.1);
+      background: rgba(234, 88, 12, 0.1);
+    }
+
+    .btn-star.starred {
+      border-color: var(--naranja-600);
+      color: var(--naranja-600);
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      animation: starPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes starPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .btn-star:active {
+      transform: scale(0.95);
+    }
+
+    /* Icono de tipo - más sutil en leídas */
+    .notification-type-icon {
+      opacity: 0.6;
+      transition: opacity 0.3s ease;
+    }
+
+    .notification-item.unread .notification-type-icon {
+      opacity: 1;
     }
   </style>
 
   <script>
+    // Marcar como leída
     function marcarLeida(id, event) {
       event.preventDefault();
       fetch(`/notificaciones/marcar-leida/${id}/`, {
@@ -143,7 +261,10 @@
       });
     }
 
+    // Marcar todas como leídas
     function marcarTodasLeidas() {
+      if (!confirm('¿Marcar todas las notificaciones como leídas?')) return;
+      
       fetch("{% url 'notificaciones:marcar_todas_leidas' %}", {
         method: 'POST',
         headers: {
@@ -154,6 +275,63 @@
       });
     }
 
+    // Toggle importante (estrella)
+    function toggleImportante(id, button) {
+      event.stopPropagation();
+      
+      fetch(`/notificaciones/toggle-importante/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Actualizar UI
+          if (data.importante) {
+            button.classList.add('starred');
+            button.innerHTML = '⭐';
+            button.title = 'Quitar de importantes';
+          } else {
+            button.classList.remove('starred');
+            button.innerHTML = '☆';
+            button.title = 'Marcar como importante';
+          }
+        }
+      })
+      .catch(err => console.error('Error:', err));
+    }
+
+    // Filtrar notificaciones
+    function filtrar(tipo) {
+      window.location.href = `{% url 'notificaciones:lista' %}?filtro=${tipo}`;
+    }
+
+    // Confirmar limpieza
+    function confirmarLimpiar() {
+      if (!confirm('¿Eliminar notificaciones leídas de hace más de 6 meses (excepto importantes)?')) return;
+      
+      fetch("{% url 'notificaciones:limpiar' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert(data.mensaje);
+          location.reload();
+        }
+      })
+      .catch(err => {
+        console.error('Error:', err);
+        alert('Ocurrió un error al limpiar las notificaciones');
+      });
+    }
+
+    // Obtener CSRF token
     function getCookie(name) {
       let cookieValue = null;
       if (document.cookie && document.cookie !== '') {

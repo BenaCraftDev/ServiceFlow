@@ -17,12 +17,13 @@ def mis_trabajos_empleado(request):
             'error': 'No tienes un perfil de empleado asignado'
         }, status=403)
     
+    # CORREGIDO: item_mano_obra en lugar de mano_obra
     trabajos = TrabajoEmpleado.objects.filter(
         empleado=perfil_empleado,
-        mano_obra__cotizacion__estado='aprobada'
+        item_mano_obra__cotizacion__estado='aprobada'
     ).select_related(
-        'mano_obra__cotizacion__cliente',
-        'mano_obra__categoria_empleado'
+        'item_mano_obra__cotizacion__cliente',
+        'item_mano_obra__categoria_empleado'
     ).order_by('-id', 'estado')
     
     from django.db.models import Sum
@@ -35,12 +36,12 @@ def mis_trabajos_empleado(request):
     for trabajo in trabajos:
         trabajos_data.append({
             'id': trabajo.id,
-            'numero_cotizacion': trabajo.mano_obra.cotizacion.numero_cotizacion,
-            'cliente': trabajo.mano_obra.cotizacion.cliente.nombre,
-            'descripcion': trabajo.mano_obra.categoria_empleado.nombre,
+            'numero_cotizacion': trabajo.item_mano_obra.cotizacion.numero_cotizacion,
+            'cliente': trabajo.item_mano_obra.cotizacion.cliente.nombre,
+            'descripcion': trabajo.item_mano_obra.categoria_empleado.nombre,
             'estado': trabajo.estado,
             'fecha_asignacion': trabajo.fecha_asignacion.strftime('%Y-%m-%d') if trabajo.fecha_asignacion else None,
-            'fecha_entrega': trabajo.mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.mano_obra.cotizacion.fecha_estimada else None,
+            'fecha_entrega': trabajo.item_mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.item_mano_obra.cotizacion.fecha_estimada else None,
             'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
             'observaciones': trabajo.observaciones_empleado or '',
         })

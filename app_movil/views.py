@@ -17,14 +17,7 @@ def mis_trabajos_empleado(request):
             'error': 'No tienes un perfil de empleado asignado'
         }, status=403)
     
-    # CORREGIDO: item_mano_obra en lugar de mano_obra
-    trabajos = TrabajoEmpleado.objects.filter(
-        empleado=perfil_empleado,
-        item_mano_obra__cotizacion__estado='aprobada'
-    ).select_related(
-        'item_mano_obra__cotizacion__cliente',
-        'item_mano_obra__categoria_empleado'
-    ).order_by('-id', 'estado')
+    trabajos = TrabajoEmpleado.objects.filter(empleado=perfil_empleado).order_by('-id')
     
     from django.db.models import Sum
     trabajos_pendientes = trabajos.filter(estado='pendiente').count()
@@ -34,17 +27,20 @@ def mis_trabajos_empleado(request):
     
     trabajos_data = []
     for trabajo in trabajos:
-        trabajos_data.append({
-            'id': trabajo.id,
-            'numero_cotizacion': trabajo.item_mano_obra.cotizacion.numero_cotizacion,
-            'cliente': trabajo.item_mano_obra.cotizacion.cliente.nombre,
-            'descripcion': trabajo.item_mano_obra.categoria_empleado.nombre,
-            'estado': trabajo.estado,
-            'fecha_asignacion': trabajo.fecha_asignacion.strftime('%Y-%m-%d') if trabajo.fecha_asignacion else None,
-            'fecha_entrega': trabajo.item_mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.item_mano_obra.cotizacion.fecha_estimada else None,
-            'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
-            'observaciones': trabajo.observaciones_empleado or '',
-        })
+        try:
+            trabajos_data.append({
+                'id': trabajo.id,
+                'numero_cotizacion': trabajo.item_mano_obra.cotizacion.numero_cotizacion if trabajo.item_mano_obra else 'N/A',
+                'cliente': trabajo.item_mano_obra.cotizacion.cliente.nombre if trabajo.item_mano_obra else 'N/A',
+                'descripcion': str(trabajo.item_mano_obra) if trabajo.item_mano_obra else 'Sin descripción',
+                'estado': trabajo.estado,
+                'fecha_asignacion': trabajo.fecha_asignacion.strftime('%Y-%m-%d') if trabajo.fecha_asignacion else None,
+                'fecha_entrega': trabajo.item_mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.item_mano_obra and trabajo.item_mano_obra.cotizacion.fecha_estimada else None,
+                'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
+                'observaciones': trabajo.observaciones_empleado or '',
+            })
+        except:
+            continue
     
     return JsonResponse({
         'success': True,

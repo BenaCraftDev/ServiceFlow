@@ -7,7 +7,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('home.urls')),
     path('cotizaciones/', include('cotizaciones.urls')),
-    path('notificaciones/', include('notificaciones.urls'))
+    path('notificaciones/', include('notificaciones.urls')),
+    path('api/v1/', include('app_movil.urls')),
 ]
 
 # Servir archivos estáticos en desarrollo

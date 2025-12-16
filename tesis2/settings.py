@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'home',
     'cotizaciones',
     'notificaciones',
+    'app_movil',
 ]
 
 MIDDLEWARE = [

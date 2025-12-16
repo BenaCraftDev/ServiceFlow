@@ -34,7 +34,12 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from .utils_mantenimiento import verificar_mantenimientos_materiales
+import socket
+import logging
+from time import sleep
+from smtplib import SMTPException
 
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -3873,13 +3878,111 @@ def exportar_trabajos_excel(trabajos_list):
 
 # === Cotizaciones Ciclo de Vida ===
 
+class EmailSendError(Exception):
+    """Excepción personalizada para errores de envío de email"""
+    pass
+
+def verificar_configuracion_email():
+    """Verifica que la configuración de email esté correcta"""
+    errores = []
+    
+    if not hasattr(settings, 'EMAIL_HOST') or not settings.EMAIL_HOST:
+        errores.append("EMAIL_HOST no está configurado")
+    
+    if not hasattr(settings, 'EMAIL_PORT') or not settings.EMAIL_PORT:
+        errores.append("EMAIL_PORT no está configurado")
+    
+    if not hasattr(settings, 'DEFAULT_FROM_EMAIL') or not settings.DEFAULT_FROM_EMAIL:
+        errores.append("DEFAULT_FROM_EMAIL no está configurado")
+    
+    if hasattr(settings, 'EMAIL_BACKEND'):
+        if 'console' in settings.EMAIL_BACKEND.lower():
+            errores.append("EMAIL_BACKEND está en modo console (solo para desarrollo)")
+    
+    return len(errores) == 0, errores
+
+def enviar_email_con_reintentos(
+    subject,
+    html_content,
+    recipient_list,
+    from_email=None,
+    max_intentos=3,
+    timeout_segundos=30,
+    fail_silently=False
+):
+    """Envía un email con manejo de timeouts y reintentos"""
+    
+    if from_email is None:
+        from_email = settings.DEFAULT_FROM_EMAIL
+    
+    socket.setdefaulttimeout(timeout_segundos)
+    text_content = strip_tags(html_content)
+    
+    for intento in range(1, max_intentos + 1):
+        try:
+            logger.info(f"Intento {intento}/{max_intentos} de enviar email a {recipient_list}")
+            
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=from_email,
+                to=recipient_list
+            )
+            email.attach_alternative(html_content, "text/html")
+            email.send(fail_silently=False)
+            
+            logger.info(f"✅ Email enviado exitosamente a {recipient_list}")
+            return True, "Email enviado exitosamente"
+            
+        except socket.timeout:
+            error_msg = f"⏱️ Timeout (intento {intento}/{max_intentos})"
+            logger.warning(error_msg)
+            
+            if intento < max_intentos:
+                sleep(2 ** intento)
+                continue
+            else:
+                logger.error(f"❌ Timeout definitivo después de {max_intentos} intentos")
+                if not fail_silently:
+                    raise EmailSendError("No se pudo conectar con el servidor de email. Intente más tarde.")
+                return False, "Timeout al enviar email"
+                
+        except SMTPException as e:
+            error_msg = f"Error SMTP: {str(e)}"
+            logger.error(f"❌ {error_msg} (intento {intento}/{max_intentos})")
+            
+            if intento < max_intentos:
+                sleep(2 ** intento)
+                continue
+            else:
+                if not fail_silently:
+                    raise EmailSendError(f"Error al enviar email: {str(e)}")
+                return False, str(e)
+                
+        except Exception as e:
+            logger.error(f"❌ Error inesperado: {str(e)}")
+            if not fail_silently:
+                raise EmailSendError(f"Error al enviar email: {str(e)}")
+            return False, str(e)
+    
+    return False, "No se pudo enviar el email después de múltiples intentos"
+
 @login_required
 @requiere_gerente_o_superior
 def enviar_cotizacion_email(request, pk):
-    """
-    Vista mejorada para enviar cotización por email con manejo robusto de errores
-    """
+    """Vista mejorada para enviar cotización por email con manejo robusto de errores"""
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    
+    # Validar que tenga items
+    tiene_items = (
+        cotizacion.items_servicio.exists() or 
+        cotizacion.items_material.exists() or 
+        cotizacion.items_mano_obra.exists()
+    )
+    
+    if not tiene_items:
+        messages.error(request, 'La cotización debe tener al menos un item antes de enviarla')
+        return redirect('cotizaciones:editar', pk=pk)
     
     # Verificar que la cotización esté en estado válido para enviar
     if cotizacion.estado not in ['borrador', 'enviada']:
@@ -3911,26 +4014,72 @@ def enviar_cotizacion_email(request, pk):
             return redirect('cotizaciones:enviar_email', pk=pk)
         
         try:
+            # Generar token único para esta cotización
+            if not cotizacion.token_validacion:
+                cotizacion.generar_token()
+            
             # Construir URL base
             base_url = request.build_absolute_uri('/')[:-1]
             
-            # Determinar email para copia
-            email_copia = request.user.email if enviar_copia else None
+            # Generar URLs de respuesta
+            url_aprobar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/aprobar/"
+            url_rechazar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/rechazar/"
+            url_modificar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/modificar/"
+            url_ver = f"{base_url}/cotizaciones/ver-publica/{cotizacion.token_validacion}/"
             
-            # Mostrar mensaje de "enviando..."
-            logger.info(f"Iniciando envío de cotización {cotizacion.numero} a {email_destinatario}")
+            # Contexto para el template del cliente
+            context_cliente = {
+                'cotizacion': cotizacion,
+                'mensaje_adicional': mensaje_adicional,
+                'url_aprobar': url_aprobar,
+                'url_rechazar': url_rechazar,
+                'url_modificar': url_modificar,
+                'url_ver': url_ver,
+                'config_empresa': ConfiguracionEmpresa.get_config(),
+                'es_copia_remitente': False,
+            }
             
-            # Enviar email con manejo robusto
-            exito, mensaje, detalles = enviar_cotizacion_email_async(
-                cotizacion=cotizacion,
-                email_destinatario=email_destinatario,
-                mensaje_adicional=mensaje_adicional,
-                enviar_copia=enviar_copia,
-                email_copia=email_copia,
-                base_url=base_url
+            # Renderizar HTML
+            html_content = render_to_string(
+                'cotizaciones/emails/cotizacion_cliente.html',
+                context_cliente
             )
             
-            if exito:
+            subject = f'Cotización N° {cotizacion.numero} - {ConfiguracionEmpresa.get_config().nombre}'
+            
+            logger.info(f"Iniciando envío de cotización {cotizacion.numero} a {email_destinatario}")
+            
+            # Enviar email principal con reintentos
+            exito_principal, mensaje_principal = enviar_email_con_reintentos(
+                subject=subject,
+                html_content=html_content,
+                recipient_list=[email_destinatario],
+                max_intentos=3,
+                timeout_segundos=20,
+                fail_silently=False
+            )
+            
+            if exito_principal:
+                # Enviar copia si está activado
+                if enviar_copia and request.user.email:
+                    context_copia = context_cliente.copy()
+                    context_copia['es_copia_remitente'] = True
+                    context_copia['email_destinatario'] = email_destinatario
+                    
+                    html_content_copia = render_to_string(
+                        'cotizaciones/emails/cotizacion_cliente.html',
+                        context_copia
+                    )
+                    
+                    exito_copia, mensaje_copia = enviar_email_con_reintentos(
+                        subject=f'[COPIA] {subject}',
+                        html_content=html_content_copia,
+                        recipient_list=[request.user.email],
+                        max_intentos=2,
+                        timeout_segundos=15,
+                        fail_silently=True  # No fallar si falla la copia
+                    )
+                
                 # Actualizar cotización
                 cotizacion.estado = 'enviada'
                 cotizacion.fecha_envio = timezone.now()
@@ -3940,12 +4089,11 @@ def enviar_cotizacion_email(request, pk):
                 # Mensaje de éxito
                 mensaje_exito = f'✅ Cotización enviada exitosamente a {email_destinatario}'
                 
-                # Agregar info sobre copia si corresponde
-                if enviar_copia and email_copia:
-                    if detalles.get('email_copia', {}).get('exito', False):
-                        mensaje_exito += f' (copia enviada a {email_copia})'
+                if enviar_copia and request.user.email:
+                    if exito_copia:
+                        mensaje_exito += f' (copia enviada a {request.user.email})'
                     else:
-                        mensaje_exito += f' (la copia a {email_copia} no pudo ser enviada)'
+                        mensaje_exito += f' (la copia a {request.user.email} no pudo ser enviada)'
                 
                 messages.success(request, mensaje_exito)
                 logger.info(f"✅ Cotización {cotizacion.numero} enviada exitosamente")
@@ -3953,23 +4101,23 @@ def enviar_cotizacion_email(request, pk):
                 return redirect('cotizaciones:detalle', pk=pk)
             else:
                 # Error en el envío
-                logger.error(f"❌ Error al enviar cotización {cotizacion.numero}: {mensaje}")
+                logger.error(f"❌ Error al enviar cotización {cotizacion.numero}: {mensaje_principal}")
                 
-                # Mensajes de error más específicos según el problema
-                if 'timeout' in mensaje.lower() or 'timed out' in mensaje.lower():
+                # Mensajes de error más específicos
+                if 'timeout' in mensaje_principal.lower() or 'timed out' in mensaje_principal.lower():
                     messages.error(
                         request,
                         '⏱️ El servidor de email no respondió a tiempo. '
                         'Por favor, intente nuevamente en unos momentos. '
                         'Si el problema persiste, contacte al administrador del sistema.'
                     )
-                elif 'connection refused' in mensaje.lower():
+                elif 'connection refused' in mensaje_principal.lower():
                     messages.error(
                         request,
                         '🚫 No se pudo conectar con el servidor de email. '
                         'Verifique la configuración del sistema o contacte al administrador.'
                     )
-                elif 'authentication' in mensaje.lower():
+                elif 'authentication' in mensaje_principal.lower():
                     messages.error(
                         request,
                         '🔐 Error de autenticación con el servidor de email. '
@@ -3978,7 +4126,7 @@ def enviar_cotizacion_email(request, pk):
                 else:
                     messages.error(
                         request,
-                        f'❌ Error al enviar email: {mensaje}. '
+                        f'❌ Error al enviar email: {mensaje_principal}. '
                         'Por favor, intente nuevamente o contacte al administrador.'
                     )
                 

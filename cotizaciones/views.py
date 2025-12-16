@@ -3910,45 +3910,44 @@ def enviar_email_con_reintentos(
     timeout_segundos=30,
     fail_silently=False
 ):
-    """Envía un email con manejo de timeouts y reintentos"""
+    """Envía email usando Resend API"""
+    import resend
+    from django.conf import settings
     
+    # Obtener API key
+    api_key = os.environ.get('RESEND_API_KEY')
+    if not api_key:
+        error_msg = "RESEND_API_KEY no está configurada"
+        logger.error(error_msg)
+        if not fail_silently:
+            raise EmailSendError(error_msg)
+        return False, error_msg
+    
+    resend.api_key = api_key
+    
+    # Email de origen
     if from_email is None:
-        from_email = settings.DEFAULT_FROM_EMAIL
+        from_email = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
     
-    socket.setdefaulttimeout(timeout_segundos)
-    text_content = strip_tags(html_content)
-    
+    # Reintentos
     for intento in range(1, max_intentos + 1):
         try:
-            logger.info(f"Intento {intento}/{max_intentos} de enviar email a {recipient_list}")
+            logger.info(f"📧 Intento {intento}/{max_intentos} de enviar email vía Resend API")
             
-            email = EmailMultiAlternatives(
-                subject=subject,
-                body=text_content,
-                from_email=from_email,
-                to=recipient_list
-            )
-            email.attach_alternative(html_content, "text/html")
-            email.send(fail_silently=False)
+            params = {
+                "from": from_email,
+                "to": recipient_list,
+                "subject": subject,
+                "html": html_content,
+            }
             
-            logger.info(f"✅ Email enviado exitosamente a {recipient_list}")
+            email = resend.Emails.send(params)
+            
+            logger.info(f"✅ Email enviado exitosamente - ID: {email['id']}")
             return True, "Email enviado exitosamente"
             
-        except socket.timeout:
-            error_msg = f"⏱️ Timeout (intento {intento}/{max_intentos})"
-            logger.warning(error_msg)
-            
-            if intento < max_intentos:
-                sleep(2 ** intento)
-                continue
-            else:
-                logger.error(f"❌ Timeout definitivo después de {max_intentos} intentos")
-                if not fail_silently:
-                    raise EmailSendError("No se pudo conectar con el servidor de email. Intente más tarde.")
-                return False, "Timeout al enviar email"
-                
-        except SMTPException as e:
-            error_msg = f"Error SMTP: {str(e)}"
+        except Exception as e:
+            error_msg = f"Error Resend: {str(e)}"
             logger.error(f"❌ {error_msg} (intento {intento}/{max_intentos})")
             
             if intento < max_intentos:
@@ -3956,14 +3955,8 @@ def enviar_email_con_reintentos(
                 continue
             else:
                 if not fail_silently:
-                    raise EmailSendError(f"Error al enviar email: {str(e)}")
+                    raise EmailSendError(str(e))
                 return False, str(e)
-                
-        except Exception as e:
-            logger.error(f"❌ Error inesperado: {str(e)}")
-            if not fail_silently:
-                raise EmailSendError(f"Error al enviar email: {str(e)}")
-            return False, str(e)
     
     return False, "No se pudo enviar el email después de múltiples intentos"
 

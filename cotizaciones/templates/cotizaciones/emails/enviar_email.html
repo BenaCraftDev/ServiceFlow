@@ -6,8 +6,87 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enviar Cotización por Email - Sistema de Cotizaciones</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    /* Loading overlay */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .loading-overlay.active {
+      display: flex;
+    }
+    
+    .loading-content {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 400px;
+    }
+    
+    .loading-spinner {
+      width: 60px;
+      height: 60px;
+      border: 5px solid #e2e8f0;
+      border-top-color: var(--azul-600);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      font-size: 1.1rem;
+      color: var(--azul-700);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    
+    .loading-subtext {
+      font-size: 0.9rem;
+      color: var(--gris-600);
+    }
+    
+    /* Alerta de configuración */
+    .config-warning {
+      background: #fffbeb;
+      border: 2px solid #fbbf24;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: start;
+    }
+    
+    .config-warning-icon {
+      font-size: 1.5rem;
+      color: #f59e0b;
+    }
+  </style>
 </head>
 <body>
+  <!-- Loading overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Enviando cotización...</div>
+      <div class="loading-subtext">Esto puede tomar unos segundos. Por favor, espere.</div>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="topbar">
     <div class="logo">
@@ -22,6 +101,19 @@
   </div>
 
   <div class="container">
+    {% if not config_email_valida %}
+    <div class="config-warning">
+      <div class="config-warning-icon">⚠️</div>
+      <div>
+        <strong>Advertencia: Configuración de Email Incompleta</strong>
+        <p style="margin: 8px 0 0;">
+          El sistema de email no está completamente configurado. 
+          Es posible que el envío falle. Contacte al administrador del sistema.
+        </p>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card">
       <h3>📧 Enviar Cotización por Email</h3>
       
@@ -33,7 +125,7 @@
         <p style="margin: 5px 0;"><strong>Valor Total:</strong> ${{ cotizacion.valor_total|floatformat:0 }}</p>
       </div>
 
-      <form method="post">
+      <form method="post" id="emailForm">
         {% csrf_token %}
         
         <div class="form-group">
@@ -91,7 +183,7 @@
           <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn secondary">
             ❌ Cancelar
           </a>
-          <button type="submit" class="btn success">
+          <button type="submit" class="btn success" id="submitBtn">
             📧 Enviar Cotización
           </button>
         </div>
@@ -115,13 +207,58 @@
           </p>
         </div>
         <div>
-          <h4 style="color: var(--azul-600); margin: 0 0 8px;">🔄 Estado</h4>
+          <h4 style="color: var(--azul-600); margin: 0 0 8px;">📊 Estado</h4>
           <p style="margin: 0; color: var(--gris-600); font-size: 0.9rem;">
             La cotización cambiará automáticamente a "Enviada" y no podrá ser editada hasta recibir respuesta.
           </p>
         </div>
       </div>
     </div>
+
+    <!-- Tips para problemas comunes -->
+    <div class="card">
+      <h3>💡 Solución de Problemas</h3>
+      <div style="color: var(--gris-600); font-size: 0.9rem;">
+        <p><strong>Si el envío falla:</strong></p>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li>Verifica que el email del cliente esté correcto</li>
+          <li>Intenta nuevamente en unos segundos (puede haber problemas temporales de conexión)</li>
+          <li>Si el problema persiste, contacta al administrador del sistema</li>
+        </ul>
+        <p style="margin-top: 15px;"><strong>Tiempo de espera:</strong></p>
+        <ul style="margin: 10px 0; padding-left: 20px;">
+          <li>El envío puede tomar hasta 30 segundos</li>
+          <li>No cierres esta ventana hasta ver el mensaje de confirmación</li>
+        </ul>
+      </div>
+    </div>
   </div>
+
+  <script>
+    // Mostrar loading overlay al enviar formulario
+    document.getElementById('emailForm').addEventListener('submit', function(e) {
+      const submitBtn = document.getElementById('submitBtn');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      
+      // Deshabilitar botón
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.6';
+      submitBtn.style.cursor = 'not-allowed';
+      
+      // Mostrar loading
+      loadingOverlay.classList.add('active');
+    });
+
+    // Si hay error, permitir reenvío
+    window.addEventListener('pageshow', function(event) {
+      const submitBtn = document.getElementById('submitBtn');
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+      loadingOverlay.classList.remove('active');
+    });
+  </script>
 </body>
 </html>

@@ -166,3 +166,27 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
+
+# Timeout para emails
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 30))
+
+# Logging para emails
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'cotizaciones.email_utils': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+        'django.core.mail': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}

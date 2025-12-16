@@ -212,9 +212,7 @@ def crear_cotizacion(request):
                     from datetime import datetime
                     # Convertir string a fecha
                     cotizacion.fecha_realizacion = datetime.strptime(fecha_realizacion_str, '%Y-%m-%d').date()
-                    print(f"✅ Fecha asignada: {cotizacion.fecha_realizacion}")
                 except ValueError as e:
-                    print(f"❌ Error parseando fecha: {e}")
                     cotizacion.fecha_realizacion = None
             else:
                 cotizacion.fecha_realizacion = None
@@ -232,7 +230,6 @@ def crear_cotizacion(request):
         form = CotizacionForm()
     
     return render(request, 'cotizaciones/cotizaciones/crear.html', {'form': form})
-
 
 # Vistas para gestión de catálogos
 @login_required
@@ -3879,111 +3876,130 @@ def exportar_trabajos_excel(trabajos_list):
 @login_required
 @requiere_gerente_o_superior
 def enviar_cotizacion_email(request, pk):
-    """Enviar cotización por email al cliente"""
+    """
+    Vista mejorada para enviar cotización por email con manejo robusto de errores
+    """
     cotizacion = get_object_or_404(Cotizacion, pk=pk)
     
-    # Validar que tenga items
-    tiene_items = (
-        cotizacion.items_servicio.exists() or 
-        cotizacion.items_material.exists() or 
-        cotizacion.items_mano_obra.exists()
-    )
-    
-    if not tiene_items:
-        messages.error(request, 'La cotización debe tener al menos un item antes de enviarla')
-        return redirect('cotizaciones:editar', pk=pk)
+    # Verificar que la cotización esté en estado válido para enviar
+    if cotizacion.estado not in ['borrador', 'enviada']:
+        messages.warning(
+            request,
+            f'Esta cotización está en estado "{cotizacion.get_estado_display()}" y no puede ser enviada por email.'
+        )
+        return redirect('cotizaciones:detalle', pk=pk)
     
     if request.method == 'POST':
-        email_destinatario = request.POST.get('email')
-        mensaje_adicional = request.POST.get('mensaje_adicional', '')
-        enviar_copia = request.POST.get('enviar_copia', 'on') == 'on'  # Checkbox activado por defecto
+        email_destinatario = request.POST.get('email', '').strip()
+        mensaje_adicional = request.POST.get('mensaje_adicional', '').strip()
+        enviar_copia = request.POST.get('enviar_copia') == 'on'
         
+        # Validaciones
         if not email_destinatario:
-            messages.error(request, 'Debe ingresar un email válido')
+            messages.error(request, '❌ Debe ingresar un email válido')
+            return redirect('cotizaciones:enviar_email', pk=pk)
+        
+        # Verificar configuración de email antes de intentar enviar
+        config_valida, errores_config = verificar_configuracion_email()
+        if not config_valida:
+            logger.error(f"Configuración de email inválida: {errores_config}")
+            messages.error(
+                request,
+                '❌ La configuración de email del sistema no está completa. '
+                'Contacte al administrador.'
+            )
             return redirect('cotizaciones:enviar_email', pk=pk)
         
         try:
-            # Generar token único para esta cotización
-            cotizacion.generar_token()
-            
-            # Generar URLs de respuesta
+            # Construir URL base
             base_url = request.build_absolute_uri('/')[:-1]
-            url_aprobar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/aprobar/"
-            url_rechazar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/rechazar/"
-            url_modificar = f"{base_url}/cotizaciones/responder/{cotizacion.token_validacion}/modificar/"
-            url_ver = f"{base_url}/cotizaciones/ver-publica/{cotizacion.token_validacion}/"
             
-            # Preparar contexto para el template del cliente
-            context_cliente = {
-                'cotizacion': cotizacion,
-                'mensaje_adicional': mensaje_adicional,
-                'url_aprobar': url_aprobar,
-                'url_rechazar': url_rechazar,
-                'url_modificar': url_modificar,
-                'url_ver': url_ver,
-                'config_empresa': ConfiguracionEmpresa.get_config(),
-                'es_copia_remitente': False,
-            }
+            # Determinar email para copia
+            email_copia = request.user.email if enviar_copia else None
             
-            # Renderizar template HTML para el cliente
-            html_content_cliente = render_to_string('cotizaciones/emails/cotizacion_cliente.html', context_cliente)
-            text_content_cliente = strip_tags(html_content_cliente)
+            # Mostrar mensaje de "enviando..."
+            logger.info(f"Iniciando envío de cotización {cotizacion.numero} a {email_destinatario}")
             
-            # Crear email para el cliente
-            subject = f'Cotización N° {cotizacion.numero} - {ConfiguracionEmpresa.get_config().nombre}'
-            
-            email_cliente = EmailMultiAlternatives(
-                subject,
-                text_content_cliente,
-                settings.DEFAULT_FROM_EMAIL,
-                [email_destinatario]
+            # Enviar email con manejo robusto
+            exito, mensaje, detalles = enviar_cotizacion_email_async(
+                cotizacion=cotizacion,
+                email_destinatario=email_destinatario,
+                mensaje_adicional=mensaje_adicional,
+                enviar_copia=enviar_copia,
+                email_copia=email_copia,
+                base_url=base_url
             )
-            email_cliente.attach_alternative(html_content_cliente, "text/html")
             
-            # Enviar al cliente
-            email_cliente.send(fail_silently=False)
-            
-            # Enviar copia al remitente si está activado
-            if enviar_copia and request.user.email:
-                context_remitente = {
-                    'cotizacion': cotizacion,
-                    'mensaje_adicional': mensaje_adicional,
-                    'url_aprobar': url_aprobar,
-                    'url_rechazar': url_rechazar,
-                    'url_modificar': url_modificar,
-                    'url_ver': url_ver,
-                    'config_empresa': ConfiguracionEmpresa.get_config(),
-                    'es_copia_remitente': True,
-                    'email_destinatario': email_destinatario,
-                }
+            if exito:
+                # Actualizar cotización
+                cotizacion.estado = 'enviada'
+                cotizacion.fecha_envio = timezone.now()
+                cotizacion.email_enviado_a = email_destinatario
+                cotizacion.save()
                 
-                html_content_remitente = render_to_string('cotizaciones/emails/cotizacion_cliente.html', context_remitente)
-                text_content_remitente = strip_tags(html_content_remitente)
+                # Mensaje de éxito
+                mensaje_exito = f'✅ Cotización enviada exitosamente a {email_destinatario}'
                 
-                email_remitente = EmailMultiAlternatives(
-                    f'[COPIA] {subject}',
-                    text_content_remitente,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [request.user.email]
-                )
-                email_remitente.attach_alternative(html_content_remitente, "text/html")
-                email_remitente.send(fail_silently=True)  # No fallar si falla la copia
-            
-            # Actualizar cotización
-            cotizacion.estado = 'enviada'
-            cotizacion.fecha_envio = timezone.now()
-            cotizacion.email_enviado_a = email_destinatario
-            cotizacion.save()
-            
-            mensaje_exito = f'✅ Cotización enviada exitosamente a {email_destinatario}'
-            if enviar_copia and request.user.email:
-                mensaje_exito += f' (copia enviada a {request.user.email})'
-            messages.success(request, mensaje_exito)
-            
-            return redirect('cotizaciones:detalle', pk=pk)
+                # Agregar info sobre copia si corresponde
+                if enviar_copia and email_copia:
+                    if detalles.get('email_copia', {}).get('exito', False):
+                        mensaje_exito += f' (copia enviada a {email_copia})'
+                    else:
+                        mensaje_exito += f' (la copia a {email_copia} no pudo ser enviada)'
+                
+                messages.success(request, mensaje_exito)
+                logger.info(f"✅ Cotización {cotizacion.numero} enviada exitosamente")
+                
+                return redirect('cotizaciones:detalle', pk=pk)
+            else:
+                # Error en el envío
+                logger.error(f"❌ Error al enviar cotización {cotizacion.numero}: {mensaje}")
+                
+                # Mensajes de error más específicos según el problema
+                if 'timeout' in mensaje.lower() or 'timed out' in mensaje.lower():
+                    messages.error(
+                        request,
+                        '⏱️ El servidor de email no respondió a tiempo. '
+                        'Por favor, intente nuevamente en unos momentos. '
+                        'Si el problema persiste, contacte al administrador del sistema.'
+                    )
+                elif 'connection refused' in mensaje.lower():
+                    messages.error(
+                        request,
+                        '🚫 No se pudo conectar con el servidor de email. '
+                        'Verifique la configuración del sistema o contacte al administrador.'
+                    )
+                elif 'authentication' in mensaje.lower():
+                    messages.error(
+                        request,
+                        '🔐 Error de autenticación con el servidor de email. '
+                        'Contacte al administrador para verificar las credenciales.'
+                    )
+                else:
+                    messages.error(
+                        request,
+                        f'❌ Error al enviar email: {mensaje}. '
+                        'Por favor, intente nuevamente o contacte al administrador.'
+                    )
+                
+                return redirect('cotizaciones:enviar_email', pk=pk)
+                
+        except EmailSendError as e:
+            logger.error(f"EmailSendError al enviar cotización {cotizacion.numero}: {str(e)}")
+            messages.error(
+                request,
+                f'❌ Error al enviar email: {str(e)}. '
+                'Por favor, intente nuevamente en unos momentos.'
+            )
+            return redirect('cotizaciones:enviar_email', pk=pk)
             
         except Exception as e:
-            messages.error(request, f'Error al enviar email: {str(e)}')
+            logger.exception(f"Error inesperado al enviar cotización {cotizacion.numero}")
+            messages.error(
+                request,
+                '❌ Ocurrió un error inesperado al enviar el email. '
+                'Por favor, contacte al administrador del sistema.'
+            )
             return redirect('cotizaciones:enviar_email', pk=pk)
     
     # GET: Mostrar formulario
@@ -3991,9 +4007,16 @@ def enviar_cotizacion_email(request, pk):
     if cotizacion.cliente and cotizacion.cliente.email:
         email_sugerido = cotizacion.cliente.email
     
+    # Verificar configuración y mostrar advertencia si es necesaria
+    config_valida, errores_config = verificar_configuracion_email()
+    if not config_valida:
+        for error in errores_config:
+            messages.warning(request, f'⚠️ Problema de configuración: {error}')
+    
     context = {
         'cotizacion': cotizacion,
         'email_sugerido': email_sugerido,
+        'config_email_valida': config_valida,
     }
     return render(request, 'cotizaciones/emails/enviar_email.html', context)
 

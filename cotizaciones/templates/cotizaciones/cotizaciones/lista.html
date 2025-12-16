@@ -17,20 +17,12 @@
     </div>
     <div class="spacer"></div>
     <div class="user-menu">
-      <a onclick="window.history.back()" style="cursor: pointer;">← Volver</a>
+      <a href="{% url 'cotizaciones:dashboard' %}">📊 Menú</a>
       <a href="{% url 'home:panel_empleados' %}" >🏠 Panel</a>
     </div>
   </div>
 
   <div class="container">
-    <!-- Alerts -->
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert {{ message.tags }}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
 
     <!-- Actions -->
     <div class="actions">
@@ -151,7 +143,7 @@
             <th>Tipo</th>
             <th>Estado</th>
             <th>Valor Total</th>
-            <th>Fecha</th>
+            <th>Fecha de Creacion</th>
             <th>Acciones</th>
           </tr>
         </thead>

@@ -13,15 +13,6 @@
     <main>
       {% csrf_token %}
       
-      <!-- Alerts -->
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert {{ message.tags }}">
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
-
       <!-- Actions -->
       <div class="actions">
         <div class="actions-left">

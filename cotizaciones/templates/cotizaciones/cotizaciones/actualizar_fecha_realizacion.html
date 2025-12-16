@@ -1,0 +1,111 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Actualizar Fecha de Realización - {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📅 Actualizar Fecha de Realización
+      <span class="badge">{{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">← Volver</a>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Información de la cotización -->
+    <div class="card">
+      <h3>📋 Información de la Cotización</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Número:</span>
+          <span class="info-value"><strong>{{ cotizacion.numero }}</strong></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Cliente:</span>
+          <span class="info-value">{{ cotizacion.get_nombre_cliente }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Referencia:</span>
+          <span class="info-value">{{ cotizacion.referencia|truncatewords:10 }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Lugar:</span>
+          <span class="info-value">{{ cotizacion.lugar }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Fecha Actual:</span>
+          <span class="info-value">
+            {% if cotizacion.fecha_realizacion %}
+              <strong style="color: var(--azul-600);">{{ cotizacion.fecha_realizacion|date:"d/m/Y" }}</strong>
+            {% else %}
+              <em style="color: var(--gris-500);">No asignada</em>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerta de notificación -->
+    <div class="alert warning">
+      <span style="font-size: 1.5rem;">⚠️</span>
+      <div>
+        <strong>El cliente será notificado automáticamente</strong>
+        <br>
+        <small>Se enviará un correo electrónico al cliente informando del cambio de fecha.</small>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card">
+      <h3>📅 Nueva Fecha de Realización</h3>
+      
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <label for="{{ form.fecha_realizacion.id_for_label }}">{{ form.fecha_realizacion.label }}</label>
+          {{ form.fecha_realizacion }}
+          {% if form.fecha_realizacion.help_text %}
+            <small style="color: var(--gris-600);">{{ form.fecha_realizacion.help_text }}</small>
+          {% endif %}
+          {% if form.fecha_realizacion.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem;">
+              {{ form.fecha_realizacion.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="actions" style="margin-top: 24px;">
+          <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn secondary">
+            ❌ Cancelar
+          </a>
+          <button type="submit" class="btn success">
+            ✅ Actualizar Fecha
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="card">
+      <h3>💡 Información</h3>
+      <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+        <li>La nueva fecha reemplazará la fecha actual de realización</li>
+        <li>Se enviará automáticamente un email al cliente notificando el cambio</li>
+        <li>Se creará una notificación interna para el equipo</li>
+        <li>El cambio quedará registrado en el historial</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

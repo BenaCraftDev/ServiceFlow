@@ -200,13 +200,26 @@ def crear_cotizacion(request):
     """Crear nueva cotización"""
     if request.method == 'POST':
         form = CotizacionForm(request.POST)
-                
+        
         if form.is_valid():
             cotizacion = form.save(commit=False)
-            
             cotizacion.creado_por = request.user
-            cotizacion.save()
             
+            # ⭐ GUARDAR FECHA_REALIZACION MANUALMENTE desde request.POST
+            fecha_realizacion_str = request.POST.get('fecha_realizacion', '').strip()
+            if fecha_realizacion_str:
+                try:
+                    from datetime import datetime
+                    # Convertir string a fecha
+                    cotizacion.fecha_realizacion = datetime.strptime(fecha_realizacion_str, '%Y-%m-%d').date()
+                    print(f"✅ Fecha asignada: {cotizacion.fecha_realizacion}")
+                except ValueError as e:
+                    print(f"❌ Error parseando fecha: {e}")
+                    cotizacion.fecha_realizacion = None
+            else:
+                cotizacion.fecha_realizacion = None
+            
+            cotizacion.save()
             cotizacion.generar_numero()
             cotizacion.save()
             
@@ -219,6 +232,7 @@ def crear_cotizacion(request):
         form = CotizacionForm()
     
     return render(request, 'cotizaciones/cotizaciones/crear.html', {'form': form})
+
 
 # Vistas para gestión de catálogos
 @login_required
@@ -1201,6 +1215,135 @@ def cambiar_estado_cotizacion(request, pk):
         import traceback
         logger.error(traceback.format_exc())
         return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["GET", "POST"])
+def actualizar_fecha_realizacion(request, pk):
+    """
+    Vista para actualizar la fecha de realización de una cotización aprobada.
+    Notifica automáticamente al cliente si hay cambio.
+    """
+    cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    
+    # Verificar que está aprobada
+    if cotizacion.estado != 'aprobada':
+        messages.error(request, 'Solo se puede actualizar la fecha de cotizaciones aprobadas')
+        return redirect('cotizaciones:detalle', pk=pk)
+    
+    if request.method == 'POST':
+        form = ActualizarFechaRealizacionForm(request.POST, cotizacion=cotizacion)
+        if form.is_valid():
+            nueva_fecha = form.cleaned_data['fecha_realizacion']
+            
+            # Actualizar fecha y enviar notificaciones
+            resultado = cotizacion.actualizar_fecha_realizacion(
+                nueva_fecha=nueva_fecha,
+                usuario=request.user
+            )
+            
+            if resultado['fecha_actualizada']:
+                messages.success(request, f'Fecha de realización actualizada a {nueva_fecha.strftime("%d/%m/%Y")}')
+                
+                if resultado['email_enviado']:
+                    messages.success(request, 'Cliente notificado por email')
+                
+                if resultado['notificacion_enviada']:
+                    messages.info(request, 'Notificación interna creada')
+                
+                if resultado['error']:
+                    messages.warning(request, f'Advertencia: {resultado["error"]}')
+            else:
+                messages.info(request, 'No hubo cambios en la fecha')
+            
+            return redirect('cotizaciones:detalle', pk=pk)
+    else:
+        form = ActualizarFechaRealizacionForm(cotizacion=cotizacion)
+    
+    return render(request, 'cotizaciones/cotizaciones/actualizar_fecha_realizacion.html', {
+        'form': form,
+        'cotizacion': cotizacion
+    })
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["GET", "POST"])
+def finalizar_cotizacion(request, pk):
+    """
+    Marca una cotización como finalizada.
+    Inicia el contador de 7 días para solicitar feedback.
+    """
+    cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    
+    # Verificar que está aprobada
+    if cotizacion.estado != 'aprobada':
+        messages.error(request, 'Solo se pueden finalizar cotizaciones aprobadas')
+        return redirect('cotizaciones:detalle', pk=pk)
+    
+    if request.method == 'POST':
+        form = FinalizarCotizacionForm(request.POST)
+        if form.is_valid():
+            resultado = cotizacion.marcar_como_finalizada(usuario=request.user)
+            
+            if resultado['success']:
+                # Guardar comentarios si existen
+                comentarios = form.cleaned_data.get('comentarios_finalizacion')
+                if comentarios:
+                    if cotizacion.observaciones:
+                        cotizacion.observaciones += f"\n\n[FINALIZACIÓN - {timezone.now().strftime('%d/%m/%Y')}]\n{comentarios}"
+                    else:
+                        cotizacion.observaciones = f"[FINALIZACIÓN - {timezone.now().strftime('%d/%m/%Y')}]\n{comentarios}"
+                    cotizacion.save()
+                
+                messages.success(request, resultado['mensaje'])
+                messages.info(request, 'El sistema solicitará feedback al cliente en 7 días')
+            else:
+                messages.error(request, resultado['error'])
+            
+            return redirect('cotizaciones:detalle', pk=pk)
+    else:
+        form = FinalizarCotizacionForm()
+    
+    return render(request, 'cotizaciones/cotizaciones/finalizar_cotizacion.html', {
+        'form': form,
+        'cotizacion': cotizacion
+    })
+
+@login_required
+@requiere_gerente_o_superior
+def editar_cotizacion_aprobada(request, pk):
+    """
+    Permite editar una cotización aprobada, pero la marca como 'requiere_cambios'.
+    Esto resetea el proceso de aprobación.
+    """
+    cotizacion = get_object_or_404(Cotizacion, pk=pk)
+    
+    # Verificar que está aprobada
+    if cotizacion.estado != 'aprobada':
+        messages.error(request, 'Esta cotización no está aprobada')
+        return redirect('cotizaciones:detalle', pk=pk)
+    
+    # Confirmar la acción
+    if request.method == 'POST' and 'confirmar' in request.POST:
+        # Cambiar estado
+        cotizacion.estado = 'requiere_cambios'
+        cotizacion.save()
+        
+        # Crear notificación
+        Notificacion.objects.create(
+            usuario=cotizacion.creado_por,
+            titulo=f"Cotización {cotizacion.numero} requiere cambios",
+            mensaje=f"La cotización aprobada fue modificada y ahora requiere nueva aprobación",
+            tipo='warning',
+            url=f'/cotizaciones/{cotizacion.pk}/editar/'
+        )
+        
+        messages.warning(request, 'La cotización ahora requiere cambios. Deberá ser enviada nuevamente al cliente.')
+        return redirect('cotizaciones:editar', pk=pk)
+    
+    return render(request, 'cotizaciones/cotizaciones/confirmar_edicion_aprobada.html', {
+        'cotizacion': cotizacion
+    })
 
 # === Crud Clientes === 
 
@@ -2755,6 +2898,59 @@ def completar_trabajo_empleado(request, trabajo_id):
             'error': str(e)
         })
 
+@login_required
+def obtener_agenda_trabajos(request):
+    """
+    API para obtener trabajos programados (cotizaciones aprobadas con fecha_realizacion).
+    Los empleados ven solo sus trabajos, los admins ven todos.
+    """
+    user = request.user
+    
+    try:
+        perfil = PerfilEmpleado.objects.get(user=user)
+        es_admin = perfil.es_admin() or perfil.es_gerente_o_superior()
+    except PerfilEmpleado.DoesNotExist:
+        es_admin = False
+    
+    # Base query: cotizaciones aprobadas con fecha de realización
+    trabajos = Cotizacion.objects.filter(
+        estado='aprobada',
+        fecha_realizacion__isnull=False
+    ).select_related('cliente', 'tipo_trabajo')
+    
+    # Filtrar por empleado si no es admin
+    if not es_admin:
+        # Obtener cotizaciones donde el usuario está asignado en mano de obra
+        trabajos = trabajos.filter(
+            items_mano_obra__empleados_asignados__perfil__user=user
+        ).distinct()
+    
+    # Ordenar por fecha más cercana primero
+    trabajos = trabajos.order_by('fecha_realizacion')
+    
+    # Calcular trabajos de hoy
+    hoy = timezone.now().date()
+    trabajos_hoy = trabajos.filter(fecha_realizacion=hoy).count()
+    
+    # Serializar
+    trabajos_data = [{
+        'id': t.pk,
+        'numero': t.numero,
+        'cliente': t.get_nombre_cliente(),
+        'referencia': t.referencia,
+        'lugar': t.lugar,
+        'tipo_trabajo': t.tipo_trabajo.nombre,
+        'fecha_realizacion': t.fecha_realizacion.isoformat(),
+        'valor_total': float(t.valor_total),
+    } for t in trabajos[:50]]  # Limitar a 50 trabajos
+    
+    return JsonResponse({
+        'success': True,
+        'trabajos': trabajos_data,
+        'trabajos_hoy': trabajos_hoy,
+        'total': len(trabajos_data)
+    })
+
 # === Reportes ===
 
 @login_required
@@ -3964,6 +4160,85 @@ def reenviar_cotizacion(request, pk):
         messages.error(request, 'Esta cotización no requiere cambios')
         return redirect('cotizaciones:detalle', pk=pk)
 
+def solicitar_feedback_automatico():
+    """
+    Función para ejecutar periódicamente (cada día) que solicita feedback
+    a los clientes 7 días después de finalizar una cotización.
+    
+    EJECUTAR CON:
+    - Django management command
+    - Celery task
+    - Cron job
+    """
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    # Obtener cotizaciones finalizadas hace 7 días que no han recibido feedback
+    hace_7_dias = timezone.now().date() - timedelta(days=7)
+    
+    cotizaciones = Cotizacion.objects.filter(
+        estado='finalizada',
+        feedback_solicitado=False,
+        fecha_finalizacion__date=hace_7_dias,
+        email_enviado_a__isnull=False
+    )
+    
+    resultados = {
+        'enviados': 0,
+        'fallidos': 0,
+        'errores': []
+    }
+    
+    for cotizacion in cotizaciones:
+        resultado = cotizacion.solicitar_feedback_cliente()
+        
+        if resultado['success']:
+            resultados['enviados'] += 1
+            print(f"✅ Feedback solicitado: {cotizacion.numero}")
+        else:
+            resultados['fallidos'] += 1
+            resultados['errores'].append({
+                'cotizacion': cotizacion.numero,
+                'error': resultado['error']
+            })
+            print(f"❌ Error en {cotizacion.numero}: {resultado['error']}")
+    
+    return resultados
+
+@login_required
+@requiere_gerente_o_superior
+def ver_feedbacks_pendientes(request):
+    """
+    Vista para que los admins vean qué cotizaciones están esperando feedback.
+    """
+    # Verificar permisos
+    try:
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        if not perfil.es_gerente_o_superior():
+            messages.error(request, 'No tienes permisos para acceder a esta sección')
+            return redirect('home:panel_empleados')
+    except PerfilEmpleado.DoesNotExist:
+        messages.error(request, 'Perfil no encontrado')
+        return redirect('home:panel_empleados')
+    
+    # Cotizaciones finalizadas sin feedback
+    pendientes = Cotizacion.objects.filter(
+        estado='finalizada',
+        feedback_solicitado=False,
+        email_enviado_a__isnull=False
+    ).select_related('cliente', 'tipo_trabajo').order_by('-fecha_finalizacion')
+    
+    # Cotizaciones con feedback ya solicitado
+    solicitados = Cotizacion.objects.filter(
+        estado='finalizada',
+        feedback_solicitado=True
+    ).select_related('cliente', 'tipo_trabajo').order_by('-fecha_feedback')[:20]
+    
+    return render(request, 'cotizaciones/cotizaciones/feedbacks_pendientes.html', {
+        'pendientes': pendientes,
+        'solicitados': solicitados
+    })
+
 # === NUEVAS FUNCIONES PARA REPORTES INTERACTIVOS ===
 
 @login_required
@@ -4837,3 +5112,5 @@ def obtener_historial(request):
             'success': False,
             'error': str(e)
         })
+
+

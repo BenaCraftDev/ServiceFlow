@@ -15,6 +15,10 @@ urlpatterns = [
     path('<int:pk>/editar/', views.editar_cotizacion, name='editar'),
     path('<int:pk>/pdf/', views.generar_pdf_cotizacion, name='generar_pdf'),
     path('<int:pk>/estado/', views.cambiar_estado_cotizacion, name='cambiar_estado'),
+    path('<int:pk>/fecha-realizacion/', views.actualizar_fecha_realizacion, name='actualizar_fecha_realizacion'),
+    path('<int:pk>/finalizar/', views.finalizar_cotizacion, name='finalizar_cotizacion'),
+    path('<int:pk>/editar-aprobada/', views.editar_cotizacion_aprobada, name='editar_cotizacion_aprobada'),
+    path('feedbacks-pendientes/', views.ver_feedbacks_pendientes, name='feedbacks_pendientes'),
     
     # Gestión de items de cotización (AJAX)
     path('<int:cotizacion_pk>/item-servicio/', views.agregar_item_servicio, name='agregar_item_servicio'),
@@ -133,6 +137,7 @@ urlpatterns = [
     path('api/cotizaciones-por-servicio/', views.obtener_cotizaciones_por_servicio, name='obtener_cotizaciones_por_servicio'),
 
     # Seguimiento de trabajos
+    path('api/agenda-trabajos/', views.obtener_agenda_trabajos, name='obtener_agenda_trabajos'),
     path('seguimiento-trabajos/', views.seguimiento_trabajos_aprobados, name='seguimiento_trabajos'),
     path('seguimiento-trabajos/<int:cotizacion_id>/trabajo/<int:trabajo_id>/detalle/', views.obtener_detalle_trabajo, name='detalle_trabajo'),
     path('seguimiento-trabajos/exportar/', views.exportar_trabajos, name='exportar_trabajos'),

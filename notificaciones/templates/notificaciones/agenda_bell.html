@@ -1,0 +1,521 @@
+<div class="agenda-wrapper" id="agendaWrapper">
+  <button class="agenda-bell" id="agendaBell" type="button" aria-label="Agenda de Trabajos">
+    📅
+    <span class="agenda-badge" id="agendaBadge" style="display: none;">0</span>
+  </button>
+  
+  <div class="agenda-dropdown" id="agendaDropdown">
+    <div class="agenda-header">
+      <h4>📅 Agenda de Trabajos</h4>
+      <div class="agenda-filters">
+        <button class="filter-btn active" data-filter="all" type="button">Todos</button>
+        <button class="filter-btn" data-filter="hoy" type="button">Hoy</button>
+        <button class="filter-btn" data-filter="semana" type="button">Esta Semana</button>
+      </div>
+    </div>
+    
+    <div class="agenda-list" id="agendaList">
+      <div class="agenda-loading">
+        <div class="spinner"></div>
+        <p>Cargando trabajos...</p>
+      </div>
+    </div>
+    
+    <div class="agenda-footer">
+      <a href="{% url 'cotizaciones:seguimiento_trabajos' %}">Ver todos los trabajos →</a>
+    </div>
+  </div>
+</div>
+
+<style>
+.agenda-wrapper {
+  position: relative;
+  display: inline-block;
+  z-index: 1000;
+  margin-left: 10px;
+}
+
+.agenda-bell {
+  background: transparent;
+  border: none;
+  color: var(--blanco, #ffffff);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.agenda-bell:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: scale(1.1);
+}
+
+.agenda-bell:active {
+  animation: bellRing 0.5s ease;
+}
+
+@keyframes bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(10deg); }
+}
+
+.agenda-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #059669;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #174678;
+  animation: badgePulse 2s infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.agenda-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 420px;
+  max-height: 550px;
+  display: none;
+  flex-direction: column;
+  z-index: 9999;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.agenda-dropdown.show {
+  display: flex;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.agenda-header {
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #d1fae5, white);
+}
+
+.agenda-header h4 {
+  margin: 0 0 12px;
+  color: #065f46;
+  font-size: 1rem;
+}
+
+.agenda-filters {
+  display: flex;
+  gap: 6px;
+}
+
+.filter-btn {
+  background: white;
+  border: 1px solid #e2e8f0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #4b5563;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+}
+
+.filter-btn.active {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+.agenda-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 420px;
+}
+
+.agenda-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #4b5563;
+}
+
+.agenda-item {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: white;
+}
+
+.agenda-item:hover {
+  background: #f9fafb;
+}
+
+.agenda-item:last-child {
+  border-bottom: none;
+}
+
+.agenda-item.hoy {
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+}
+
+.agenda-item.urgente {
+  background: #fee2e2;
+  border-left: 4px solid #dc2626;
+}
+
+.agenda-item.proximo {
+  background: #dbeafe;
+  border-left: 4px solid #3b82f6;
+}
+
+.agenda-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 6px;
+}
+
+.agenda-item h5 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #1f2937;
+  font-weight: 600;
+  flex: 1;
+}
+
+.agenda-fecha {
+  font-size: 0.75rem;
+  color: #059669;
+  font-weight: 700;
+  background: #d1fae5;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.agenda-item.hoy .agenda-fecha {
+  background: #fbbf24;
+  color: #78350f;
+}
+
+.agenda-item.urgente .agenda-fecha {
+  background: #dc2626;
+  color: white;
+}
+
+.agenda-item p {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.agenda-cliente {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.agenda-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #4b5563;
+}
+
+.agenda-empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.agenda-footer {
+  padding: 12px;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+  background: #f5f7fb;
+}
+
+.agenda-footer a {
+  color: #059669;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.agenda-footer a:hover {
+  text-decoration: underline;
+}
+
+.spinner {
+  border: 3px solid #e2e8f0;
+  border-top: 3px solid #059669;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Override z-index */
+.agenda-wrapper {
+  z-index: 99999 !important;
+}
+
+.agenda-dropdown {
+  z-index: 99999 !important;
+}
+
+.agenda-dropdown.show {
+  display: flex !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .agenda-dropdown {
+    width: calc(100vw - 40px);
+    right: -120px;
+  }
+}
+</style>
+
+<script>
+(function() {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAgenda);
+  } else {
+    initAgenda();
+  }
+  
+  function initAgenda() {
+    const bell = document.getElementById('agendaBell');
+    const dropdown = document.getElementById('agendaDropdown');
+    const badge = document.getElementById('agendaBadge');
+    const list = document.getElementById('agendaList');
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    
+    if (!bell || !dropdown || !badge || !list) {
+      console.error('❌ Error: No se encontraron todos los elementos de agenda');
+      return;
+    }
+    
+    const urlObtener = "/cotizaciones/api/agenda-trabajos/";
+    
+    let trabajos = [];
+    let filtroActual = 'all';
+    
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    
+    function cargarTrabajos() {
+      fetch(urlObtener)
+        .then(res => {
+          if (!res.ok) throw new Error('Error en la red: ' + res.status);
+          return res.json();
+        })
+        .then(data => {
+          trabajos = data.trabajos;
+          actualizarBadge(data.trabajos_hoy || 0);
+          renderizarTrabajos();
+        })
+        .catch(err => {
+          console.error('❌ Error al cargar agenda:', err);
+          list.innerHTML = '<div class="agenda-empty"><p>Error al cargar trabajos</p></div>';
+        });
+    }
+    
+    function actualizarBadge(count) {
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.style.display = 'flex';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+    
+    function filtrarTrabajos() {
+      if (filtroActual === 'all') {
+        return trabajos;
+      }
+      
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      if (filtroActual === 'hoy') {
+        return trabajos.filter(t => {
+          const fecha = new Date(t.fecha_realizacion);
+          return fecha.toDateString() === hoy.toDateString();
+        });
+      }
+      
+      if (filtroActual === 'semana') {
+        const finSemana = new Date(hoy);
+        finSemana.setDate(hoy.getDate() + 7);
+        return trabajos.filter(t => {
+          const fecha = new Date(t.fecha_realizacion);
+          return fecha >= hoy && fecha <= finSemana;
+        });
+      }
+      
+      return trabajos;
+    }
+    
+    function getClasePrioridad(fecha) {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      const fechaTrabajo = new Date(fecha);
+      fechaTrabajo.setHours(0, 0, 0, 0);
+      
+      if (fechaTrabajo.toDateString() === hoy.toDateString()) {
+        return 'hoy';
+      }
+      
+      const diff = Math.ceil((fechaTrabajo - hoy) / (1000 * 60 * 60 * 24));
+      if (diff < 0) {
+        return 'urgente';
+      } else if (diff <= 3) {
+        return 'proximo';
+      }
+      return '';
+    }
+    
+    function formatearFecha(fecha) {
+      const date = new Date(fecha);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      if (date.toDateString() === hoy.toDateString()) {
+        return 'HOY';
+      }
+      
+      const diff = Math.ceil((date - hoy) / (1000 * 60 * 60 * 24));
+      
+      if (diff === 1) return 'MAÑANA';
+      if (diff === -1) return 'AYER';
+      if (diff < 0) return `${Math.abs(diff)}d ATRASADO`;
+      if (diff <= 7) return `EN ${diff}d`;
+      
+      return date.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
+    }
+    
+    function renderizarTrabajos() {
+      const trabajosFiltrados = filtrarTrabajos();
+      
+      if (trabajosFiltrados.length === 0) {
+        list.innerHTML = `
+          <div class="agenda-empty">
+            <div class="agenda-empty-icon">✅</div>
+            <p style="margin: 0; font-size: 0.95rem; color: var(--gris-700);">
+              <strong>Sin trabajos programados</strong><br>
+              No hay trabajos en el rango seleccionado
+            </p>
+          </div>
+        `;
+        return;
+      }
+      
+      list.innerHTML = trabajosFiltrados.map(t => `
+        <div class="agenda-item ${getClasePrioridad(t.fecha_realizacion)}" 
+             onclick="window.location.href='/cotizaciones/${t.id}/'">
+          <div class="agenda-item-header">
+            <h5>Cot. ${t.numero}</h5>
+            <span class="agenda-fecha">${formatearFecha(t.fecha_realizacion)}</span>
+          </div>
+          <p>${t.referencia}</p>
+          <div class="agenda-cliente">
+            <span>👤</span>
+            <span>${t.cliente}</span>
+            <span style="margin-left: auto;">📍 ${t.lugar}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Event listeners para filtros
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        filtroActual = this.dataset.filter;
+        renderizarTrabajos();
+      });
+    });
+    
+    bell.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const isShowing = dropdown.classList.contains('show');
+      
+      if (isShowing) {
+        dropdown.classList.remove('show');
+      } else {
+        dropdown.classList.add('show');
+        cargarTrabajos();
+      }
+    });
+    
+    document.addEventListener('click', function(e) {
+      if (!bell.contains(e.target) && !dropdown.contains(e.target)) {
+        if (dropdown.classList.contains('show')) {
+          dropdown.classList.remove('show');
+        }
+      }
+    });
+    
+    // Cargar al inicio
+    cargarTrabajos();
+    
+    // Actualizar cada 2 minutos
+    setInterval(cargarTrabajos, 120000);
+  }
+})();
+</script>

@@ -1,0 +1,166 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Confirmar Edición - {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      ⚠️ Confirmar Edición
+      <span class="badge">{{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">← Volver</a>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Alerta de advertencia -->
+    <div class="alert warning" style="margin-bottom: 24px;">
+      <span style="font-size: 2rem;">⚠️</span>
+      <div>
+        <strong style="font-size: 1.1rem;">Esta cotización está APROBADA por el cliente</strong>
+        <br><br>
+        <p style="margin: 8px 0 0;">
+          Al editarla, su estado cambiará a <strong>"Requiere Cambios"</strong> y deberá ser:
+        </p>
+        <ul style="margin: 12px 0 0; padding-left: 20px;">
+          <li>Modificada según los cambios necesarios</li>
+          <li>Enviada nuevamente al cliente para aprobación</li>
+          <li>Aprobada otra vez por el cliente</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Información de la cotización -->
+    <div class="card">
+      <h3>📋 Información de la Cotización</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Número:</span>
+          <span class="info-value"><strong>{{ cotizacion.numero }}</strong></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Cliente:</span>
+          <span class="info-value">{{ cotizacion.get_nombre_cliente }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Estado Actual:</span>
+          <span class="info-value">
+            <span class="pill aprobada">{{ cotizacion.get_estado_display }}</span>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Referencia:</span>
+          <span class="info-value">{{ cotizacion.referencia|truncatewords:8 }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Valor Total:</span>
+          <span class="info-value"><strong>${{ cotizacion.valor_total|floatformat:0 }}</strong></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Fecha Aprobación:</span>
+          <span class="info-value">
+            {% if cotizacion.fecha_respuesta_cliente %}
+              {{ cotizacion.fecha_respuesta_cliente|date:"d/m/Y H:i" }}
+            {% else %}
+              -
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Proceso de cambio -->
+    <div class="card">
+      <h3>🔄 Proceso de Cambio de Estado</h3>
+      <div style="display: grid; gap: 16px;">
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">1️⃣</span>
+          <div>
+            <strong>Estado actual: APROBADA</strong> <span class="pill aprobada" style="margin-left: 8px;">Aprobada</span>
+            <br>
+            <small style="color: var(--gris-600);">El cliente ha aprobado esta cotización</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">2️⃣</span>
+          <div>
+            <strong>Nuevo estado: REQUIERE CAMBIOS</strong> <span class="pill requiere_cambios" style="margin-left: 8px;">Requiere Cambios</span>
+            <br>
+            <small style="color: var(--gris-600);">Permitirá editar pero resetea el proceso de aprobación</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">3️⃣</span>
+          <div>
+            <strong>Edición y reenvío al cliente</strong>
+            <br>
+            <small style="color: var(--gris-600);">Deberás modificar lo necesario y enviarla nuevamente</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">4️⃣</span>
+          <div>
+            <strong>Nueva aprobación del cliente</strong>
+            <br>
+            <small style="color: var(--gris-600);">El cliente deberá aprobar los cambios realizados</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alternativa recomendada -->
+    <div class="card" style="background: var(--azul-100); border-color: var(--azul-500);">
+      <h3>💡 ¿Solo necesitas cambiar la fecha de realización?</h3>
+      <p style="margin: 0 0 12px;">
+        Si únicamente necesitas actualizar la fecha programada para realizar el trabajo, 
+        no es necesario editar la cotización completa. 
+      </p>
+      <a href="{% url 'cotizaciones:actualizar_fecha_realizacion' cotizacion.pk %}" class="btn" style="background: var(--azul-600);">
+        📅 Cambiar Solo la Fecha de Realización
+      </a>
+      <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--gris-600);">
+        Esta opción notifica al cliente automáticamente sin cambiar el estado de la cotización.
+      </p>
+    </div>
+
+    <!-- Formulario de confirmación -->
+    <div class="card">
+      <h3>✅ Confirmación Requerida</h3>
+      
+      <form method="post">
+        {% csrf_token %}
+        
+        <div style="background: var(--rojo-100); border: 2px solid var(--rojo-600); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+          <p style="margin: 0 0 12px; font-weight: 600; color: var(--rojo-600);">
+            ⚠️ Confirmo que:
+          </p>
+          <ul style="margin: 0; padding-left: 20px; color: var(--negro);">
+            <li>Entiendo que la cotización cambiará a "Requiere Cambios"</li>
+            <li>El cliente será notificado de los cambios</li>
+            <li>Deberé reenviar la cotización para nueva aprobación</li>
+            <li>Este cambio quedará registrado en el sistema</li>
+          </ul>
+        </div>
+
+        <div class="actions">
+          <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn secondary">
+            ❌ Cancelar
+          </a>
+          <button type="submit" name="confirmar" class="btn danger">
+            ⚠️ Confirmar y Editar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,3 +1,5 @@
+<!-- ACTUALIZAR notificaciones/templates/notificaciones/helmet.html -->
+
 <!-- Header -->
 <div class="topbar">
     <div class="logo">
@@ -6,7 +8,13 @@
     </div>
     <div class="spacer"></div>
     <div class="user-menu">
+    
+    <!-- AGENDA DE TRABAJOS -->
+    {% include 'notificaciones/agenda_bell.html' %}
+    
+    <!-- NOTIFICACIONES -->
     {% include 'notificaciones/notification_bell.html' %}
+    
     <a href="{% url 'home:mi_perfil' %}">{{ user.get_full_name|default:user.username }}</a>
     <a href="{% url 'home:logout' %}">🚪 Cerrar Sesión</a>
     </div>
@@ -31,8 +39,10 @@
             <a href="{% url 'cotizaciones:reportes_dashboard' %}" >📈 Reportes Generales</a>
             <a href="{% url 'cotizaciones:seguimiento_trabajos' %}">🔄 Seguimiento Trabajos</a>
             <a href="{% url 'cotizaciones:lista_prestamos' %}">🧰 Prestamos</a>
+            <!-- <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
+            <a href="{% url 'cotizaciones:feedbacks_pendientes' %}">📬 Feedbacks Pendientes</a> -->
         </nav>
     </aside>
     
-    <div class="contenido"></div>
+    <!-- <div class="contenido"></div> -->
 

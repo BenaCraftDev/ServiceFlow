@@ -1,0 +1,222 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feedbacks Pendientes - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  {% include 'notificaciones/helmet.html' %}
+
+  <main>
+    <div class="container">
+      
+      <h1 style="margin: 0 0 24px; color: var(--azul-700);">📬 Gestión de Feedbacks</h1>
+
+      <!-- Estadísticas -->
+      <div class="cards">
+        <div class="card">
+          <h4>⏳ Pendientes de Envío</h4>
+          <div class="kpi">{{ pendientes.count }}</div>
+          <p class="muted">Trabajos finalizados sin feedback solicitado</p>
+        </div>
+        <div class="card">
+          <h4>📧 Solicitudes Enviadas</h4>
+          <div class="kpi">{{ solicitados.count }}</div>
+          <p class="muted">Feedbacks ya solicitados a clientes</p>
+        </div>
+        <div class="card">
+          <h4>📅 Próximos 7 Días</h4>
+          <div class="kpi">
+            {% widthratio pendientes.count 1 7 %}
+          </div>
+          <p class="muted">Aproximadamente</p>
+        </div>
+        <div class="card">
+          <h4>✅ Sistema</h4>
+          <div class="kpi">Auto</div>
+          <p class="muted">Envío automático diario</p>
+        </div>
+      </div>
+
+      <!-- Pendientes de Envío -->
+      <div class="card">
+        <h3>⏳ Trabajos Finalizados Sin Feedback Solicitado</h3>
+        
+        {% if pendientes %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cotización</th>
+                  <th>Cliente</th>
+                  <th>Email</th>
+                  <th>Fecha Finalización</th>
+                  <th>Días Transcurridos</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cot in pendientes %}
+                <tr>
+                  <td>
+                    <a href="{% url 'cotizaciones:detalle' cot.pk %}" style="font-weight: 600; color: var(--azul-600);">
+                      {{ cot.numero }}
+                    </a>
+                  </td>
+                  <td>{{ cot.get_nombre_cliente }}</td>
+                  <td>
+                    <small style="color: var(--gris-600);">{{ cot.email_enviado_a }}</small>
+                  </td>
+                  <td>
+                    {{ cot.fecha_finalizacion|date:"d/m/Y" }}
+                  </td>
+                  <td>
+                    {% with dias=cot.fecha_finalizacion|timesince %}
+                      {% if "7 días" in dias or "1 semana" in dias or "semanas" in dias %}
+                        <span class="pill enviada">{{ dias }}</span>
+                      {% else %}
+                        <span class="pill borrador">{{ dias }}</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td>
+                    {% with dias_num=cot.fecha_finalizacion|timesince|slice:":1" %}
+                      {% if dias_num >= "7" %}
+                        <span style="color: var(--verde-600); font-weight: 600;">✅ Listo para enviar</span>
+                      {% else %}
+                        <span style="color: var(--naranja-600);">⏳ Esperando 7 días</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 40px; color: var(--gris-600);">
+            <div style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+            <p style="margin: 0; font-size: 1.1rem;">
+              <strong>No hay feedbacks pendientes</strong>
+              <br>
+              <small>Todos los trabajos finalizados ya tienen feedback solicitado o están esperando los 7 días</small>
+            </p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Ya Solicitados -->
+      <div class="card">
+        <h3>📧 Feedbacks Ya Solicitados (Últimos 20)</h3>
+        
+        {% if solicitados %}
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cotización</th>
+                  <th>Cliente</th>
+                  <th>Email</th>
+                  <th>Fecha Envío Feedback</th>
+                  <th>Tiempo Transcurrido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for cot in solicitados %}
+                <tr>
+                  <td>
+                    <a href="{% url 'cotizaciones:detalle' cot.pk %}" style="font-weight: 600; color: var(--azul-600);">
+                      {{ cot.numero }}
+                    </a>
+                  </td>
+                  <td>{{ cot.get_nombre_cliente }}</td>
+                  <td>
+                    <small style="color: var(--gris-600);">{{ cot.email_enviado_a }}</small>
+                  </td>
+                  <td>
+                    {{ cot.fecha_feedback|date:"d/m/Y H:i" }}
+                  </td>
+                  <td>
+                    <span class="pill success">{{ cot.fecha_feedback|timesince }} atrás</span>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div style="text-align: center; padding: 40px; color: var(--gris-600);">
+            <p style="margin: 0;">Aún no se han solicitado feedbacks</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Información del Sistema -->
+      <div class="card">
+        <h3>ℹ️ Información del Sistema Automático</h3>
+        <div style="display: grid; gap: 16px;">
+          <div style="display: flex; gap: 12px; align-items: start;">
+            <span style="font-size: 1.5rem;">⚙️</span>
+            <div>
+              <strong>Ejecución Automática</strong>
+              <br>
+              <small style="color: var(--gris-600);">
+                El sistema ejecuta el comando <code>solicitar_feedback_diario</code> cada día a las 9:00 AM mediante cron job
+              </small>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: start;">
+            <span style="font-size: 1.5rem;">📅</span>
+            <div>
+              <strong>Criterio de Envío</strong>
+              <br>
+              <small style="color: var(--gris-600);">
+                Se envía feedback exactamente 7 días después de finalizar el trabajo
+              </small>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: start;">
+            <span style="font-size: 1.5rem;">📧</span>
+            <div>
+              <strong>Contenido del Email</strong>
+              <br>
+              <small style="color: var(--gris-600);">
+                Email amigable solicitando opinión VOLUNTARIA sobre el servicio prestado
+              </small>
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; align-items: start;">
+            <span style="font-size: 1.5rem;">🔒</span>
+            <div>
+              <strong>Envío Único</strong>
+              <br>
+              <small style="color: var(--gris-600);">
+                Cada cliente recibe el feedback solo una vez por trabajo finalizado
+              </small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Testing -->
+      <div class="card" style="background: var(--azul-100); border-color: var(--azul-500);">
+        <h3>🧪 Testing Manual</h3>
+        <p style="margin: 0 0 16px;">
+          Para probar el sistema manualmente o forzar el envío:
+        </p>
+        <code style="display: block; background: var(--negro); color: var(--verde-600); padding: 12px; border-radius: 8px; font-family: 'Courier New', monospace;">
+          python manage.py solicitar_feedback_diario
+        </code>
+        <p style="margin: 12px 0 0; font-size: 0.85rem; color: var(--gris-600);">
+          También puedes usar <code>--force</code> para reenviar o <code>--dias N</code> para personalizar los días
+        </p>
+      </div>
+
+    </div>
+  </main>
+</body>
+</html>

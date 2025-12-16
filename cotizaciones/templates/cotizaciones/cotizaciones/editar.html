@@ -22,14 +22,6 @@
   </div>
 
   <div class="container">
-    <!-- Alerts -->
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert {{ message.tags }}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
 
     <!-- Actions -->
     <div class="actions" style="margin-bottom: 20px;">
@@ -80,6 +72,10 @@
             <label for="{{ form.fecha_vencimiento.id_for_label }}">Fecha Vencimiento</label>
             {{ form.fecha_vencimiento }}
           </div>
+        </div>
+        <div class="form-group">
+          <label for="{{ form.fecha_realizacion.id_for_label }}">Fecha Realizacion *</label>
+          {{ form.fecha_realizacion }}
         </div>
         <div class="form-group">
           <label for="{{ form.referencia.id_for_label }}">Referencia *</label>

@@ -293,6 +293,13 @@ class Cotizacion(models.Model):
     
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_vencimiento = models.DateField(blank=True, null=True)
+
+    fecha_realizacion = models.DateField(blank=True, null=True,verbose_name="Fecha Aproximada de Realización",help_text="Fecha estimada para realizar el trabajo (solo para cotizaciones aprobadas)")
+    fecha_realizacion_original = models.DateField(blank=True, null=True,verbose_name="Fecha Original de Realización",help_text="Guarda la fecha original para detectar cambios")
+    fecha_finalizacion = models.DateTimeField(blank=True, null=True,verbose_name="Fecha de Finalización",help_text="Fecha en que se completó el trabajo")
+    feedback_solicitado = models.BooleanField(default=False,verbose_name="Feedback Solicitado",help_text="Indica si ya se envió el correo de feedback al cliente")
+    fecha_feedback = models.DateTimeField(blank=True,null=True,verbose_name="Fecha de Solicitud de Feedback",help_text="Fecha en que se envió la solicitud de feedback")   
+    
     estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default='borrador')
     
     # Valores calculados
@@ -325,7 +332,16 @@ class Cotizacion(models.Model):
         
         if self.representante:
             self.representante_nombre_respaldo = self.representante.nombre
+        
+        # ⭐ DEBUG: Imprimir antes de guardar
+        print(f"💾 GUARDANDO Cotización:")
+        print(f"   - fecha_realizacion: {self.fecha_realizacion}")
+        print(f"   - fecha_finalizacion: {self.fecha_finalizacion}")
+        
         super().save(*args, **kwargs)
+        
+        # ⭐ DEBUG: Imprimir después de guardar
+        print(f"✅ GUARDADO OK - ID: {self.pk}")
     
     def get_nombre_cliente(self):
         """Retorna el nombre del cliente, incluso si fue eliminado"""
@@ -443,6 +459,228 @@ class Cotizacion(models.Model):
                 logger.info(f"  ✗ Material no cumple condiciones para acumular horas")
         
         logger.info(f"Finalizado. Total items procesados: {items_procesados}")
+
+    def puede_editarse(self):
+        """
+        Verifica si la cotización puede editarse.
+        - Borradores: siempre editables
+        - Aprobadas: editables pero cambia a requiere_cambios
+        - Requiere cambios: editables
+        - Otras: no editables
+        """
+        return self.estado in ['borrador', 'aprobada', 'requiere_cambios']
+    
+    def requiere_notificacion_fecha(self):
+        """
+        Verifica si se debe notificar al cliente sobre cambio de fecha.
+        Retorna True si la fecha de realización cambió y la cotización está aprobada.
+        """
+        if self.estado != 'aprobada':
+            return False
+        
+        if not self.fecha_realizacion:
+            return False
+        
+        # Si hay fecha original y es diferente a la actual
+        if self.fecha_realizacion_original and self.fecha_realizacion != self.fecha_realizacion_original:
+            return True
+        
+        return False
+    
+    def actualizar_fecha_realizacion(self, nueva_fecha, usuario=None):
+        """
+        Actualiza la fecha de realización y maneja las notificaciones necesarias.
+        
+        Args:
+            nueva_fecha: Nueva fecha de realización
+            usuario: Usuario que hace el cambio (para notificaciones)
+        
+        Returns:
+            dict con información sobre las acciones realizadas
+        """
+        from notificaciones.models import Notificacion
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        resultado = {
+            'fecha_actualizada': False,
+            'notificacion_enviada': False,
+            'email_enviado': False,
+            'error': None
+        }
+        
+        # Si no hay cambio, no hacer nada
+        if self.fecha_realizacion == nueva_fecha:
+            return resultado
+        
+        # Guardar fecha original si no existe
+        if not self.fecha_realizacion_original and self.fecha_realizacion:
+            self.fecha_realizacion_original = self.fecha_realizacion
+        
+        fecha_anterior = self.fecha_realizacion
+        self.fecha_realizacion = nueva_fecha
+        self.save()
+        resultado['fecha_actualizada'] = True
+        
+        # Si la cotización está aprobada, notificar
+        if self.estado == 'aprobada' and fecha_anterior:
+            # Crear notificación para el creador de la cotización
+            if usuario:
+                try:
+                    Notificacion.objects.create(
+                        usuario=self.creado_por,
+                        titulo=f"Fecha de Realización Actualizada",
+                        mensaje=f"La cotización {self.numero} cambió su fecha de realización de {fecha_anterior.strftime('%d/%m/%Y')} a {nueva_fecha.strftime('%d/%m/%Y')}",
+                        tipo='info',
+                        url=f'/cotizaciones/{self.pk}/'
+                    )
+                    resultado['notificacion_enviada'] = True
+                except Exception as e:
+                    resultado['error'] = f"Error creando notificación: {str(e)}"
+            
+            # Enviar email al cliente si tiene email
+            if self.email_enviado_a:
+                try:
+                    asunto = f"Cambio de Fecha - Cotización {self.numero}"
+                    mensaje = f"""
+Estimado/a {self.get_nombre_cliente()},
+
+Le informamos que la fecha de realización del trabajo para la cotización {self.numero} ha sido modificada.
+
+Detalles:
+- Referencia: {self.referencia}
+- Fecha anterior: {fecha_anterior.strftime('%d/%m/%Y')}
+- Nueva fecha: {nueva_fecha.strftime('%d/%m/%Y')}
+- Lugar: {self.lugar}
+
+Cualquier consulta, no dude en contactarnos.
+
+Saludos cordiales,
+{settings.DEFAULT_FROM_EMAIL}
+                    """
+                    
+                    send_mail(
+                        asunto,
+                        mensaje,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [self.email_enviado_a],
+                        fail_silently=False,
+                    )
+                    resultado['email_enviado'] = True
+                except Exception as e:
+                    resultado['error'] = f"Error enviando email: {str(e)}"
+        
+        return resultado
+    
+    def debe_solicitar_feedback(self):
+        """
+        Verifica si debe solicitarse feedback al cliente.
+        Condiciones:
+        - Estado: finalizada
+        - No se ha solicitado feedback antes
+        - Han pasado 7 días desde la finalización
+        - Cliente tiene email
+        """
+        if self.estado != 'finalizada':
+            return False
+        
+        if self.feedback_solicitado:
+            return False
+        
+        if not self.email_enviado_a:
+            return False
+        
+        # Verificar si pasaron 7 días desde que se finalizó
+        # Asumimos que fecha_respuesta_cliente se usa cuando se finaliza
+        # O podríamos agregar un campo fecha_finalizacion
+        if hasattr(self, 'fecha_finalizacion') and self.fecha_finalizacion:
+            dias_transcurridos = (timezone.now().date() - self.fecha_finalizacion).days
+            return dias_transcurridos >= 7
+        
+        return False
+    
+    def solicitar_feedback_cliente(self):
+        """
+        Envía email solicitando feedback al cliente 1 semana después de finalizar.
+        """
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        if not self.debe_solicitar_feedback():
+            return {'success': False, 'error': 'No cumple condiciones para solicitar feedback'}
+        
+        try:
+            asunto = f"¿Cómo estuvo nuestro trabajo? - Cotización {self.numero}"
+            mensaje = f"""
+Estimado/a {self.get_nombre_cliente()},
+
+Esperamos que el trabajo realizado haya cumplido con sus expectativas.
+
+Detalles del trabajo:
+- Cotización: {self.numero}
+- Referencia: {self.referencia}
+- Lugar: {self.lugar}
+- Tipo de trabajo: {self.tipo_trabajo.nombre}
+
+Nos encantaría conocer su opinión sobre el servicio prestado. Su feedback es voluntario 
+pero muy importante para nosotros, ya que nos ayuda a mejorar continuamente.
+
+Si desea compartir su experiencia, puede responder este correo con sus comentarios.
+
+¡Muchas gracias por confiar en nosotros!
+
+Saludos cordiales,
+{settings.DEFAULT_FROM_EMAIL}
+            """
+            
+            send_mail(
+                asunto,
+                mensaje,
+                settings.DEFAULT_FROM_EMAIL,
+                [self.email_enviado_a],
+                fail_silently=False,
+            )
+            
+            # Marcar como solicitado
+            self.feedback_solicitado = True
+            self.fecha_feedback = timezone.now()
+            self.save()
+            
+            return {'success': True, 'mensaje': 'Feedback solicitado exitosamente'}
+            
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    fecha_finalizacion = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha de Finalización",
+        help_text="Fecha en que se finalizó el trabajo"
+    )
+
+    def marcar_como_finalizada(self, usuario=None):
+        """
+        Marca la cotización como finalizada y registra la fecha.
+        """
+        if self.estado != 'aprobada':
+            return {'success': False, 'error': 'Solo se pueden finalizar cotizaciones aprobadas'}
+        
+        self.estado = 'finalizada'
+        self.fecha_finalizacion = timezone.now()
+        self.save()
+        
+        # Crear notificación
+        if usuario:
+            from notificaciones.models import Notificacion
+            Notificacion.objects.create(
+                usuario=self.creado_por,
+                titulo=f"Trabajo Finalizado",
+                mensaje=f"El trabajo de la cotización {self.numero} ha sido marcado como finalizado",
+                tipo='success',
+                url=f'/cotizaciones/{self.pk}/'
+            )
+        
+        return {'success': True, 'mensaje': 'Cotización finalizada exitosamente'}
 
 class ItemServicio(models.Model):
     cotizacion = models.ForeignKey(Cotizacion, on_delete=models.CASCADE, related_name='items_servicio')

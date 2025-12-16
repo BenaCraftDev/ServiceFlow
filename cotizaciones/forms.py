@@ -297,7 +297,7 @@ class CotizacionForm(forms.ModelForm):
     class Meta:
         model = Cotizacion
         fields = ['cliente', 'representante', 'tipo_trabajo', 'referencia', 'lugar', 
-                  'fecha_vencimiento', 'observaciones']
+                  'fecha_vencimiento', 'fecha_realizacion', 'observaciones']
         widgets = {
             'cliente': forms.Select(attrs={
                 'class': 'form-control', 
@@ -323,8 +323,14 @@ class CotizacionForm(forms.ModelForm):
             }),
             'fecha_vencimiento': forms.DateInput(attrs={
                 'class': 'form-control', 
-                'type': 'date'
-            }),
+                'type': 'date',
+                'placeholder': 'dd/mm/yyyy'
+            }, format='%Y-%m-%d'),  # ⭐ FORMATO CORRECTO
+            'fecha_realizacion': forms.DateInput(attrs={
+                'class': 'form-control', 
+                'type': 'date',
+                'placeholder': 'dd/mm/yyyy'
+            }, format='%Y-%m-%d'),  # ⭐ FORMATO CORRECTO
             'observaciones': forms.Textarea(attrs={
                 'class': 'form-control', 
                 'rows': 4
@@ -337,6 +343,14 @@ class CotizacionForm(forms.ModelForm):
         # Configurar queryset inicial para representante
         self.fields['representante'].queryset = RepresentanteCliente.objects.none()
         self.fields['representante'].required = False
+        
+        # ⭐ CONFIGURAR CAMPOS DE FECHA CORRECTAMENTE
+        self.fields['fecha_vencimiento'].required = False
+        self.fields['fecha_vencimiento'].input_formats = ['%Y-%m-%d']  # Formato HTML5
+        
+        self.fields['fecha_realizacion'].required = False
+        self.fields['fecha_realizacion'].input_formats = ['%Y-%m-%d']  # Formato HTML5
+        self.fields['fecha_realizacion'].help_text = "Fecha estimada para realizar el trabajo (opcional, puede actualizarse después)"
         
         # Si hay una instancia existente con cliente
         if self.instance.pk and self.instance.cliente:
@@ -353,6 +367,43 @@ class CotizacionForm(forms.ModelForm):
                 ).order_by('orden', 'nombre')
             except (ValueError, TypeError):
                 pass
+
+class ActualizarFechaRealizacionForm(forms.Form):
+    """Formulario simple para actualizar solo la fecha de realización"""
+    
+    fecha_realizacion = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={
+            'class': 'form-control',
+            'type': 'date'
+        }),
+        label="Nueva Fecha de Realización",
+        help_text="El cliente será notificado automáticamente del cambio"
+    )
+    
+    def __init__(self, *args, cotizacion=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if cotizacion and cotizacion.fecha_realizacion:
+            self.fields['fecha_realizacion'].initial = cotizacion.fecha_realizacion
+
+class FinalizarCotizacionForm(forms.Form):
+    """Formulario para marcar una cotización como finalizada"""
+    
+    confirmar = forms.BooleanField(
+        required=True,
+        label="Confirmo que el trabajo ha sido completado",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    comentarios_finalizacion = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 3,
+            'placeholder': 'Comentarios adicionales sobre la finalización (opcional)'
+        }),
+        label="Comentarios"
+    )
 
 # Formulario para gestión rápida de empleados en cotizaciones
 class AsignacionEmpleadoForm(forms.Form):

@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finalizar Trabajo - {{ cotizacion.numero }}</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      ✅ Finalizar Trabajo
+      <span class="badge">{{ cotizacion.numero }}</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}">← Volver</a>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Información de la cotización -->
+    <div class="card">
+      <h3>📋 Resumen del Trabajo</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Número:</span>
+          <span class="info-value"><strong>{{ cotizacion.numero }}</strong></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Cliente:</span>
+          <span class="info-value">{{ cotizacion.get_nombre_cliente }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Tipo de Trabajo:</span>
+          <span class="info-value">{{ cotizacion.tipo_trabajo.nombre }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Referencia:</span>
+          <span class="info-value">{{ cotizacion.referencia|truncatewords:8 }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Lugar:</span>
+          <span class="info-value">{{ cotizacion.lugar }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Valor Total:</span>
+          <span class="info-value"><strong style="color: var(--verde-600);">${{ cotizacion.valor_total|floatformat:0 }}</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerta informativa -->
+    <div class="alert success">
+      <span style="font-size: 1.5rem;">📬</span>
+      <div>
+        <strong>Solicitud automática de feedback</strong>
+        <br>
+        <small>En 7 días, el sistema enviará automáticamente un correo al cliente solicitando su opinión sobre el trabajo realizado.</small>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="card">
+      <h3>✅ Confirmar Finalización</h3>
+      
+      <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+          <div style="display: flex; align-items: center; gap: 10px; padding: 16px; background: var(--verde-100); border-radius: 8px; border: 1px solid var(--verde-600);">
+            {{ form.confirmar }}
+            <label for="{{ form.confirmar.id_for_label }}" style="margin: 0; cursor: pointer;">
+              {{ form.confirmar.label }}
+            </label>
+          </div>
+          {% if form.confirmar.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem; display: block; margin-top: 8px;">
+              {{ form.confirmar.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.comentarios_finalizacion.id_for_label }}">{{ form.comentarios_finalizacion.label }}</label>
+          {{ form.comentarios_finalizacion }}
+          {% if form.comentarios_finalizacion.errors %}
+            <span style="color: var(--rojo-600); font-size: 0.85rem;">
+              {{ form.comentarios_finalizacion.errors.0 }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="actions" style="margin-top: 24px;">
+          <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn secondary">
+            ❌ Cancelar
+          </a>
+          <button type="submit" class="btn success">
+            ✅ Finalizar Trabajo
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Información del proceso -->
+    <div class="card">
+      <h3>📝 ¿Qué sucede al finalizar?</h3>
+      <div style="display: grid; gap: 16px;">
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">1️⃣</span>
+          <div>
+            <strong>La cotización cambia a estado "Finalizada"</strong>
+            <br>
+            <small style="color: var(--gris-600);">Ya no aparecerá en trabajos pendientes</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">2️⃣</span>
+          <div>
+            <strong>Se registra la fecha de finalización</strong>
+            <br>
+            <small style="color: var(--gris-600);">Para mantener un historial preciso</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">3️⃣</span>
+          <div>
+            <strong>Se programa el email de feedback</strong>
+            <br>
+            <small style="color: var(--gris-600);">El cliente recibirá un correo en 7 días (voluntario)</small>
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: start;">
+          <span style="font-size: 1.5rem;">4️⃣</span>
+          <div>
+            <strong>Se notifica al equipo</strong>
+            <br>
+            <small style="color: var(--gris-600);">El creador de la cotización recibe una notificación</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

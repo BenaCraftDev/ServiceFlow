@@ -115,6 +115,19 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 LANGUAGE_CODE = 'es-es'
 TIME_ZONE = 'America/Santiago'
+# Formato de fechas en formularios HTML5
+DATE_INPUT_FORMATS = ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']
+
+# Formato de fecha/hora en formularios HTML5
+DATETIME_INPUT_FORMATS = [
+    '%Y-%m-%d %H:%M:%S',     # '2025-12-16 14:30:00'
+    '%Y-%m-%d %H:%M',        # '2025-12-16 14:30'
+    '%Y-%m-%d',              # '2025-12-16'
+    '%d/%m/%Y %H:%M:%S',     # '16/12/2025 14:30:00'
+    '%d/%m/%Y %H:%M',        # '16/12/2025 14:30'
+    '%d/%m/%Y',              # '16/12/2025'
+]
+
 USE_I18N = True
 USE_TZ = True
 

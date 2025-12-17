@@ -614,11 +614,13 @@
       }
     });
     
-    // Cerrar modal al hacer click fuera
+    // Evitar que el modal se cierre al hacer clic fuera
     document.querySelectorAll('.modal').forEach(modal => {
       modal.addEventListener('click', function(e) {
+        // Solo cerrar si se hace clic directamente en el fondo del modal
+        // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
         if (e.target === this) {
-          cerrarModal(this.id);
+          e.stopPropagation(); // Evitar que se cierre
         }
       });
     });

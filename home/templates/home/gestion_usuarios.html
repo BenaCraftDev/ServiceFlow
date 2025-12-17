@@ -12,15 +12,6 @@
 
     <!-- Main -->
     <main>
-      <!-- Mensajes -->
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert {{ message.tags }}">
-            {% if message.tags == 'success' %}✅{% elif message.tags == 'error' %}❌{% else %}⚠️{% endif %}
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
 
       <!-- KPIs -->
       <div class="cards">
@@ -45,6 +36,35 @@
           <div class="muted">Últimos 30 días</div>
         </div>
       </div>
+
+      <style>
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .fecha-error {
+        border-color: #dc2626 !important;
+        background-color: #fef2f2 !important;
+      }
+      </style>
+
+      <!-- Acciones -->
+      <section class="actions">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">Gestión de Usuarios</h1>
+        </div>
+        <div class="actions-right">
+          <a href="{% url 'home:export_usuarios_csv' %}" class="btn secondary">📤 Exportar CSV</a>
+          <button class="btn" onclick="openModal('crear')">➕ Nuevo Empleado</button>
+        </div>
+      </section>
 
       <!-- Filtros -->
       <section class="filters">
@@ -93,34 +113,7 @@
         </div>
       </section>
 
-      <style>
-      @keyframes slideDown {
-        from {
-          opacity: 0;
-          transform: translateY(-10px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
 
-      .fecha-error {
-        border-color: #dc2626 !important;
-        background-color: #fef2f2 !important;
-      }
-      </style>
-
-      <!-- Acciones -->
-      <section class="actions">
-        <div class="actions-left">
-          <button class="btn" onclick="openModal('crear')">➕ Nuevo Empleado</button>
-          <a href="{% url 'home:export_usuarios_csv' %}" class="btn secondary">📤 Exportar CSV</a>
-        </div>
-        <div class="actions-right">
-          <span class="muted" id="contador-resultados">{{ empleados.count }} resultado(s)</span>
-        </div>
-      </section>
 
       <!-- Loading -->
       <div class="loading" id="loading">
@@ -897,14 +890,13 @@
       });
     }
 
-    // Cerrar modal con ESC
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeModal();
-    });
-
-    // Cerrar modal clickeando fuera
+    // Evitar que el modal se cierre al hacer clic fuera
     document.getElementById('userModal').addEventListener('click', function(e) {
-      if (e.target === this) closeModal();
+      // Solo cerrar si se hace clic directamente en el fondo del modal
+      // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
+      if (e.target === this) {
+        e.stopPropagation(); // Evitar que se cierre
+      }
     });
 
     // Fecha por defecto

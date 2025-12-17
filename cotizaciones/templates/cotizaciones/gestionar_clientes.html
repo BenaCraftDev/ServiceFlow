@@ -12,7 +12,6 @@
   {% include 'notificaciones/helmet.html' %}
 
     <main>
-
         <!-- Estadísticas -->
         <div class="cards">
           <div class="card" id="kpi-total-clientes" style="margin: 0;">
@@ -43,6 +42,7 @@
             <h1 style="margin: 0; color: var(--azul-700);">Gestión de Clientes</h1>
           </div>
           <div class="actions-right">
+            <button class="btn" onclick="mostrarModal('modal-cliente')">➕ Nuevo Cliente</button>
             <div class="dropdown-export" style="position: relative; display: inline-block;">
               <button type="button" class="btn secondary" onclick="toggleExportMenu('export-clientes')">
                 📥 Exportar
@@ -56,9 +56,6 @@
                 </a>
               </div>
             </div>
-            <button type="button" class="btn" onclick="mostrarModal('modal-cliente')">
-              ➕ Nuevo Cliente
-            </button>
           </div>
         </div>
 

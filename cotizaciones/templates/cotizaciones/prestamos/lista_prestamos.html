@@ -739,6 +739,23 @@ document.addEventListener('DOMContentLoaded', function() {
   initFiltrosRapidosPrestamos();
 });
 
+// Evitar que el modal se cierre al hacer clic fuera
+document.getElementById('modal-prestamo').addEventListener('click', function(e) {
+  // Solo cerrar si se hace clic directamente en el fondo del modal
+  // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
+  if (e.target === this) {
+    e.stopPropagation(); // Evitar que se cierre
+  }
+});
+
+document.getElementById('modal-historial').addEventListener('click', function(e) {
+  // Solo cerrar si se hace clic directamente en el fondo del modal
+  // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
+  if (e.target === this) {
+    e.stopPropagation(); // Evitar que se cierre
+  }
+});
+
 </script>
 </body>
 </html>

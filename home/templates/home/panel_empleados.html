@@ -30,15 +30,6 @@
     </div>
 
     <div class="container">
-        <!-- Mensajes del sistema -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert {{ message.tags }}">
-                    <span>{{ message }}</span>
-                </div>
-            {% endfor %}
-        {% endif %}
-
         <!-- Información del usuario -->
         <div class="user-info-card">
             <div style="display: flex; align-items: center; justify-content: space-between;">

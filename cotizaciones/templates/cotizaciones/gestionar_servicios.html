@@ -58,8 +58,8 @@
           <button type="button" class="btn" onclick="mostrarModal('modal-servicio')">
             ➕ Nuevo Servicio
           </button>
-          <button type="button" class="btn secondary" onclick="mostrarModal('modal-categoria')">
-            🏷️ Nueva Categoría
+          <button type="button" class="btn secondary" onclick="mostrarModal('modal-ver-categorias')">
+            🏷️ Categorías
           </button>
         </div>
       </div>
@@ -190,48 +190,117 @@
 
       <!-- Modal Ver Categorías -->
       <div id="modal-ver-categorias" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content" style="max-width: 900px;">
           <div class="modal-header">
-            <h3>🏷️ Categorías de Servicios</h3>
+            <h3>🏷️ Gestión de Categorías</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
           </div>
           
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 20px;">
-            {% for categoria in categorias %}
-            <div class="card" style="cursor: pointer; margin: 0;" 
-                 onclick="filtrarPorCategoria({{ categoria.id }}, '{{ categoria.nombre }}')">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                <h4 style="margin: 0; color: var(--azul-700); border: none; padding: 0;">{{ categoria.nombre }}</h4>
-                <span class="pill enviada">{{ categoria.serviciobase_set.count }}</span>
-              </div>
-              {% if categoria.descripcion %}
-              <div style="font-size: 0.9rem; color: var(--gris-600); margin-bottom: 8px;">
-                {{ categoria.descripcion|truncatewords:15 }}
-              </div>
-              {% endif %}
-              <div style="text-align: right; margin-top: 12px;">
-                <span style="color: var(--azul-600); font-size: 0.85rem; font-weight: 600;">
-                  Ver servicios →
-                </span>
-              </div>
-            </div>
-            {% empty %}
-            <div style="text-align: center; color: var(--gris-600); padding: 40px; grid-column: 1/-1;">
-              No hay categorías creadas aún.
-              <br><br>
-              <button type="button" class="btn" onclick="cerrarModal('modal-ver-categorias'); mostrarModal('modal-categoria');">
-                Crear Primera Categoría
-              </button>
-            </div>
-            {% endfor %}
+          <!-- Botón Nueva Categoría -->
+          <div style="margin-bottom: 16px;">
+            <button type="button" class="btn" onclick="abrirNuevaCategoria()">
+              ➕ Nueva Categoría
+            </button>
           </div>
           
-          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--gris-300);">
+          <!-- Filtros de búsqueda -->
+          <div class="filters" style="margin-bottom: 16px;">
+            <div class="filter-group">
+              <label for="filtro-categoria-nombre">🔍 Buscar Categoría</label>
+              <input type="text" id="filtro-categoria-nombre" 
+                     placeholder="Nombre de la categoría..."
+                     onkeyup="filtrarCategorias()">
+            </div>
+            
+            <div class="filter-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategorias()">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+          
+          <!-- Tabla de Categorías -->
+          <div style="max-height: 450px; overflow-y: auto;">
+            <table id="tabla-categorias-modal">
+              <thead>
+                <tr>
+                  <th onclick="ordenarCategorias('nombre')" style="cursor: pointer;">
+                    Nombre <span id="sort-nombre">⇅</span>
+                  </th>
+                  <th>Descripción</th>
+                  <th onclick="ordenarCategorias('orden')" style="cursor: pointer;">
+                    Orden <span id="sort-orden">⇅</span>
+                  </th>
+                  <th onclick="ordenarCategorias('servicios')" style="cursor: pointer;">
+                    Servicios <span id="sort-servicios">⇅</span>
+                  </th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-categorias">
+                {% for categoria in categorias %}
+                <tr data-nombre="{{ categoria.nombre|lower }}" 
+                    data-orden="{{ categoria.orden|default:0 }}"
+                    data-servicios="{{ categoria.serviciobase_set.count }}">
+                  <td>
+                    <strong>{{ categoria.nombre }}</strong>
+                  </td>
+                  <td>
+                    {{ categoria.descripcion|default:"-"|truncatewords:15 }}
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700); border-color: var(--azul-300);">
+                      {{ categoria.orden|default:0 }}
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--verde-100); color: var(--verde-600); border-color: var(--verde-600);">
+                      {{ categoria.serviciobase_set.count }} servicio{{ categoria.serviciobase_set.count|pluralize }}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="display: flex; gap: 4px;">
+                      <button type="button" class="btn small secondary" 
+                              onclick="editarCategoria({{ categoria.id }})" title="Editar">
+                        ✏️
+                      </button>
+                      <button type="button" class="btn small danger" 
+                              onclick="eliminarCategoria({{ categoria.id }}, '{{ categoria.nombre }}')" title="Eliminar">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="row-sin-categorias">
+                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                    No hay categorías registradas aún.
+                    <br><br>
+                    <button type="button" class="btn" onclick="abrirNuevaCategoria()">
+                      Crear Primera Categoría
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Mensaje cuando no hay resultados del filtro -->
+          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron categorías</h4>
+            <p style="margin: 0;">Intenta ajustar la búsqueda</p>
+          </div>
+          
+          <!-- Footer con resumen y botón cerrar -->
+          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gris-300);">
+            <div style="color: var(--gris-600);">
+              <strong>Total categorías:</strong> {{ categorias|length }}
+            </div>
             <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
               Cerrar
-            </button>
-            <button type="button" class="btn" onclick="cerrarModal('modal-ver-categorias'); mostrarModal('modal-categoria');">
-              ➕ Nueva Categoría
             </button>
           </div>
         </div>
@@ -313,16 +382,135 @@
         </div>
       </div>
 
-      <!-- Modal Nueva Categoría -->
+      <!-- Modal Ver Categorías -->
+      <div id="modal-ver-categorias" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+          <div class="modal-header">
+            <h3>🏷️ Gestión de Categorías</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
+          </div>
+          
+          <!-- Botón Nueva Categoría -->
+          <div style="margin-bottom: 16px;">
+            <button type="button" class="btn" onclick="abrirNuevaCategoria()">
+              ➕ Nueva Categoría
+            </button>
+          </div>
+          
+          <!-- Filtros de búsqueda -->
+          <div class="filters" style="margin-bottom: 16px;">
+            <div class="filter-group">
+              <label for="filtro-categoria-nombre">🔍 Buscar Categoría</label>
+              <input type="text" id="filtro-categoria-nombre" 
+                     placeholder="Nombre de la categoría..."
+                     onkeyup="filtrarCategorias()">
+            </div>
+            
+            <div class="filter-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategorias()">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+          
+          <!-- Tabla de Categorías -->
+          <div style="max-height: 450px; overflow-y: auto;">
+            <table id="tabla-categorias-modal">
+              <thead>
+                <tr>
+                  <th onclick="ordenarCategorias('nombre')" style="cursor: pointer;">
+                    Nombre <span id="sort-nombre">⇅</span>
+                  </th>
+                  <th>Descripción</th>
+                  <th onclick="ordenarCategorias('orden')" style="cursor: pointer;">
+                    Orden <span id="sort-orden">⇅</span>
+                  </th>
+                  <th onclick="ordenarCategorias('servicios')" style="cursor: pointer;">
+                    Servicios <span id="sort-servicios">⇅</span>
+                  </th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-categorias">
+                {% for categoria in categorias %}
+                <tr data-nombre="{{ categoria.nombre|lower }}" 
+                    data-orden="{{ categoria.orden|default:0 }}"
+                    data-servicios="{{ categoria.servicio_set.count }}">
+                  <td>
+                    <strong>{{ categoria.nombre }}</strong>
+                  </td>
+                  <td>
+                    {{ categoria.descripcion|default:"-"|truncatewords:15 }}
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700); border-color: var(--azul-300);">
+                      {{ categoria.orden|default:0 }}
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--verde-100); color: var(--verde-600); border-color: var(--verde-600);">
+                      {{ categoria.servicio_set.count }} servicio{{ categoria.servicio_set.count|pluralize }}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="display: flex; gap: 4px;">
+                      <button type="button" class="btn small secondary" 
+                              onclick="editarCategoria({{ categoria.id }})" title="Editar">
+                        ✏️
+                      </button>
+                      <button type="button" class="btn small danger" 
+                              onclick="eliminarCategoria({{ categoria.id }}, '{{ categoria.nombre }}')" title="Eliminar">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="row-sin-categorias">
+                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                    No hay categorías registradas aún.
+                    <br><br>
+                    <button type="button" class="btn" onclick="abrirNuevaCategoria()">
+                      Crear Primera Categoría
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Mensaje cuando no hay resultados del filtro -->
+          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron categorías</h4>
+            <p style="margin: 0;">Intenta ajustar la búsqueda</p>
+          </div>
+          
+          <!-- Footer con resumen y botón cerrar -->
+          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 20px;">
+            <div style="color: var(--gris-600);">
+              <strong>Total categorías:</strong> {{ categorias|length }}
+            </div>
+            <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Nueva/Editar Categoría -->
       <div id="modal-categoria" class="modal">
         <div class="modal-content">
           <div class="modal-header">
-            <h3>Nueva Categoría</h3>
+            <h3 id="modal-categoria-titulo">Nueva Categoría</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-categoria')">&times;</button>
           </div>
           
           <form id="form-categoria">
             {% csrf_token %}
+            <input type="hidden" id="categoria-id" value="">
             
             <div class="form-group">
               <label for="categoria-nombre">Nombre de la Categoría *</label>
@@ -343,11 +531,11 @@
             </div>
             
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-              <button type="button" class="btn secondary" onclick="cerrarModal('modal-categoria')">
+              <button type="button" class="btn secondary" onclick="cerrarModalCategoria()">
                 Cancelar
               </button>
               <button type="submit" class="btn">
-                Crear Categoría
+                Guardar Categoría
               </button>
             </div>
           </form>
@@ -578,6 +766,9 @@
   document.getElementById('form-categoria').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const categoriaId = document.getElementById('categoria-id').value;
+    const isEditing = categoriaId !== '';
+    
     const formData = {
       nombre: document.getElementById('categoria-nombre').value,
       descripcion: document.getElementById('categoria-descripcion').value,
@@ -585,8 +776,14 @@
     };
     
     try {
-      const response = await fetch('/cotizaciones/categoria-servicio/crear/', {
-        method: 'POST',
+      const url = isEditing ? 
+        `/cotizaciones/categoria-servicio/${categoriaId}/editar/` : 
+        '/cotizaciones/categoria-servicio/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': getCSRFToken()
@@ -609,6 +806,167 @@
       alert('Error al guardar la categoría');
     }
   });
+  
+  // Función para editar categoría
+  async function editarCategoria(categoriaId) {
+    try {
+      const response = await fetch(`/cotizaciones/categoria-servicio/${categoriaId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
+        document.getElementById('categoria-id').value = categoriaId;
+        document.getElementById('categoria-nombre').value = result.categoria.nombre;
+        document.getElementById('categoria-descripcion').value = result.categoria.descripcion || '';
+        document.getElementById('categoria-orden').value = result.categoria.orden || 0;
+        
+        cerrarModal('modal-ver-categorias');
+        mostrarModal('modal-categoria');
+      } else {
+        alert('Error al cargar los datos de la categoría: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando categoría:', error);
+      alert('Error al cargar los datos de la categoría');
+    }
+  }
+  
+  // Función para eliminar categoría
+  async function eliminarCategoria(categoriaId, nombreCategoria) {
+    if (!confirm(`¿Estás seguro de eliminar la categoría "${nombreCategoria}"?\n\nEsto podría afectar a los servicios asociados.`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/cotizaciones/categoria-servicio/${categoriaId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error eliminando categoría:', error);
+      alert('Error al eliminar la categoría');
+    }
+  }
+  
+  // Función para abrir modal de nueva categoría desde el modal de ver categorías
+  function abrirNuevaCategoria() {
+    cerrarModal('modal-ver-categorias');
+    mostrarModal('modal-categoria');
+  }
+  
+  // Limpiar formulario de categoría al cerrar
+  function cerrarModalCategoria() {
+    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('categoria-id').value = '';
+    document.getElementById('form-categoria').reset();
+    cerrarModal('modal-categoria');
+    // Volver a abrir el modal de ver categorías
+    mostrarModal('modal-ver-categorias');
+  }
+  
+  // ===== FILTROS Y ORDENAMIENTO DEL MODAL DE CATEGORÍAS =====
+  
+  // Filtrar categorías en el modal
+  function filtrarCategorias() {
+    const busqueda = document.getElementById('filtro-categoria-nombre').value.toLowerCase();
+    const tbody = document.getElementById('tbody-categorias');
+    const filas = tbody.querySelectorAll('tr:not(#row-sin-categorias)');
+    const sinResultados = document.getElementById('sin-resultados-categorias');
+    
+    let visibles = 0;
+    
+    filas.forEach(fila => {
+      const nombre = fila.getAttribute('data-nombre') || '';
+      const mostrar = nombre.includes(busqueda);
+      
+      fila.style.display = mostrar ? '' : 'none';
+      if (mostrar) visibles++;
+    });
+    
+    // Mostrar u ocultar mensaje de sin resultados
+    if (visibles === 0 && filas.length > 0) {
+      sinResultados.style.display = 'block';
+      tbody.style.display = 'none';
+    } else {
+      sinResultados.style.display = 'none';
+      tbody.style.display = '';
+    }
+  }
+  
+  // Limpiar filtros de categorías
+  function limpiarFiltrosCategorias() {
+    document.getElementById('filtro-categoria-nombre').value = '';
+    filtrarCategorias();
+  }
+  
+  // Ordenar categorías en el modal
+  let ordenCategorias = {
+    columna: null,
+    ascendente: true
+  };
+  
+  function ordenarCategorias(columna) {
+    const tbody = document.getElementById('tbody-categorias');
+    const filas = Array.from(tbody.querySelectorAll('tr:not(#row-sin-categorias)'));
+    
+    // Si es la misma columna, invertir orden
+    if (ordenCategorias.columna === columna) {
+      ordenCategorias.ascendente = !ordenCategorias.ascendente;
+    } else {
+      ordenCategorias.columna = columna;
+      ordenCategorias.ascendente = true;
+    }
+    
+    // Ordenar filas
+    filas.sort((a, b) => {
+      let valorA, valorB;
+      
+      if (columna === 'nombre') {
+        valorA = a.getAttribute('data-nombre') || '';
+        valorB = b.getAttribute('data-nombre') || '';
+      } else if (columna === 'orden') {
+        valorA = parseInt(a.getAttribute('data-orden')) || 0;
+        valorB = parseInt(b.getAttribute('data-orden')) || 0;
+      } else if (columna === 'servicios') {
+        valorA = parseInt(a.getAttribute('data-servicios')) || 0;
+        valorB = parseInt(b.getAttribute('data-servicios')) || 0;
+      }
+      
+      if (valorA < valorB) return ordenCategorias.ascendente ? -1 : 1;
+      if (valorA > valorB) return ordenCategorias.ascendente ? 1 : -1;
+      return 0;
+    });
+    
+    // Reorganizar filas en el DOM
+    filas.forEach(fila => tbody.appendChild(fila));
+    
+    // Actualizar iconos de ordenamiento
+    document.querySelectorAll('#tabla-categorias-modal thead span[id^="sort-"]').forEach(span => {
+      span.textContent = '⇅';
+    });
+    
+    const icono = document.getElementById(`sort-${columna}`);
+    if (icono) {
+      icono.textContent = ordenCategorias.ascendente ? '▲' : '▼';
+    }
+  }
+  
+  // Sobrescribir el cierre del modal de categoría
+  document.querySelector('#modal-categoria .close').onclick = function() {
+    cerrarModalCategoria();
+  };
   
   document.querySelector('#modal-servicio .close').onclick = function() {
     cerrarModalServicio();
@@ -873,6 +1231,33 @@
   // Inicializar cuando carga la página
   document.addEventListener('DOMContentLoaded', function() {
     initFiltrosRapidosServicios();
+  });
+
+  // Evitar que los modales se cierren al hacer clic fuera
+  document.getElementById('modal-servicio').addEventListener('click', function(e) {
+    // Solo cerrar si se hace clic directamente en el fondo del modal
+    // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
+    if (e.target === this) {
+      e.stopPropagation(); // Evitar que se cierre
+    }
+  });
+
+  document.getElementById('modal-categoria').addEventListener('click', function(e) {
+    if (e.target === this) {
+      e.stopPropagation();
+    }
+  });
+
+  document.getElementById('modal-ver-categorias').addEventListener('click', function(e) {
+    if (e.target === this) {
+      e.stopPropagation();
+    }
+  });
+
+  document.getElementById('modal-parametros').addEventListener('click', function(e) {
+    if (e.target === this) {
+      e.stopPropagation();
+    }
   });
 
 </script>

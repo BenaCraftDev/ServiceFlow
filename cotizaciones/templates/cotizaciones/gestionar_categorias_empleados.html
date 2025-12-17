@@ -1036,6 +1036,29 @@
   document.addEventListener('DOMContentLoaded', function() {
     initKPIsCategoriasEmpleados();
   });
+
+  // Evitar que los modales se cierren al hacer clic fuera
+  const modales = [
+    'modal-categoria',
+    'modal-asignar',
+    'modal-empleados',
+    'modal-lista-empleados',
+    'modal-historial-asignaciones',
+    'modal-categorias-activas'
+  ];
+
+  modales.forEach(modalId => {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      modal.addEventListener('click', function(e) {
+        // Solo cerrar si se hace clic directamente en el fondo del modal
+        // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
+        if (e.target === this) {
+          e.stopPropagation(); // Evitar que se cierre
+        }
+      });
+    }
+  });
 </script>
 </body>
 </html>

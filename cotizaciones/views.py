@@ -4188,9 +4188,10 @@ def responder_cotizacion(request, token, accion):
     
     # Verificar que puede responder
     if not cotizacion.puede_responder():
-        return render(request, 'cotizaciones/respuesta_error.html', {
+        return render(request, 'cotizaciones/emails/respuesta_error.html', {
             'mensaje': 'Esta cotización ya fue respondida o no está disponible para respuestas.',
-            'cotizacion': cotizacion
+            'cotizacion': cotizacion,
+            'config_empresa': ConfiguracionEmpresa.get_config(),
         })
     
     if request.method == 'POST':
@@ -5283,6 +5284,15 @@ def obtener_historial(request):
             'success': False,
             'error': str(e)
         })
+
+
+
+
+
+
+
+    """Obtiene el historial de préstamos"""
+    
     try:
         from .models import HistorialPrestamo
         

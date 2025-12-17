@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Respuesta No Disponible</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+  <style>
+    body {
+      background: linear-gradient(135deg, #eaf3ff 0%, #ffffff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .error-card {
+      background: white;
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 800px;
+      width: 90%;
+      box-shadow: 0 8px 20px rgba(10, 35, 66, 0.12);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-card">
+    <div style="font-size: 6rem; margin-bottom: 20px;">⚠️</div>
+    <h1 style="color: var(--naranja-600); margin-bottom: 20px;">Respuesta Ya Registrada</h1>
+
+    <div style="background: var(--naranja-100); padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid var(--naranja-600);">
+      <p style="font-size: 1.1rem; color: var(--negro); margin: 0;">
+        {{ mensaje }}
+      </p>
+    </div>
+
+    <div style="background: var(--gris-100); padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left;">
+      <h3 style="color: var(--azul-700); margin: 0 0 15px;">Estado Actual de la Cotización:</h3>
+      <p style="margin: 5px 0;"><strong>Número:</strong> {{ cotizacion.numero }}</p>
+      <p style="margin: 5px 0;"><strong>Estado:</strong> 
+        <span class="pill {{ cotizacion.estado }}">{{ cotizacion.get_estado_display }}</span>
+      </p>
+      
+      {% if cotizacion.fecha_respuesta_cliente %}
+      <p style="margin: 5px 0;"><strong>Fecha de Respuesta:</strong> {{ cotizacion.fecha_respuesta_cliente|date:"d/m/Y H:i" }}</p>
+      {% endif %}
+      
+      {% if cotizacion.comentarios_cliente %}
+      <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--gris-300);">
+        <strong>Comentarios registrados:</strong>
+        <p style="margin: 10px 0 0; white-space: pre-line; color: var(--gris-600);">{{ cotizacion.comentarios_cliente }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+    <p style="color: var(--gris-600); line-height: 1.6; margin: 20px 0;">
+      Esta cotización ya fue respondida anteriormente y no puede modificarse.
+      <br>
+      Si necesita hacer cambios o tiene preguntas, por favor contacte directamente con nosotros.
+    </p>
+
+    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--gris-300);">
+      <h3 style="color: var(--azul-700); margin-bottom: 15px;">Información de Contacto</h3>
+      <p style="color: var(--gris-600); margin: 5px 0;">
+        📧 {{ config_empresa.email }}<br>
+        📞 {{ config_empresa.telefono }}<br>
+        📍 {{ config_empresa.direccion }}
+      </p>
+    </div>
+
+    <div style="margin-top: 30px;">
+      <p style="color: var(--gris-500); font-size: 0.9rem;">
+        Puede cerrar esta ventana de forma segura.
+      </p>
+    </div>
+  </div>
+</body>
+</html>

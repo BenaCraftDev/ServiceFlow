@@ -177,10 +177,10 @@
       </div>
       {% endif %}
 
-      <!-- Totales -->
+      <!-- Totales - ⭐ ANCHO COMPLETO -->
       <div style="background: var(--azul-100); border: 2px solid var(--azul-300); border-radius: var(--radius); padding: 24px; margin-top: 30px;">
         <h3 style="margin: 0 0 20px; color: var(--azul-700); text-align: center; font-size: 1.3rem;">💰 RESUMEN FINANCIERO</h3>
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px 20px; align-items: center; max-width: 500px; margin: 0 auto;">
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px 20px; align-items: center; width: 100%; max-width: none;">
           {% if cotizacion.subtotal_servicios > 0 %}
           <div style="font-weight: 600;">Total Servicios:</div>
           <div style="text-align: right; font-weight: 600;">{{ cotizacion.subtotal_servicios|formato_precio }}</div>

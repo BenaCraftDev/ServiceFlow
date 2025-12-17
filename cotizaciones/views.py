@@ -4183,7 +4183,6 @@ def ver_cotizacion_publica(request, token):
 
 def responder_cotizacion(request, token, accion):
     """Procesar respuesta del cliente (aprobar/rechazar/modificar)"""
-    from django.core.mail import send_mail
     
     cotizacion = get_object_or_404(Cotizacion, token_validacion=token)
     
@@ -4260,45 +4259,90 @@ def responder_cotizacion(request, token, accion):
                 }
             )
         except Exception as e:
-            print(f"Error creando notificación: {str(e)}")
+            logger.error(f"Error creando notificación: {str(e)}")
         
-        # Notificar al admin por email
+        # Notificar al admin por email usando Resend
         try:
+            config_empresa = ConfiguracionEmpresa.get_config()
             subject = f'[COTIZACIÓN {cotizacion.numero}] Respuesta del Cliente'
-            message = f"""
-Respuesta recibida para la Cotización N° {cotizacion.numero}
-
-Cliente: {cotizacion.get_nombre_cliente()}
-Acción: {accion.upper()}
-Estado actual: {cotizacion.get_estado_display()}
-
-Comentarios del cliente:
-{comentarios if comentarios else 'Sin comentarios'}
-
-Ver cotización: {request.build_absolute_uri(f'/cotizaciones/{cotizacion.pk}/')}
+            
+            # HTML para el email de notificación
+            html_message = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #1f5fa5, #2575c0); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0;">Respuesta del Cliente</h2>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border: 1px solid #ddd; border-top: none;">
+                        <h3 style="color: #1f5fa5;">Cotización N° {cotizacion.numero}</h3>
+                        
+                        <table style="width: 100%; margin: 20px 0;">
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Cliente:</td>
+                                <td style="padding: 8px;">{cotizacion.get_nombre_cliente()}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Acción:</td>
+                                <td style="padding: 8px; text-transform: uppercase;">{accion}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; font-weight: bold;">Estado Actual:</td>
+                                <td style="padding: 8px;">{cotizacion.get_estado_display()}</td>
+                            </tr>
+                        </table>
+                        
+                        {f'<div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #2575c0; margin: 20px 0;"><strong>Comentarios del cliente:</strong><br>{comentarios}</div>' if comentarios else ''}
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="{request.build_absolute_uri(f'/cotizaciones/{cotizacion.pk}/')}" 
+                               style="display: inline-block; padding: 12px 24px; background: #2575c0; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Ver Cotización Completa
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 20px; color: #666; font-size: 12px;">
+                        <p>Este correo fue enviado automáticamente por {config_empresa.nombre}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
             """
             
-            # Enviar a todos los admins y gerentes
-            admins_emails = User.objects.filter(
+            # Obtener emails de admins y gerentes
+            admins_emails = list(User.objects.filter(
                 perfilempleado__cargo__in=['admin', 'gerente'],
-                perfilempleado__activo=True
-            ).values_list('email', flat=True)
+                perfilempleado__activo=True,
+                email__isnull=False
+            ).exclude(email='').values_list('email', flat=True))
             
             if admins_emails:
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    list(admins_emails),
-                    fail_silently=True,
+                exito, mensaje = enviar_email_con_reintentos(
+                    subject=subject,
+                    html_content=html_message,
+                    recipient_list=admins_emails,
+                    max_intentos=2,
+                    timeout_segundos=15,
+                    fail_silently=True
                 )
+                
+                if not exito:
+                    logger.warning(f"No se pudo enviar email a admins: {mensaje}")
+        
         except Exception as e:
-            print(f"Error enviando notificación a admin: {str(e)}")
+            logger.error(f"Error enviando notificación por email a admin: {str(e)}")
         
         return render(request, 'cotizaciones/emails/respuesta_exitosa.html', {
             'mensaje': mensaje_cliente,
             'cotizacion': cotizacion,
-            'accion': accion
+            'accion': accion,
+            'config_empresa': ConfiguracionEmpresa.get_config(),
         })
     
     # GET: Mostrar formulario de confirmación
@@ -5239,15 +5283,6 @@ def obtener_historial(request):
             'success': False,
             'error': str(e)
         })
-
-
-
-
-
-
-
-    """Obtiene el historial de préstamos"""
-    
     try:
         from .models import HistorialPrestamo
         
@@ -5277,5 +5312,3 @@ def obtener_historial(request):
             'success': False,
             'error': str(e)
         })
-
-

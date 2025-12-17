@@ -602,53 +602,108 @@ Saludos cordiales,
     def solicitar_feedback_cliente(self):
         """
         Envía email solicitando feedback al cliente 1 semana después de finalizar.
+        Usa Resend API con HTML profesional.
         """
-        from django.core.mail import send_mail
-        from django.conf import settings
+        import logging
+        logger = logging.getLogger(__name__)
         
         if not self.debe_solicitar_feedback():
             return {'success': False, 'error': 'No cumple condiciones para solicitar feedback'}
         
         try:
+            config_empresa = ConfiguracionEmpresa.get_config()
             asunto = f"¿Cómo estuvo nuestro trabajo? - Cotización {self.numero}"
-            mensaje = f"""
-Estimado/a {self.get_nombre_cliente()},
-
-Esperamos que el trabajo realizado haya cumplido con sus expectativas.
-
-Detalles del trabajo:
-- Cotización: {self.numero}
-- Referencia: {self.referencia}
-- Lugar: {self.lugar}
-- Tipo de trabajo: {self.tipo_trabajo.nombre}
-
-Nos encantaría conocer su opinión sobre el servicio prestado. Su feedback es voluntario 
-pero muy importante para nosotros, ya que nos ayuda a mejorar continuamente.
-
-Si desea compartir su experiencia, puede responder este correo con sus comentarios.
-
-¡Muchas gracias por confiar en nosotros!
-
-Saludos cordiales,
-{settings.DEFAULT_FROM_EMAIL}
+            
+            # HTML del email
+            html_mensaje = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+            </head>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #1f5fa5, #2575c0); color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                        <h2 style="margin: 0;">{config_empresa.nombre}</h2>
+                        <p style="margin: 5px 0; opacity: 0.9;">Solicitud de Feedback</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 20px; border: 1px solid #ddd; border-top: none;">
+                        <h3 style="color: #1f5fa5;">¿Cómo estuvo nuestro trabajo?</h3>
+                        
+                        <p style="margin: 20px 0;">Estimado/a <strong>{self.get_nombre_cliente()}</strong>,</p>
+                        
+                        <p>Esperamos que el trabajo realizado haya cumplido con sus expectativas.</p>
+                        
+                        <div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #2575c0; margin: 20px 0;">
+                            <h4 style="margin: 0 0 10px; color: #1f5fa5;">Detalles del trabajo:</h4>
+                            <table style="width: 100%;">
+                                <tr>
+                                    <td style="padding: 4px; font-weight: bold;">Cotización:</td>
+                                    <td style="padding: 4px;">{self.numero}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px; font-weight: bold;">Referencia:</td>
+                                    <td style="padding: 4px;">{self.referencia}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px; font-weight: bold;">Lugar:</td>
+                                    <td style="padding: 4px;">{self.lugar}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 4px; font-weight: bold;">Tipo de trabajo:</td>
+                                    <td style="padding: 4px;">{self.tipo_trabajo.nombre}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <p>Nos encantaría conocer su opinión sobre el servicio prestado. Su feedback es voluntario 
+                        pero muy importante para nosotros, ya que nos ayuda a mejorar continuamente.</p>
+                        
+                        <p>Si desea compartir su experiencia, puede responder este correo con sus comentarios.</p>
+                        
+                        <p style="margin-top: 30px;">¡Muchas gracias por confiar en nosotros!</p>
+                        
+                        <p><strong>Saludos cordiales</strong><br>
+                        {config_empresa.nombre}</p>
+                    </div>
+                    
+                    <div style="text-align: center; padding: 20px; color: #666; font-size: 12px; border-top: 1px solid #ddd;">
+                        <p style="margin: 5px 0;">📧 {config_empresa.email}</p>
+                        <p style="margin: 5px 0;">📞 {config_empresa.telefono}</p>
+                        <p style="margin: 5px 0;">📍 {config_empresa.direccion}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
             """
             
-            send_mail(
-                asunto,
-                mensaje,
-                settings.DEFAULT_FROM_EMAIL,
-                [self.email_enviado_a],
-                fail_silently=False,
+            # Importar función de envío con reintentos
+            from cotizaciones.views import enviar_email_con_reintentos
+            
+            exito, mensaje_resultado = enviar_email_con_reintentos(
+                subject=asunto,
+                html_content=html_mensaje,
+                recipient_list=[self.email_enviado_a],
+                max_intentos=3,
+                timeout_segundos=20,
+                fail_silently=False
             )
             
-            # Marcar como solicitado
-            self.feedback_solicitado = True
-            self.fecha_feedback = timezone.now()
-            self.save()
-            
-            return {'success': True, 'mensaje': 'Feedback solicitado exitosamente'}
+            if exito:
+                # Marcar como solicitado
+                self.feedback_solicitado = True
+                self.fecha_feedback = timezone.now()
+                self.save()
+                
+                logger.info(f"✅ Feedback solicitado para cotización {self.numero}")
+                return {'success': True, 'mensaje': 'Feedback solicitado exitosamente'}
+            else:
+                logger.error(f"❌ Error al solicitar feedback para {self.numero}: {mensaje_resultado}")
+                return {'success': False, 'error': mensaje_resultado}
             
         except Exception as e:
+            logger.error(f"❌ Excepción al solicitar feedback para {self.numero}: {str(e)}")
             return {'success': False, 'error': str(e)}
 
     fecha_finalizacion = models.DateTimeField(

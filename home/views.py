@@ -24,8 +24,18 @@ from django.conf import settings
 from django.urls import reverse
 from cotizaciones.utils_mantenimiento import verificar_mantenimientos_materiales
 from django.views.decorators.csrf import csrf_exempt
-from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo
+from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, SolicitudWeb
 from notificaciones.utils import crear_notificacion
+from django.core.cache import cache
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 def index(request):
     return render(request, 'home/index.html')
@@ -220,90 +230,101 @@ def reset_password(request, uidb64, token):
 
  # Asegúrate de que la ruta sea correcta
 
-@require_http_methods(["POST"])
 @csrf_exempt
 def solicitar_servicio_publico(request):
     """
-    Crea una solicitud desde la landing y notifica a los administradores.
+    Vista pública para recibir solicitudes de servicio con protección anti-spam.
     """
+    # 1. Obtener IP y verificar límite
+    user_ip = get_client_ip(request)
+    cache_key = f"limit_solicitud_{user_ip}"
+
+    data = json.loads(request.body)
+
+    # Engaña Bots
+    if data.get('website_url_field'):
+        return JsonResponse({'success': True, 'message': 'Solicitud procesada correctamente'})
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
+    
+    # Si la IP está en caché, bloqueamos (429 Too Many Requests)
+    if cache.get(cache_key):
+        return JsonResponse({
+            'success': False, 
+            'error': 'Has enviado demasiadas solicitudes. Por favor, espera 5 minutos.'
+        }, status=429)
+
     try:
+        # Parsear datos
         data = json.loads(request.body)
         
-        # 1. Extraer y limpiar datos
+        # --- PROTECCIÓN HONEYPOT ---
+        # Si este campo (que debe estar oculto en el CSS) tiene contenido, es un BOT.
+        if data.get('website_url_field'): 
+            return JsonResponse({'success': True, 'message': 'Procesado (H)'}) 
+
+        # Extraer datos
         nombre = data.get('nombre', '').strip()
         email = data.get('email', '').strip()
         telefono = data.get('telefono', '').strip()
-        tipo_servicio_nombre = data.get('tipo_servicio', '').strip()
+        tipo_servicio = data.get('tipo_servicio', '').strip()
         ubicacion = data.get('ubicacion', '').strip()
         info_extra = data.get('info_extra', '').strip()
         es_personalizado = data.get('es_personalizado', False)
-
-        if not all([nombre, email, telefono, ubicacion]):
+        
+        # Validaciones básicas
+        if not all([nombre, telefono, tipo_servicio, ubicacion]):
             return JsonResponse({'success': False, 'error': 'Faltan campos obligatorios'}, status=400)
 
-        # 2. Manejo del Cliente (Aquí queda guardado el email para Resend)
-        cliente, created = Cliente.objects.update_or_create(
-            email=email,
-            defaults={
-                'nombre': nombre,
-                'telefono': telefono,
-            }
+        # 2. Guardar Solicitud (Solo strings, máxima seguridad)
+        solicitud = SolicitudWeb.objects.create(
+            nombre_solicitante=nombre,
+            email_solicitante=email if email else None,
+            telefono_solicitante=telefono,
+            tipo_servicio_solicitado=tipo_servicio,
+            ubicacion_trabajo=ubicacion,
+            informacion_adicional=info_extra,
+            es_servicio_personalizado=es_personalizado,
+            estado='pendiente',
+            ip_origen=user_ip,
+            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500]
         )
 
-        # 3. Obtener el usuario de sistema para la autoría
-        usuario_sistema, _ = User.objects.get_or_create(
-            username='solicitudes_web',
-            defaults={'first_name': 'Sistema', 'is_active': False}
-        )
-
-        # 4. Buscar el tipo de trabajo si existe
-        tipo_trabajo = None
-        if not es_personalizado:
-            tipo_trabajo = TipoTrabajo.objects.filter(nombre=tipo_servicio_nombre, activo=True).first()
-
-        # 5. Crear la Cotización mapeando los campos del Form
-        cotizacion = Cotizacion.objects.create(
-            cliente=cliente,
-            tipo_trabajo=tipo_trabajo,
-            lugar=ubicacion,
-            referencia=tipo_servicio_nombre,
-            estado='pedido',
-            creado_por=usuario_sistema,
-            observaciones=info_extra
-        )
-
-        # 6. NOTIFICACIONES AL EQUIPO (Lógica integrada para evitar errores)
+        # 3. Notificar a los administradores (Gerentes/Admin)
         try:
             usuarios_notificar = User.objects.filter(
-                is_active=True
-            ).filter(
-                Q(is_superuser=True) | Q(groups__name__in=['Administrador', 'Gerente'])
-            ).distinct()
+                perfilempleado__cargo__in=['administrador', 'gerente']
+            ).distinct() or User.objects.filter(is_staff=True)
 
             for usuario in usuarios_notificar:
                 crear_notificacion(
-                    usuario, # Primer parámetro es el User
+                    usuario=usuario,
                     tipo='info',
-                    titulo='Nueva Solicitud Web',
-                    mensaje=f'Cliente: {nombre} solicita {tipo_servicio_nombre}',
-                    url=f'/cotizaciones/solicitudes-pendientes/'
+                    titulo='🌐 Nueva Solicitud Web',
+                    mensaje=f'Solicitud de {nombre}: {tipo_servicio}',
+                    url='/cotizaciones/solicitudes-web/'
                 )
         except Exception as e:
-            print(f"⚠️ Error en notificaciones internas: {str(e)}")
+            print(f"⚠️ Error en notificaciones: {e}")
 
-        # 7. ENVÍO DE EMAIL DE CONFIRMACIÓN (Opcional en este paso)
-        # Aquí puedes llamar a tu función enviar_email_con_reintentos
-        # usando cliente.email
+        # 4. ACTIVAR BLOQUEO DE IP (5 Minutos)
+        # Solo lo activamos si la solicitud fue exitosa
+        cache.set(cache_key, True, 300)
 
         return JsonResponse({
-            'success': True, 
-            'message': 'Solicitud recibida correctamente',
-            'solicitud_id': cotizacion.id
+            'success': True,
+            'message': '¡Solicitud enviada con éxito!',
+            'numero_referencia': f"WEB-{solicitud.id:05d}"
         })
 
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
     except Exception as e:
-        print(f"❌ Error crítico: {str(e)}")
-        return JsonResponse({'success': False, 'error': 'Error interno del servidor'}, status=500)
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({'success': False, 'error': 'Error interno de servidor'}, status=500)
+
 
 @require_http_methods(["GET"])
 def obtener_tipos_trabajo_publicos(request):

@@ -1121,6 +1121,259 @@ class HistorialPrestamo(models.Model):
         """Duración real del préstamo"""
         return (self.fecha_devuelto - self.fecha_prestamo).day
 
+class SolicitudWeb(models.Model):
+    """
+    Modelo INDEPENDIENTE para solicitudes desde la web pública.
+    NO modifica clientes ni cotizaciones existentes.
+    """
+    
+    ESTADO_CHOICES = [
+        ('pendiente', 'Pendiente'),
+        ('en_revision', 'En Revisión'),
+        ('convertida', 'Convertida a Cotización'),
+        ('descartada', 'Descartada'),
+    ]
+    
+    # Datos del solicitante (guardados como STRING, no vinculados)
+    nombre_solicitante = models.CharField(
+        max_length=200,
+        verbose_name='Nombre del Solicitante',
+        help_text='Nombre ingresado por el visitante'
+    )
+    email_solicitante = models.EmailField(
+        verbose_name='Email del Solicitante',
+        blank=True,
+        null=True
+    )
+    telefono_solicitante = models.CharField(
+        max_length=50,
+        verbose_name='Teléfono del Solicitante'
+    )
+    
+    # Datos de la solicitud
+    tipo_servicio_solicitado = models.CharField(
+        max_length=300,
+        verbose_name='Servicio Solicitado',
+        help_text='Nombre del servicio que solicita'
+    )
+    ubicacion_trabajo = models.TextField(
+        verbose_name='Ubicación del Trabajo',
+        help_text='Dirección o lugar donde se requiere el servicio'
+    )
+    informacion_adicional = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Información Adicional',
+        help_text='Detalles adicionales proporcionados por el cliente'
+    )
+    es_servicio_personalizado = models.BooleanField(
+        default=False,
+        verbose_name='Es Servicio Personalizado',
+        help_text='Indica si es un servicio fuera del catálogo'
+    )
+    
+    # Control de estado
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADO_CHOICES,
+        default='pendiente',
+        verbose_name='Estado'
+    )
+    
+    # Fechas
+    fecha_solicitud = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Solicitud'
+    )
+    fecha_revision = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha de Revisión',
+        help_text='Cuando un admin la revisa'
+    )
+    fecha_conversion = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Fecha de Conversión',
+        help_text='Cuando se convierte a cotización'
+    )
+    
+    # Vinculación SOLO después de conversión
+    cotizacion_generada = models.ForeignKey(
+        'Cotizacion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitud_origen',
+        verbose_name='Cotización Generada',
+        help_text='Cotización creada a partir de esta solicitud (solo después de conversión)'
+    )
+    
+    # Usuario que procesó (admin/gerente)
+    procesada_por = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='Procesada Por',
+        help_text='Usuario que convirtió la solicitud'
+    )
+    
+    # Notas internas (solo para admins)
+    notas_internas = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Notas Internas',
+        help_text='Notas del administrador (no visibles para el cliente)'
+    )
+    
+    # Metadatos
+    ip_origen = models.GenericIPAddressField(
+        blank=True,
+        null=True,
+        verbose_name='IP de Origen'
+    )
+    user_agent = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='User Agent'
+    )
+    
+    class Meta:
+        ordering = ['-fecha_solicitud']
+        verbose_name = 'Solicitud Web'
+        verbose_name_plural = 'Solicitudes Web'
+        indexes = [
+            models.Index(fields=['-fecha_solicitud']),
+            models.Index(fields=['estado']),
+        ]
+    
+    def __str__(self):
+        return f"Solicitud #{self.id} - {self.nombre_solicitante} - {self.tipo_servicio_solicitado}"
+    
+    def marcar_en_revision(self, usuario):
+        """Marca la solicitud como en revisión"""
+        self.estado = 'en_revision'
+        self.fecha_revision = timezone.now()
+        self.procesada_por = usuario
+        self.save()
+    
+    def marcar_descartada(self, usuario, motivo=''):
+        """Marca la solicitud como descartada"""
+        self.estado = 'descartada'
+        if motivo:
+            self.notas_internas = f"DESCARTADA: {motivo}\n\n{self.notas_internas or ''}"
+        self.procesada_por = usuario
+        self.save()
+    
+    def convertir_a_cotizacion(self, usuario, cliente, tipo_trabajo):
+        """
+        Convierte esta solicitud en una cotización formal.
+        NO modifica datos existentes, solo crea nueva cotización.
+        
+        Args:
+            usuario: Usuario que realiza la conversión
+            cliente: Cliente existente o nuevo (ya creado externamente)
+            tipo_trabajo: Tipo de trabajo para la cotización
+            
+        Returns:
+            Cotizacion: La cotización creada
+        """
+        from django.utils import timezone
+        
+        # Generar número de cotización
+        anio_actual = timezone.now().year
+        from cotizaciones.models import Cotizacion
+        
+        ultima_cotizacion = Cotizacion.objects.filter(
+            numero__startswith=f'{anio_actual}-'
+        ).exclude(
+            numero__isnull=True
+        ).order_by('-numero').first()
+        
+        if ultima_cotizacion and ultima_cotizacion.numero:
+            try:
+                ultimo_numero = int(ultima_cotizacion.numero.split('-')[1])
+                nuevo_numero = ultimo_numero + 1
+            except (ValueError, IndexError):
+                nuevo_numero = 1
+        else:
+            nuevo_numero = 1
+        
+        numero_cotizacion = f'{anio_actual}-{nuevo_numero:04d}'
+        
+        # Preparar observaciones con datos de la solicitud
+        observaciones = f"""
+╔════════════════════════════════════════════════════════════════╗
+║  📱 SOLICITUD WEB #{self.id}                                    
+║  Convertida el: {timezone.now().strftime('%d/%m/%Y %H:%M')}
+║  Por: {usuario.get_full_name() or usuario.username}
+╚════════════════════════════════════════════════════════════════╝
+
+📋 DATOS ORIGINALES DE LA SOLICITUD:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+👤 Solicitante: {self.nombre_solicitante}
+📧 Email: {self.email_solicitante or 'No proporcionado'}
+📞 Teléfono: {self.telefono_solicitante}
+🔧 Servicio: {self.tipo_servicio_solicitado}
+📍 Ubicación: {self.ubicacion_trabajo}
+"""
+        
+        if self.informacion_adicional:
+            observaciones += f"""
+📝 Información adicional del cliente:
+{self.informacion_adicional}
+"""
+        
+        if self.es_servicio_personalizado:
+            observaciones += "\n✨ SERVICIO PERSONALIZADO (fuera de catálogo)\n"
+        
+        observaciones += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ Fecha solicitud web: {self.fecha_solicitud.strftime('%d/%m/%Y %H:%M')}
+"""
+        
+        # Crear cotización (sin modificar nada existente)
+        cotizacion = Cotizacion.objects.create(
+            numero=numero_cotizacion,
+            cliente=cliente,
+            cliente_nombre_respaldo=cliente.nombre,
+            tipo_trabajo=tipo_trabajo,
+            referencia=self.tipo_servicio_solicitado,
+            lugar=self.ubicacion_trabajo,
+            observaciones=observaciones,
+            creado_por=usuario,
+            estado='borrador',
+            subtotal_servicios=0,
+            subtotal_materiales=0,
+            subtotal_mano_obra=0,
+            gastos_traslado=0,
+            valor_neto=0,
+            valor_iva=0,
+            valor_total=0
+        )
+        
+        # Vincular cotización a esta solicitud
+        self.cotizacion_generada = cotizacion
+        self.estado = 'convertida'
+        self.fecha_conversion = timezone.now()
+        self.procesada_por = usuario
+        self.save()
+        
+        return cotizacion
+    
+    def get_dias_pendiente(self):
+        """Retorna cuántos días lleva pendiente"""
+        if self.estado != 'pendiente':
+            return 0
+        delta = timezone.now() - self.fecha_solicitud
+        return delta.days
+    
+    @property
+    def es_urgente(self):
+        """Solicitud con más de 2 días sin atender"""
+        return self.estado == 'pendiente' and self.get_dias_pendiente() > 2
+
 # ============================================================
 # APP MOVIL -EVIDENCIA
 # ============================================================
@@ -1150,7 +1403,6 @@ class EvidenciaTrabajo(models.Model):
     
     def __str__(self):
         return f"Evidencia {self.id} - Trabajo {self.trabajo.id}"
-
 
 class GastoTrabajo(models.Model):
     """Gastos asociados a un trabajo"""

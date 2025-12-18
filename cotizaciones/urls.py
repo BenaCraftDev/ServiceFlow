@@ -21,8 +21,17 @@ urlpatterns = [
     path('feedbacks-pendientes/', views.ver_feedbacks_pendientes, name='feedbacks_pendientes'),
     
     # Solicitudes Web
-    path('solicitudes-pendientes/', views.ver_solicitudes_pendientes, name='solicitudes_pendientes'),
-    path('<int:pk>/convertir-a-borrador/', views.convertir_solicitud_a_borrador, name='convertir_a_borrador'),
+    # Lista y gestión
+    path('solicitudes-web/', views.lista_solicitudes_web, name='lista_solicitudes_web'),
+    path('solicitudes-web/<int:pk>/', views.detalle_solicitud_web, name='detalle_solicitud_web'),
+    
+    # Acciones
+    path('solicitudes-web/<int:pk>/convertir/', views.convertir_solicitud_web_a_cotizacion, name='convertir_solicitud_web'),
+    path('solicitudes-web/<int:pk>/descartar/', views.descartar_solicitud_web, name='descartar_solicitud_web'),
+    path('solicitudes-web/<int:pk>/nota/', views.agregar_nota_solicitud_web, name='agregar_nota_solicitud_web'),
+    
+    # Exportar
+    path('solicitudes-web/exportar/', views.exportar_solicitudes_web, name='exportar_solicitudes_web'),
     
     # Gestión de items de cotización (AJAX)
     path('<int:cotizacion_pk>/item-servicio/', views.agregar_item_servicio, name='agregar_item_servicio'),

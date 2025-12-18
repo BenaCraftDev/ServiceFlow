@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitud #{{ solicitud.id }} | Detalle{% endblock %}
+
+{% block content %}
+<main>
+    <div class="actions">
+        <div class="actions-left">
+            <h1 style="margin: 0; color: var(--azul-700);">📱 Solicitud Web #{{ solicitud.id }}</h1>
+            <p class="muted">Recibida el {{ solicitud.fecha_solicitud|date:"d/m/Y" }} a las {{ solicitud.fecha_solicitud|date:"H:i" }}</p>
+        </div>
+        <div class="actions-right">
+            <a href="{% url 'cotizaciones:lista_solicitudes_web' %}" class="btn secondary">← Volver a la Lista</a>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+        
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            
+            <div class="card">
+                <h3 style="border-bottom: 1px solid var(--gris-200); padding-bottom: 10px;">📋 Datos de la Solicitud</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                    <div>
+                        <label class="muted">Nombre Cliente</label>
+                        <p style="font-size: 1.1rem; font-weight: 600;">{{ solicitud.nombre_solicitante }}</p>
+                    </div>
+                    <div>
+                        <label class="muted">Estado Actual</label><br>
+                        <span class="pill {{ solicitud.estado }}" style="font-size: 1rem;">{{ solicitud.get_estado_display }}</span>
+                    </div>
+                    <div>
+                        <label class="muted">Correo Electrónico</label>
+                        <p>{{ solicitud.email_solicitante|default:"No proporcionado" }}</p>
+                    </div>
+                    <div>
+                        <label class="muted">Teléfono de Contacto</label>
+                        <p><strong>{{ solicitud.telefono_solicitante }}</strong></p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <label class="muted">Servicio / Trabajo Solicitado</label>
+                    <div style="background: var(--azul-50); padding: 15px; border-radius: 8px; border-left: 4px solid var(--azul-500); margin-top: 5px;">
+                        {{ solicitud.tipo_servicio_solicitado }}
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <label class="muted">Información Adicional</label>
+                    <p style="white-space: pre-line; background: var(--gris-50); padding: 15px; border-radius: 8px;">{{ solicitud.informacion_adicional|default:"Sin detalles adicionales." }}</p>
+                </div>
+            </div>
+
+            {% if solicitud.estado != 'convertida' %}
+            <div class="card" style="border-top: 4px solid var(--verde-500);">
+                <h3>🎬 Acciones de Gestión</h3>
+                <div style="display: flex; gap: 12px; margin-top: 15px;">
+                    <button onclick="mostrarModalConversion()" class="btn success">✅ Convertir a Cotización</button>
+                    {% if solicitud.estado != 'descartada' %}
+                    <button onclick="mostrarModalDescartar()" class="btn danger">❌ Descartar</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert success" style="display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5rem;">🎉</span>
+                <div>
+                    <strong>Esta solicitud ya fue convertida.</strong><br>
+                    Puedes ver la cotización aquí: 
+                    <a href="{% url 'cotizaciones:detalle' solicitud.cotizacion_generada.id %}" class="btn small secondary">Ver Cotización {{ solicitud.cotizacion_generada.numero }}</a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <aside style="display: flex; flex-direction: column; gap: 24px;">
+            <div class="card">
+                <h4>📝 Notas Internas</h4>
+                <form id="formNota" onsubmit="agregarNota(event)" style="margin-top: 10px;">
+                    <textarea id="nota" rows="4" style="width: 100%; border-radius: 8px; border: 1px solid var(--gris-300); padding: 10px;" placeholder="Escribe un recordatorio..."></textarea>
+                    <button type="submit" class="btn small" style="width: 100%; margin-top: 10px;">Guardar Nota</button>
+                </form>
+                {% if solicitud.notas_internas %}
+                <div style="margin-top: 15px; font-size: 0.9rem; color: var(--gris-700); background: #fffbeb; padding: 10px; border-radius: 5px;">
+                    {{ solicitud.notas_internas|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h4>📍 Ubicación</h4>
+                <p class="muted">{{ solicitud.ubicacion_trabajo }}</p>
+            </div>
+        </aside>
+    </div>
+</main>
+
+<div id="modalDescartar" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+    <div class="card" style="background: white; width: 400px; margin: 10% auto; padding: 20px; border-radius: 8px;">
+        <h3>❌ Descartar Solicitud</h3>
+        <p>¿Por qué deseas descartar esta solicitud?</p>
+        <textarea id="motivoDescarte" rows="3" style="width: 100%; margin: 10px 0; padding: 8px;" placeholder="Motivo (opcional)"></textarea>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="document.getElementById('modalDescartar').style.display='none'" class="btn secondary">Cancelar</button>
+            <button onclick="ejecutarDescarte()" class="btn danger">Confirmar Descarte</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalConversion" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5);">
+    <div class="card" style="background: white; width: 500px; margin: 5% auto; padding: 25px; border-radius: 8px;">
+        <h3>✅ Convertir a Cotización formal</h3>
+        <form id="formConversion">
+            <div style="margin-bottom: 15px;">
+                <label><strong>1. Cliente:</strong></label><br>
+                <input type="radio" name="accion_cliente" value="nuevo" checked id="c1"> <label for="c1">Crear nuevo cliente con datos de solicitud</label><br>
+                <input type="radio" name="accion_cliente" value="existente" id="c2"> <label for="c2">Usar cliente existente</label>
+            </div>
+
+            <div id="divClienteExistente" style="display:none; margin-bottom: 15px;">
+                <label>Seleccionar Cliente:</label>
+                <select name="cliente_id" id="cliente_id" style="width: 100%; padding: 8px;">
+                    <option value="">-- Seleccione un cliente --</option>
+                    {% for cliente in clientes_existentes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label><strong>2. Tipo de Trabajo:</strong></label>
+                <select name="tipo_trabajo_id" required style="width: 100%; padding: 8px;">
+                    <option value="">-- Seleccione tipo --</option>
+                    {% for tipo in tipos_trabajo %}
+                        <option value="{{ tipo.id }}">{{ tipo.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" onclick="document.getElementById('modalConversion').style.display='none'" class="btn secondary">Cancelar</button>
+                <button type="submit" class="btn success">Generar Cotización</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Funciones para abrir/cerrar modales
+function mostrarModalDescartar() { document.getElementById('modalDescartar').style.display = 'block'; }
+function mostrarModalConversion() { document.getElementById('modalConversion').style.display = 'block'; }
+
+// Manejar lógica de cliente existente/nuevo en el modal
+document.getElementsByName('accion_cliente').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.getElementById('divClienteExistente').style.display = (this.value === 'existente') ? 'block' : 'none';
+    });
+});
+
+// Función para obtener el CSRF Token de Django
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// 1. LÓGICA DE NOTAS
+async function agregarNota(e) {
+    e.preventDefault();
+    const nota = document.getElementById('nota').value;
+    const formData = new FormData();
+    formData.append('nota', nota);
+
+    const response = await fetch("{% url 'cotizaciones:agregar_nota_solicitud_web' solicitud.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    });
+    const data = await response.json();
+    if(data.success) { window.location.reload(); }
+    else { alert("Error: " + data.error); }
+}
+
+// 2. LÓGICA DE DESCARTE
+async function ejecutarDescarte() {
+    const motivo = document.getElementById('motivoDescarte').value;
+    const formData = new FormData();
+    formData.append('motivo', motivo);
+
+    const response = await fetch("{% url 'cotizaciones:descartar_solicitud_web' solicitud.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    });
+    const data = await response.json();
+    if(data.success) { window.location.href = "{% url 'cotizaciones:lista_solicitudes_web' %}"; }
+    else { alert("Error: " + data.error); }
+}
+
+// 3. LÓGICA DE CONVERSIÓN
+document.getElementById('formConversion').onsubmit = async function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    const response = await fetch("{% url 'cotizaciones:convertir_solicitud_web' solicitud.id %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+        body: formData
+    });
+    const data = await response.json();
+    if(data.success) { 
+        alert(data.message);
+        window.location.href = data.redirect_url; 
+    } else { 
+        alert("Error: " + data.error); 
+    }
+}
+</script>
+
+{% endblock %}

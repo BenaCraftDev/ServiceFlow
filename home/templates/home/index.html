@@ -641,6 +641,9 @@
       </div>
       <div class="modal-body bg-light">
         <form id="formSolicitud">
+          <div style="display:none !important;" aria-hidden="true">
+            <input type="text" name="website_url_field" id="website_url_field" tabindex="-1" autocomplete="off">
+          </div>
           <input type="hidden" id="tipo_servicio">
           <input type="hidden" id="es_personalizado" value="false">
           
@@ -788,6 +791,7 @@ async function enviarSolicitud() {
   const btnEnviar = document.getElementById('btn-enviar');
   const btnText = document.getElementById('btn-text');
   const btnSpinner = document.getElementById('btn-spinner');
+  const honeypot = document.getElementById('website_url_field').value;
   
   if (!form.checkValidity()) {
     form.reportValidity();
@@ -824,6 +828,8 @@ async function enviarSolicitud() {
         'X-CSRFToken': getCookie('csrftoken')
       },
       body: JSON.stringify({
+        website_url_field: honeypot,
+        
         nombre: document.getElementById('nombre').value.trim(),
         email: document.getElementById('email').value.trim(),
         telefono: document.getElementById('telefono').value.trim(),

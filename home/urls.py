@@ -26,7 +26,7 @@ urlpatterns = [
     path('recuperar-password/', views.recuperar_password, name='recuperar_password'),
     path('reset-password/<uidb64>/<token>/', views.reset_password, name='reset_password'),
     
-    # Pedir Servicio
+    # Solicitud pública (sin login)
     path('solicitar-servicio/', views.solicitar_servicio_publico, name='solicitar_servicio_publico'),
     path('api/tipos-trabajo/', views.obtener_tipos_trabajo_publicos, name='tipos_trabajo_publicos'),
 ]

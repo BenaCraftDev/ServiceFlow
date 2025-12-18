@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Solicitudes Web | Sistema{% endblock %}
+
+{% block content %}
+<main>
+    <div class="actions">
+        <div class="actions-left">
+            <h1 style="margin: 0; color: var(--azul-700);">🌐 Solicitudes desde Sitio Web</h1>
+            <p class="muted">Gestión de prospectos recibidos desde el formulario público</p>
+        </div>
+        <div class="actions-right">
+            <a href="{% url 'cotizaciones:exportar_solicitudes_web' %}" class="btn success">📊 Exportar Excel</a>
+            <a href="{% url 'cotizaciones:lista_solicitudes_web' %}" class="btn secondary">🔄 Actualizar</a>
+        </div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <h4>⏳ Pendientes</h4>
+            <div class="kpi">{{ stats.pendientes }}</div>
+            <div class="muted">Sin revisar</div>
+        </div>
+        <div class="card">
+            <h4>👁️ En Revisión</h4>
+            <div class="kpi">{{ stats.en_revision }}</div>
+            <div class="muted">Procesando</div>
+        </div>
+        <div class="card">
+            <h4>✅ Convertidas</h4>
+            <div class="kpi">{{ stats.convertidas }}</div>
+            <div class="muted">Son cotizaciones</div>
+        </div>
+        <div class="card {% if stats.urgentes > 0 %}urgente-anim{% endif %}">
+            <h4>🚨 Urgentes</h4>
+            <div class="kpi" style="color: var(--rojo-600);">{{ stats.urgentes }}</div>
+            <div class="muted">Más de 2 días</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 24px;">
+        <form method="get" class="filters" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 15px; align-items: end;">
+            <div class="filter-group">
+                <label>Estado</label>
+                <select name="estado" onchange="this.form.submit()" style="width: 100%;">
+                    <option value="">Todas</option>
+                    <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>⏳ Pendientes</option>
+                    <option value="en_revision" {% if estado_filtro == 'en_revision' %}selected{% endif %}>👁️ En Revisión</option>
+                    <option value="convertida" {% if estado_filtro == 'convertida' %}selected{% endif %}>✅ Convertidas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Buscar Prospecto</label>
+                <input type="text" name="busqueda" value="{{ busqueda }}" placeholder="Nombre, email o servicio..." style="width: 100%;">
+            </div>
+            <div class="filter-group">
+                <button type="submit" class="btn">🔍 Buscar</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Estado</th>
+                    <th>Solicitante</th>
+                    <th>Servicio</th>
+                    <th>Días</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for solicitud in solicitudes %}
+                <tr {% if solicitud.es_urgente %}style="border-left: 4px solid var(--rojo-500); background: #fffcfb;"{% endif %}>
+                    <td>
+                        {{ solicitud.fecha_solicitud|date:"d/m/Y" }}<br>
+                        <small class="muted">{{ solicitud.fecha_solicitud|date:"H:i" }}</small>
+                    </td>
+                    <td>
+                        <span class="pill {{ solicitud.estado }}">
+                            {{ solicitud.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <strong>{{ solicitud.nombre_solicitante }}</strong><br>
+                        <small>📞 {{ solicitud.telefono_solicitante }}</small>
+                    </td>
+                    <td>{{ solicitud.tipo_servicio_solicitado|truncatechars:40 }}</td>
+                    <td>
+                        {% if solicitud.estado == 'pendiente' %}
+                            <span {% if solicitud.es_urgente %}style="color:red; font-weight:bold"{% endif %}>
+                                {{ solicitud.get_dias_pendiente }} d
+                            </span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'cotizaciones:detalle_solicitud_web' solicitud.id %}" class="btn small secondary">👁️ Ver Detalle</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 50px; color: var(--gris-500);">
+                        No se encontraron solicitudes con los filtros aplicados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<style>
+    .urgente-anim { animation: pulse-border 2s infinite; }
+    @keyframes pulse-border {
+        50% { box-shadow: 0 0 15px rgba(220, 38, 38, 0.3); border-color: var(--rojo-400); }
+    }
+</style>
+{% endblock %}

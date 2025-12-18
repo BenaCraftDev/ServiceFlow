@@ -1152,7 +1152,7 @@ class SolicitudWeb(models.Model):
     
     # Datos de la solicitud
     tipo_servicio_solicitado = models.CharField(
-        max_length=300,
+        max_length=299,
         verbose_name='Servicio Solicitado',
         help_text='Nombre del servicio que solicita'
     )
@@ -1267,18 +1267,6 @@ class SolicitudWeb(models.Model):
         self.save()
     
     def convertir_a_cotizacion(self, usuario, cliente, tipo_trabajo):
-        """
-        Convierte esta solicitud en una cotización formal.
-        NO modifica datos existentes, solo crea nueva cotización.
-        
-        Args:
-            usuario: Usuario que realiza la conversión
-            cliente: Cliente existente o nuevo (ya creado externamente)
-            tipo_trabajo: Tipo de trabajo para la cotización
-            
-        Returns:
-            Cotizacion: La cotización creada
-        """
         from django.utils import timezone
         
         # Generar número de cotización
@@ -1303,35 +1291,7 @@ class SolicitudWeb(models.Model):
         numero_cotizacion = f'{anio_actual}-{nuevo_numero:04d}'
         
         # Preparar observaciones con datos de la solicitud
-        observaciones = f"""
-╔════════════════════════════════════════════════════════════════╗
-║  📱 SOLICITUD WEB #{self.id}                                    
-║  Convertida el: {timezone.now().strftime('%d/%m/%Y %H:%M')}
-║  Por: {usuario.get_full_name() or usuario.username}
-╚════════════════════════════════════════════════════════════════╝
-
-📋 DATOS ORIGINALES DE LA SOLICITUD:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-👤 Solicitante: {self.nombre_solicitante}
-📧 Email: {self.email_solicitante or 'No proporcionado'}
-📞 Teléfono: {self.telefono_solicitante}
-🔧 Servicio: {self.tipo_servicio_solicitado}
-📍 Ubicación: {self.ubicacion_trabajo}
-"""
-        
-        if self.informacion_adicional:
-            observaciones += f"""
-📝 Información adicional del cliente:
-{self.informacion_adicional}
-"""
-        
-        if self.es_servicio_personalizado:
-            observaciones += "\n✨ SERVICIO PERSONALIZADO (fuera de catálogo)\n"
-        
-        observaciones += f"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ Fecha solicitud web: {self.fecha_solicitud.strftime('%d/%m/%Y %H:%M')}
-"""
+        observaciones = self.informacion_adicional
         
         # Crear cotización (sin modificar nada existente)
         cotizacion = Cotizacion.objects.create(

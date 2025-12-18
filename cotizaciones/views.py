@@ -1363,7 +1363,7 @@ def lista_solicitudes_web(request):
     busqueda = request.GET.get('busqueda', '').strip()
     
     # Query base
-    solicitudes = SolicitudWeb.objects.all()
+    solicitudes = Solicitud_Web.objects.all()
     
     # Aplicar filtro de estado
     if estado_filtro and estado_filtro != 'todas':
@@ -1390,11 +1390,11 @@ def lista_solicitudes_web(request):
     
     # Estadísticas rápidas
     stats = {
-        'pendientes': SolicitudWeb.objects.filter(estado='pendiente').count(),
-        'en_revision': SolicitudWeb.objects.filter(estado='en_revision').count(),
-        'convertidas': SolicitudWeb.objects.filter(estado='convertida').count(),
-        'descartadas': SolicitudWeb.objects.filter(estado='descartada').count(),
-        'urgentes': SolicitudWeb.objects.filter(
+        'pendientes': Solicitud_Web.objects.filter(estado='pendiente').count(),
+        'en_revision': Solicitud_Web.objects.filter(estado='en_revision').count(),
+        'convertidas': Solicitud_Web.objects.filter(estado='convertida').count(),
+        'descartadas': Solicitud_Web.objects.filter(estado='descartada').count(),
+        'urgentes': Solicitud_Web.objects.filter(
             estado='pendiente',
             fecha_solicitud__lt=timezone.now() - timezone.timedelta(days=2)
         ).count()
@@ -1416,7 +1416,7 @@ def detalle_solicitud_web(request, pk):
     Vista detallada de una solicitud web.
     Permite revisar todos los datos y tomar acciones.
     """
-    solicitud = get_object_or_404(SolicitudWeb, pk=pk)
+    solicitud = get_object_or_404(Solicitud_Web, pk=pk)
     
     # Si la solicitud está pendiente, marcarla como en revisión
     if solicitud.estado == 'pendiente':
@@ -1458,7 +1458,7 @@ def convertir_solicitud_web_a_cotizacion(request, pk):
         }, status=405)
     
     try:
-        solicitud = get_object_or_404(SolicitudWeb, pk=pk)
+        solicitud = get_object_or_404(Solicitud_Web, pk=pk)
         
         # Verificar que no esté ya convertida
         if solicitud.estado == 'convertida':
@@ -1547,7 +1547,7 @@ def descartar_solicitud_web(request, pk):
         return JsonResponse({'success': False, 'error': 'Método no permitido'}, status=405)
     
     try:
-        solicitud = get_object_or_404(SolicitudWeb, pk=pk)
+        solicitud = get_object_or_404(Solicitud_Web, pk=pk)
         
         if solicitud.estado == 'convertida':
             return JsonResponse({'success': False, 'error': 'No se puede descartar una solicitud ya convertida'}, status=400)
@@ -1596,7 +1596,7 @@ def agregar_nota_solicitud_web(request, pk):
         }, status=405)
     
     try:
-        solicitud = get_object_or_404(SolicitudWeb, pk=pk)
+        solicitud = get_object_or_404(Solicitud_Web, pk=pk)
         nota = request.POST.get('nota', '').strip()
         
         if not nota:
@@ -1662,7 +1662,7 @@ def exportar_solicitudes_web(request):
         cell.alignment = Alignment(horizontal='center', vertical='center')
     
     # Datos
-    solicitudes = SolicitudWeb.objects.all().order_by('-fecha_solicitud')
+    solicitudes = Solicitud_Web.objects.all().order_by('-fecha_solicitud')
     
     for row, sol in enumerate(solicitudes, 2):
         ws.cell(row=row, column=1, value=sol.id)

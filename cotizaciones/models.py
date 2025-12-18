@@ -1121,7 +1121,7 @@ class HistorialPrestamo(models.Model):
         """Duración real del préstamo"""
         return (self.fecha_devuelto - self.fecha_prestamo).day
 
-class SolicitudWeb(models.Model):
+class Solicitud_Web(models.Model):
     """
     Modelo INDEPENDIENTE para solicitudes desde la web pública.
     NO modifica clientes ni cotizaciones existentes.

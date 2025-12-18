@@ -24,7 +24,7 @@ from django.conf import settings
 from django.urls import reverse
 from cotizaciones.utils_mantenimiento import verificar_mantenimientos_materiales
 from django.views.decorators.csrf import csrf_exempt
-from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, SolicitudWeb
+from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, Solicitud_Web
 from notificaciones.utils import crear_notificacion
 from django.core.cache import cache
 
@@ -278,7 +278,7 @@ def solicitar_servicio_publico(request):
             return JsonResponse({'success': False, 'error': 'Faltan campos obligatorios'}, status=400)
 
         # 2. Guardar Solicitud (Solo strings, máxima seguridad)
-        solicitud = SolicitudWeb.objects.create(
+        solicitud = Solicitud_Web.objects.create(
             nombre_solicitante=nombre,
             email_solicitante=email if email else None,
             telefono_solicitante=telefono,

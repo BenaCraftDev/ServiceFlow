@@ -5,7 +5,7 @@ app_name = 'home'
 
 urlpatterns = [
     path('', views.index, name='index'),
-    path('login/', views.login_view, name='login'),
+    path('R8M2QKx7f9AL/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('panel-empleados/', views.panel_empleados, name='panel_empleados'),
     path('mi-perfil/', views.mi_perfil, name='mi_perfil'),
@@ -25,5 +25,8 @@ urlpatterns = [
     # Recuperar Password
     path('recuperar-password/', views.recuperar_password, name='recuperar_password'),
     path('reset-password/<uidb64>/<token>/', views.reset_password, name='reset_password'),
-
+    
+    # Pedir Servicio
+    path('solicitar-servicio/', views.solicitar_servicio_publico, name='solicitar_servicio_publico'),
+    path('api/tipos-trabajo/', views.obtener_tipos_trabajo_publicos, name='tipos_trabajo_publicos'),
 ]

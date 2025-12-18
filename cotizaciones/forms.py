@@ -172,7 +172,6 @@ class MaterialForm(forms.ModelForm):
                 self.fields['dias_alerta_previa'].help_text = f'Valor sugerido automáticamente: {dias_alerta_auto} días'
                 self.fields['dias_alerta_previa'].widget.attrs['placeholder'] = f'Sugerido: {dias_alerta_auto} días'
 
-
 class TipoTrabajoForm(forms.ModelForm):
     class Meta:
         model = TipoTrabajo

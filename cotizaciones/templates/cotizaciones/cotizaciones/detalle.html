@@ -218,7 +218,7 @@
 
       <!-- Mostrar comentarios del cliente si existen - ⭐ MOVIDO AQUÍ DENTRO -->
       {% if cotizacion.comentarios_cliente %}
-      <div class="alert {% if cotizacion.estado == 'aprobada' %}success{% elif cotizacion.estado == 'rechazada' %}error{% else %}warning{% endif %}" style="margin: 0; border-radius: 0; border-left: none; border-right: none; border-top: none; padding: 20px 64px;">
+      <div class="alert {% if cotizacion.estado == 'aprobada' %}success{% elif cotizacion.estado == 'rechazada' %}error{% else %}warning{% endif %}" style="margin: 0 0 24px 0; border-radius: 0; border-left: none; border-right: none; border-top: none; padding: 20px 64px;">
         <strong>💬 Respuesta del Cliente 
           ({{ cotizacion.fecha_respuesta_cliente|date:"d/m/Y H:i" }}):</strong>
         <p style="margin: 10px 0 0; white-space: pre-line;">{{ cotizacion.comentarios_cliente }}</p>

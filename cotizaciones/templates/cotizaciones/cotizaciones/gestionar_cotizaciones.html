@@ -79,6 +79,20 @@
           </a>
         </div>
       </div>
+      
+      {% if solicitudes_pendientes > 0 %}
+        <div class="alert warning" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; animation: pulse 2s infinite;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 2rem;">🔔</span>
+            <div>
+              <strong>{{ solicitudes_pendientes }} Solicitud{{ solicitudes_pendientes|pluralize:"es" }} Web Pendiente{{ solicitudes_pendientes|pluralize:"s" }}</strong><br>
+              <span style="font-size: 0.9rem;">Clientes esperando cotizaciones desde la página web - Requieren conversión</span>    
+            </div>
+          </div>
+          <a href="{% url 'cotizaciones:solicitudes_pendientes' %}" class="btn warning"> Ver Solicitudes →</a>
+        </div>
+      {% endif %}
+
 
       <!-- Grid de contenido -->
       <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
@@ -116,12 +130,15 @@
                 <td>${{ cotizacion.valor_total|floatformat:0 }}</td>
                 <td>{{ cotizacion.fecha_creacion|date:"d/m/Y" }}</td>
                 <td>
-                  <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn small secondary">
-                    👁️ Ver
-                  </a>
-                  <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" class="btn small secondary" target="_blank">
-                    📥 Ver PDF
-                  </a>
+                  {% if cotizacion.estado == 'pedido' %}
+                    <button class="btn small warning" onclick="convertirSolicitud({{ cotizacion.id }})" title="Convertir solicitud web a cotizacion">🔄</button>
+                  {% else %}
+                    <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn small secondary" title="Ver Cotizacion">👁️</a>
+                    <a href="{% url 'cotizaciones:generar_pdf' cotizacion.pk %}" class="btn small secondary" title="Ver PDF">📥</a>
+                    {% if cotizacion.estado == 'borrador' %}
+                      <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" class="btn small success" title="Editar Borrador">✏️</a>
+                    {% endif %}
+                  {% endif %}
                 </td>
               </tr>
               {% empty %}
@@ -194,6 +211,111 @@
       });
     }
   });
+
+  function convertirSolicitud(solicitudId) {
+
+    if (!confirm(
+        '¿Convertir esta solicitud web a cotización borrador?\n\n' +
+        'Podrás editarla y completarla después.'
+    )) {
+        return;
+    }
+
+    const btn = event.target;
+    const textoOriginal = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Convirtiendo...';
+
+    fetch(`/cotizaciones/${solicitudId}/convertir-a-borrador/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (data.success) {
+            alert(
+                `✅ ${data.message}\n\nSerás redirigido al editor.`
+            );
+
+            window.location.href = data.redirect_url;
+
+        } else {
+            alert(`❌ Error: ${data.error}`);
+
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+        }
+
+    })
+    .catch(error => {
+
+        alert('❌ Error de conexión.');
+
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+
+    });
+}
+
+  function getCookie(name) {
+    let cookieValue = null;
+
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
+                break;
+            }
+        }
+    }
+
+    return cookieValue;
+}
+
+</script>
+
+<style>
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(234, 88, 12, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 8px 24px rgba(234, 88, 12, 0.4);
+    }
+}
+
+/* Pill especial para solicitudes web */
+.pill.pedido {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    color: #ea580c;
+    border-color: #fed7aa;
+    font-weight: 700;
+    animation: pulse-pill 2s infinite;
+}
+
+@keyframes pulse-pill {
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+}
+</style>
+
 </script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 import io
 import os
+import uuid
 import json
 import csv
 from .forms_empleados import *
@@ -41,7 +42,6 @@ from time import sleep
 from smtplib import SMTPException
 
 logger = logging.getLogger(__name__)
-
 
 @login_required
 @requiere_gerente_o_superior
@@ -539,6 +539,9 @@ def agregar_item_servicio(request, cotizacion_pk):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["POST"])
 def agregar_item_material(request, cotizacion_pk):
     """Agregar item de material vía AJAX"""
     cotizacion = get_object_or_404(Cotizacion, pk=cotizacion_pk)
@@ -1347,6 +1350,109 @@ def editar_cotizacion_aprobada(request, pk):
     return render(request, 'cotizaciones/cotizaciones/confirmar_edicion_aprobada.html', {
         'cotizacion': cotizacion
     })
+
+def convertir_solicitud_a_borrador(request, pk):
+    """
+    Convierte una solicitud web (estado='pedido') a cotización borrador
+    """
+    try:
+        cotizacion = get_object_or_404(Cotizacion, pk=pk)
+        
+        # 1. Verificar que sea una solicitud web
+        if cotizacion.estado != 'pedido':
+            return JsonResponse({
+                'success': False,
+                'error': 'Esta cotización no es una solicitud web'
+            }, status=400)
+        
+        # 2. Generar el número oficial de cotización (YYYY-NNNN)
+        anio_actual = timezone.now().year
+        
+        ultima_cotizacion = Cotizacion.objects.filter(
+            numero__startswith=f'{anio_actual}-'
+        ).exclude(
+            Q(numero__isnull=True) | Q(numero='')
+        ).order_by('-numero').first()
+        
+        if ultima_cotizacion and ultima_cotizacion.numero:
+            try:
+                # Extraemos el número después del guion y sumamos 1
+                ultimo_numero = int(ultima_cotizacion.numero.split('-')[1])
+                nuevo_numero = ultimo_numero + 1
+            except (ValueError, IndexError):
+                nuevo_numero = 1
+        else:
+            nuevo_numero = 1
+        
+        # Aquí definimos la variable que te daba error:
+        cotizacion.numero = f'{anio_actual}-{nuevo_numero:04d}'
+        
+        # 3. Actualizar datos de la cotización
+        cotizacion.estado = 'borrador'
+        cotizacion.creado_por = request.user
+        
+        # Preservar observaciones y añadir bloque de notas
+        nombre_admin = request.user.get_full_name() or request.user.username
+        observaciones_originales = cotizacion.observaciones or ""
+        
+        cotizacion.observaciones = f"""{observaciones_originales}"""
+        
+        cotizacion.save()
+        
+        # 4. Crear notificación para el sistema (Corregida)
+        try:
+            from notificaciones.utils import crear_notificacion
+            crear_notificacion(
+                request.user, # Quién realiza la acción
+                tipo='success',
+                titulo='Solicitud Convertida',
+                mensaje=f'Solicitud de {cotizacion.cliente.nombre} convertida a cotización {cotizacion.numero}.',
+                url=f'/cotizaciones/{cotizacion.id}/editar/'
+            )
+        except Exception as e:
+            print(f"⚠️ Error al crear notificación: {str(e)}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Solicitud convertida a cotización {cotizacion.numero}',
+            'cotizacion_id': cotizacion.id,
+            'numero': cotizacion.numero,
+            'redirect_url': f'/cotizaciones/{cotizacion.id}/editar/'
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al convertir: {str(e)}'
+        }, status=500)
+    
+@login_required
+@requiere_gerente_o_superior
+def ver_solicitudes_pendientes(request):
+    """
+    Vista para listar todas las solicitudes web pendientes
+    """
+    # Obtener solicitudes pendientes
+    solicitudes = Cotizacion.objects.filter(
+        estado='pedido'
+    ).select_related(
+        'cliente', 
+        'tipo_trabajo'
+    ).order_by('-fecha_creacion')
+    
+    # Paginación
+    paginator = Paginator(solicitudes, 20)
+    page_number = request.GET.get('page', 1)
+    solicitudes_paginadas = paginator.get_page(page_number)
+    
+    context = {
+        'solicitudes': solicitudes_paginadas,
+        'total_solicitudes': solicitudes.count(),
+    }
+    
+    return render(request, 'cotizaciones/solicitudes/lista_solicitudes.html', context)
 
 # === Crud Clientes === 
 

@@ -282,7 +282,7 @@ class Cotizacion(models.Model):
         ('finalizada', 'Finalizada'),
     ]
 
-    numero = models.CharField(max_length=20, unique=True)
+    numero = models.CharField(max_length=20, unique=True, null=True, blank=True)
     cliente = models.ForeignKey(Cliente, on_delete=models.SET_NULL, null=True, blank=True)
     cliente_nombre_respaldo = models.CharField(max_length=200, blank=True, help_text="Nombre del cliente guardado como respaldo")
     representante = models.ForeignKey('RepresentanteCliente', on_delete=models.SET_NULL, null=True, blank=True, related_name='cotizaciones')

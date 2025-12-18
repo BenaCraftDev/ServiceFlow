@@ -1,0 +1,814 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Empresa - Página Principal</title>
+  <link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg bg-custom" id="navbar" >
+  <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'home:index' %}">
+          <img src="{% static 'home/img/Logo_Empresa.png' %}" alt="Logo Empresa" width="200" height="65">
+      </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" id="nav-link" href="#conocenos">
+            Conocenos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-link" href="#servicios">
+            Servicios
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" id="nav-link" href="#contacto">
+            Atencion al Cliente
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+<div class="navbar-decor-bar" style="margin-bottom: 2rem;"></div>
+
+<!-- Carrusel con Imagenes Promocionales -->
+<div id="carousel" class="carousel slide" data-bs-ride="carousel" style="margin-bottom: 7rem;">
+  <div class="carousel-inner">
+    <div class="carousel-item active" data-bs-interval="3000">
+      <img src="{% static 'home/img/prom1.jpeg' %}" class="d-block w-100" alt="Promoción 1">
+    </div>
+    <div class="carousel-item" data-bs-interval="3000">
+      <img src="{% static 'home/img/prom2.jpeg' %}" class="d-block w-100" alt="Promoción 2">
+    </div>
+    <div class="carousel-item" data-bs-interval="3000">
+      <img src="{% static 'home/img/prom3.jpeg' %}" class="d-block w-100" alt="Promoción 3">
+    </div>
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#carousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#carousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+  </button>
+</div>
+
+<!-- Sección de Servicios -->
+<section class="container my-5" id="servicios">
+  <div class="text-center mb-5">
+    <h2 class="display-5 fw-bold" style="color: #046de5;">Nuestros Servicios</h2>
+    <p class="lead text-muted">Soluciones profesionales adaptadas a tus necesidades</p>
+  </div>
+  
+  <div class="row g-4">
+    <!-- Tarjeta 1 - Pozo Profundo -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          💧
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Pozo Profundo</h5>
+          <p class="card-text">Instalación y mantención de pozos profundos con equipos especializados.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Pozo Profundo', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta 2 - Instalación de Bombas -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          🔧
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Instalación de Bomba</h5>
+          <p class="card-text">Instalación profesional de sistemas de bombeo industrial.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Instalación de Bomba', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta 3 - Mantenimiento -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          🛠️
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Mantenimiento</h5>
+          <p class="card-text">Servicio de mantenimiento preventivo y correctivo de equipos.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Mantenimiento', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta 4 - Tableros Eléctricos -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          ⚡
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Tablero Eléctrico</h5>
+          <p class="card-text">Diseño e instalación de tableros eléctricos industriales.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Tablero Eléctrico', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta 5 - Estanques -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          🚰
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Estanque</h5>
+          <p class="card-text">Instalación de estanques de almacenamiento de agua.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Estanque', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tarjeta 6 - Consultoría -->
+    <div class="col-md-4">
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">
+          📋
+        </div>
+        <div class="card-body" style="flex: 1;">
+          <h5 class="card-title-no-emoji">Consultoría</h5>
+          <p class="card-text">Asesoría técnica especializada para tu proyecto.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Consultoría', false)">Solicitar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Banner Servicio Personalizado -->
+<a href="javascript:void(0)" class="interactive-banner" onclick="solicitarServicioPersonalizado()">
+  <div class="banner-content">
+    <p>¿No Encuentra el Servicio que busca?</p>
+    <h2>Solicite Servicio Personalizado</h2>
+    <p class="mt-3">Contáctenos y crearemos una solución a su medida</p>
+  </div>
+</a>
+
+<!-- Resenyas -->
+<section class="zona-resenas" style="margin-bottom: 7rem;">
+  <!-- Cantidad Resenyas -->
+  <div class="resena-destacada">
+    <h2>+20</h2>
+    <p><strong>Cliente Satisfecho</strong></p>
+  </div>
+
+<!-- Carrusel Resenyas -->
+<div class="carrusel-wrapper">
+    <button class="carrusel-btn left" onclick="scrollCarrusel(-1)">&#10094;</button>
+    <div class="carrusel-scroll" id="carrusel-scroll">
+      <div class="resena-card">
+        <h5>Servicio Excelente</h5>
+        <div class="estrellas">★★★★★</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Pedro</strong>
+      </div>
+      <div class="resena-card">
+        <h5>Muy Recomendado</h5>
+        <div class="estrellas">★★★★☆</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Laura</strong>
+      </div>
+      <div class="resena-card">
+        <h5>Buena Atención</h5>
+        <div class="estrellas">★★★★☆</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Diego</strong>
+      </div>
+      <div class="resena-card">
+        <h5>Volveré Seguro</h5>
+        <div class="estrellas">★★★★★</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Ana</strong>
+      </div>
+      <div class="resena-card">
+        <h5>Volveré Seguro</h5>
+        <div class="estrellas">★★★★★</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Hector</strong>
+      </div>
+      <div class="resena-card">
+        <h5>Volveré Seguro</h5>
+        <div class="estrellas">★★★★★</div>
+        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
+        <strong>- Manuel</strong>
+      </div>
+    </div>
+    <button class="carrusel-btn right" onclick="scrollCarrusel(1)">&#10095;</button>
+</div>
+</section>
+
+<!-- Footer -->
+<footer class="footer" id="contacto">
+  <div class="footer-content">
+    <!-- Columna 1: Logo y horario -->
+    <div class="footer-col">
+      <img src="{% static 'home/img/logo_empresa.png' %}" alt="Logo" class="footer-logo">
+      <p class="footer-horario">Lun a Vie: 9:00 - 18:00<br>Sáb: 10:00 - 14:00</p>
+    </div>
+
+    <!-- Columna 2: Links 1 -->
+    <div class="footer-col" id="conocenos">
+      <h5>Empresa</h5>
+      <ul>
+        <li><a href="#conocenos">Conócenos</a></li>
+        <li><a href="#mision">Misión y Visión</a></li>
+        <li><a href="#equipo">Equipo</a></li>
+      </ul>
+    </div>
+
+    <!-- Columna 3: Links 2 -->
+    <div class="footer-col">
+      <h5>Servicios</h5>
+      <ul>
+        <li><a href="#servicios">Consultoría</a></li>
+        <li><a href="#servicios">Soporte</a></li>
+        <li><a href="#servicios">Planes</a></li>
+      </ul>
+    </div>
+
+    <!-- Columna 4: Links 3 -->
+    <div class="footer-col">
+      <h5>Contacto</h5>
+      <ul>
+        <li><a href="#contacto">Formulario</a></li>
+        <li><a href="https://wa.me/56912345678" target="_blank">WhatsApp</a></li>
+        <li><a href="#ubicacion">Ubicación</a></li>
+      </ul>
+    </div>
+
+    <!-- Columna 5: Espacio vacío -->
+    <div class="footer-col footer-empty"></div>
+  </div>
+</footer>
+
+<!-- Mini Footer -->
+<div class="mini-footer">
+  <div><a href="/terminos">Términos y Condiciones</a></div>
+
+  <div class="mini-footer-center">
+    &copy; 2025 - Empresa | Todos los derechos reservados
+    <img src="{% static 'home/img/logo_blanco.png' %}" width="20px" height="20px" alt="Logo">
+  </div>
+
+  <div class="hidden-login" onclick="window.location.href='{% url 'home:login' %}'">Login</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+
+// Función para el carrusel de reseñas
+function scrollCarrusel(direction) {
+  const carrusel = document.getElementById('carrusel-scroll');
+  const scrollAmount = 220; // Ancho de una tarjeta + gap
+  
+  if (direction === 1) {
+    carrusel.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+  } else {
+    carrusel.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+  }
+}
+
+// Auto-scroll del carrusel (opcional)
+let autoScrollInterval;
+
+function startAutoScroll() {
+  const carrusel = document.getElementById('carrusel-scroll');
+  
+  autoScrollInterval = setInterval(() => {
+    // Si llegamos al final, volver al inicio
+    if (carrusel.scrollLeft + carrusel.clientWidth >= carrusel.scrollWidth - 10) {
+      carrusel.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      carrusel.scrollBy({ left: 220, behavior: 'smooth' });
+    }
+  }, 4000); // Cada 4 segundos
+}
+
+function stopAutoScroll() {
+  clearInterval(autoScrollInterval);
+}
+
+// Iniciar auto-scroll al cargar
+document.addEventListener('DOMContentLoaded', function() {
+  const carrusel = document.getElementById('carrusel-scroll');
+  
+  // Iniciar auto-scroll
+  startAutoScroll();
+  
+  // Detener auto-scroll al hacer hover
+  carrusel.addEventListener('mouseenter', stopAutoScroll);
+  carrusel.addEventListener('mouseleave', startAutoScroll);
+  
+  // Scroll suave para enlaces internos
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    });
+  });
+  
+  // Animación de entrada para elementos
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -100px 0px'
+  };
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('fade-in');
+      }
+    });
+  }, observerOptions);
+  
+  // Observar elementos que queremos animar
+  document.querySelectorAll('.card, .interactive-banner, .zona-resenas').forEach(el => {
+    observer.observe(el);
+  });
+  
+  // Efecto parallax suave en el banner
+  const banner = document.querySelector('.interactive-banner');
+  if (banner) {
+    window.addEventListener('scroll', () => {
+      const scrolled = window.pageYOffset;
+      const rate = scrolled * 0.3;
+      banner.style.backgroundPositionY = `calc(20% + ${rate}px)`;
+    });
+  }
+  
+  // Contador animado para el número de clientes
+  animateCounter();
+});
+
+// Función para animar el contador
+function animateCounter() {
+  const counter = document.querySelector('.resena-destacada h2');
+  if (!counter) return;
+  
+  const target = 20;
+  let current = 0;
+  const increment = 1;
+  const duration = 2000;
+  const steps = target / increment;
+  const stepDuration = duration / steps;
+  
+  const timer = setInterval(() => {
+    current += increment;
+    counter.textContent = `+${current}`;
+    
+    if (current >= target) {
+      clearInterval(timer);
+    }
+  }, stepDuration);
+}
+
+// Sistema de formulario de contacto (si se agrega)
+function enviarFormularioContacto(event) {
+  event.preventDefault();
+  
+  const form = event.target;
+  const formData = new FormData(form);
+  
+  // Aquí iría la lógica de envío del formulario
+  alert('¡Gracias por contactarnos! Te responderemos pronto.');
+  form.reset();
+}
+
+// Validación básica de formularios
+function validarFormulario(form) {
+  let isValid = true;
+  const inputs = form.querySelectorAll('input[required], textarea[required]');
+  
+  inputs.forEach(input => {
+    if (!input.value.trim()) {
+      input.classList.add('error');
+      isValid = false;
+    } else {
+      input.classList.remove('error');
+    }
+  });
+  
+  return isValid;
+}
+
+// Sistema de notificaciones toast (opcional)
+function mostrarNotificacion(mensaje, tipo = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${tipo}`;
+  toast.innerHTML = `
+    <div class="toast-icon">
+      ${tipo === 'success' ? '✓' : tipo === 'error' ? '✕' : 'ℹ'}
+    </div>
+    <div class="toast-content">
+      <p class="toast-message">${mensaje}</p>
+    </div>
+    <button class="toast-close" onclick="this.parentElement.remove()">✕</button>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Auto-remover después de 5 segundos
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
+
+// Lazy loading de imágenes
+function lazyLoadImages() {
+  const images = document.querySelectorAll('img[data-src]');
+  
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        img.src = img.dataset.src;
+        img.removeAttribute('data-src');
+        observer.unobserve(img);
+      }
+    });
+  });
+  
+  images.forEach(img => imageObserver.observe(img));
+}
+
+// Inicializar lazy loading
+document.addEventListener('DOMContentLoaded', lazyLoadImages);
+
+// Prevenir comportamiento por defecto en enlaces vacíos
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('a[href="#"]').forEach(link => {
+    link.addEventListener('click', function(e) {
+      if (this.getAttribute('href') === '#') {
+        e.preventDefault();
+      }
+    });
+  });
+});
+
+// Sistema de búsqueda en tiempo real (si se agrega barra de búsqueda)
+let searchTimeout;
+function buscarServicios(query) {
+  clearTimeout(searchTimeout);
+  
+  searchTimeout = setTimeout(() => {
+    const servicios = document.querySelectorAll('.card');
+    const searchLower = query.toLowerCase();
+    
+    servicios.forEach(servicio => {
+      const titulo = servicio.querySelector('.card-title').textContent.toLowerCase();
+      const descripcion = servicio.querySelector('.card-text').textContent.toLowerCase();
+      
+      if (titulo.includes(searchLower) || descripcion.includes(searchLower)) {
+        servicio.style.display = '';
+      } else {
+        servicio.style.display = 'none';
+      }
+    });
+  }, 300);
+}
+
+// Modo oscuro toggle (opcional)
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+}
+
+// Cargar preferencia de modo oscuro
+document.addEventListener('DOMContentLoaded', function() {
+  if (localStorage.getItem('darkMode') === 'true') {
+    document.body.classList.add('dark-mode');
+  }
+});
+
+// Sistema de favoritos (localStorage)
+function toggleFavorito(servicioId) {
+  let favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]');
+  
+  const index = favoritos.indexOf(servicioId);
+  if (index === -1) {
+    favoritos.push(servicioId);
+    mostrarNotificacion('Servicio agregado a favoritos', 'success');
+  } else {
+    favoritos.splice(index, 1);
+    mostrarNotificacion('Servicio removido de favoritos', 'info');
+  }
+  
+  localStorage.setItem('favoritos', JSON.stringify(favoritos));
+  actualizarIconosFavoritos();
+}
+
+function actualizarIconosFavoritos() {
+  const favoritos = JSON.parse(localStorage.getItem('favoritos') || '[]');
+  // Actualizar UI según favoritos guardados
+}
+
+// Compartir en redes sociales
+function compartirEnRedes(red, url, texto) {
+  let shareUrl;
+  
+  switch(red) {
+    case 'facebook':
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+      break;
+    case 'twitter':
+      shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(texto)}`;
+      break;
+    case 'whatsapp':
+      shareUrl = `https://wa.me/?text=${encodeURIComponent(texto + ' ' + url)}`;
+      break;
+    case 'linkedin':
+      shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+      break;
+  }
+  
+  if (shareUrl) {
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+  }
+}
+
+// Sistema de rating (estrellas)
+function setRating(stars) {
+  const starElements = document.querySelectorAll('.rating-star');
+  starElements.forEach((star, index) => {
+    if (index < stars) {
+      star.classList.add('active');
+    } else {
+      star.classList.remove('active');
+    }
+  });
+}
+
+// Copiar al portapapeles
+function copiarAlPortapapeles(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    mostrarNotificacion('¡Copiado al portapapeles!', 'success');
+  }).catch(() => {
+    mostrarNotificacion('Error al copiar', 'error');
+  });
+}
+
+// Detectar dispositivo móvil
+function esMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+// Ajustes específicos para móvil
+if (esMobile()) {
+  document.body.classList.add('mobile-device');
+}
+
+// Performance: Debounce function
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Performance: Throttle function
+function throttle(func, limit) {
+  let inThrottle;
+  return function() {
+    const args = arguments;
+    const context = this;
+    if (!inThrottle) {
+      func.apply(context, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+}
+
+// Optimizar scroll events
+const optimizedScroll = throttle(() => {
+  // Código para eventos de scroll
+}, 100);
+
+window.addEventListener('scroll', optimizedScroll);
+
+// Analytics tracking (si se integra Google Analytics)
+function trackEvent(category, action, label) {
+  if (typeof gtag !== 'undefined') {
+    gtag('event', action, {
+      'event_category': category,
+      'event_label': label
+    });
+  }
+}
+
+// Track clicks en servicios
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.btn-primary').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const serviceName = this.closest('.card').querySelector('.card-title').textContent;
+      trackEvent('Servicios', 'Click_Solicitar', serviceName);
+    });
+  });
+});
+
+console.log('🚀 Scripts cargados correctamente');
+// Funciones del formulario
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+function solicitarServicio(nombreServicio, esPersonalizado) {
+  document.getElementById('tipo_servicio').value = nombreServicio;
+  document.getElementById('es_personalizado').value = esPersonalizado ? 'true' : 'false';
+  document.getElementById('servicio-nombre').textContent = nombreServicio;
+  
+  if (esPersonalizado) {
+    document.getElementById('campo-personalizado').style.display = 'block';
+    document.getElementById('servicio-info').style.display = 'none';
+    document.getElementById('modal-icon').textContent = '✨';
+  } else {
+    document.getElementById('campo-personalizado').style.display = 'none';
+    document.getElementById('servicio-info').style.display = 'block';
+    document.getElementById('modal-icon').textContent = '📋';
+  }
+  
+  const modal = new bootstrap.Modal(document.getElementById('modalServicio'));
+  modal.show();
+}
+
+function solicitarServicioPersonalizado() {
+  solicitarServicio('Servicio Personalizado', true);
+}
+
+function enviarSolicitud() {
+  const form = document.getElementById('formSolicitud');
+  const btnEnviar = document.getElementById('btn-enviar');
+  const btnText = document.getElementById('btn-text');
+  const btnSpinner = document.getElementById('btn-spinner');
+  
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+  
+  const esPersonalizado = document.getElementById('es_personalizado').value === 'true';
+  let tipoServicio = document.getElementById('tipo_servicio').value;
+  
+  if (esPersonalizado) {
+    const servicioPersonalizado = document.getElementById('servicio_personalizado').value.trim();
+    if (!servicioPersonalizado) {
+      mostrarToast('Error', 'Por favor describe el servicio que necesitas', 'danger');
+      return;
+    }
+    tipoServicio = servicioPersonalizado;
+  }
+  
+  const ubicacion = document.getElementById('ubicacion').value.trim();
+  
+  if (!ubicacion) {
+    mostrarToast('Error', 'La ubicación del trabajo es obligatoria', 'danger');
+    document.getElementById('ubicacion').focus();
+    return;
+  }
+  
+  btnEnviar.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpinner.classList.remove('d-none');
+  
+  setTimeout(() => {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalServicio'));
+    modal.hide();
+    
+    form.reset();
+    
+    const numeroCotizacion = Math.floor(Math.random() * 10000) + 1000;
+    
+    mostrarToast(
+      '¡Solicitud Enviada!', 
+      `Tu solicitud ha sido recibida. Cotización N° ${numeroCotizacion}. Te contactaremos en máximo 24 horas.`, 
+      'success'
+    );
+    
+    btnEnviar.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpinner.classList.add('d-none');
+  }, 1500);
+}
+
+function mostrarToast(titulo, mensaje, tipo) {
+  const toast = document.getElementById('toastNotificacion');
+  const toastHeader = document.getElementById('toast-header');
+  const toastTitle = document.getElementById('toast-title');
+  const toastBody = document.getElementById('toast-body');
+  
+  toastHeader.className = 'toast-header';
+  if (tipo === 'success') {
+    toastHeader.style.backgroundColor = '#d4edda';
+    toastHeader.style.color = '#155724';
+    toastTitle.textContent = '✅ ' + titulo;
+  } else if (tipo === 'danger') {
+    toastHeader.style.backgroundColor = '#f8d7da';
+    toastHeader.style.color = '#721c24';
+    toastTitle.textContent = '❌ ' + titulo;
+  } else {
+    toastHeader.style.backgroundColor = '#d1ecf1';
+    toastHeader.style.color = '#0c5460';
+    toastTitle.textContent = 'ℹ️ ' + titulo;
+  }
+  
+  toastBody.textContent = mensaje;
+  
+  const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+  bsToast.show();
+}
+
+window.addEventListener('scroll', function() {
+  if (window.scrollY > 300) {
+    if (!document.getElementById('btnVolverArriba')) {
+      const btn = document.createElement('button');
+      btn.id = 'btnVolverArriba';
+      btn.innerHTML = '↑';
+      btn.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 50px;
+        height: 50px;
+        background: #046de5;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(4, 109, 229, 0.3);
+        z-index: 1000;
+        transition: all 0.3s ease;
+      `;
+      btn.onclick = function() {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+      btn.onmouseenter = function() {
+        this.style.background = '#4c9dfa';
+        this.style.transform = 'scale(1.1)';
+      };
+      btn.onmouseleave = function() {
+        this.style.background = '#046de5';
+        this.style.transform = 'scale(1)';
+      };
+      document.body.appendChild(btn);
+    }
+  } else {
+    const btn = document.getElementById('btnVolverArriba');
+    if (btn) btn.remove();
+  }
+});
+
+console.log('✅ Página cargada exitosamente');
+</script>
+
+<script src="{% static 'home/js/scripts.js' %}"></script>
+</body>
+</html>

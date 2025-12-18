@@ -4,316 +4,936 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Empresa - Página Principal</title>
+  <title>Jose E. Alvarado N. - Servicios Electromecánicos</title>
   <link rel="stylesheet" href="{% static 'css/pages/home.css' %}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  
+  <style>
+    /* Mejoras visuales */
+    body {
+      background: linear-gradient(180deg, rgba(234, 243, 255, 0.3) 0%, #ffffff 15%);
+      min-height: 100vh;
+    }
+    
+    .nav-link:hover {
+      background: rgba(255, 255, 255, 0.15) !important;
+      border-radius: 8px;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+    
+    .emoji-icon {
+      font-size: 5rem;
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .card:hover .emoji-icon {
+      transform: scale(1.15) rotate(5deg);
+    }
+    
+    .card {
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .card:hover {
+      transform: translateY(-8px);
+      border-color: #046de5;
+      box-shadow: 0 12px 24px rgba(4, 109, 229, 0.2);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #046de5, #4c9dfa);
+      border: none;
+      padding: 10px 24px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(4, 109, 229, 0.3);
+    }
+    
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4c9dfa, #046de5);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(4, 109, 229, 0.4);
+    }
+    
+    .interactive-banner {
+      background: linear-gradient(135deg, rgba(4, 109, 229, 0.95), rgba(76, 157, 250, 0.85)),
+                  url('{% static "home/img/prom1.jpeg" %}');
+      background-size: cover;
+      background-position: center;
+      margin: 4rem auto;
+      padding: 4rem 3rem;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(4, 109, 229, 0.3);
+      transition: all 0.3s ease;
+    }
+    
+    .interactive-banner:hover {
+      transform: scale(1.02);
+      box-shadow: 0 16px 50px rgba(4, 109, 229, 0.4);
+    }
+    
+    .resena-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .resena-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    
+    .modal-header {
+      background: linear-gradient(135deg, #046de5, #4c9dfa);
+      border-radius: 0.5rem 0.5rem 0 0;
+    }
+    
+    .form-control:focus {
+      border-color: #046de5;
+      box-shadow: 0 0 0 0.2rem rgba(4, 109, 229, 0.25);
+    }
+    
+    /* Sección Conócenos */
+    .seccion-conocenos {
+      padding: 80px 0;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+    
+    .info-card {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+      transition: all 0.3s ease;
+      height: 100%;
+    }
+    
+    .info-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+    }
+    
+    .info-icon {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+    
+    .timeline {
+      position: relative;
+      padding: 40px 0;
+    }
+    
+    .timeline-item {
+      display: flex;
+      margin-bottom: 30px;
+      align-items: flex-start;
+    }
+    
+    .timeline-icon {
+      background: linear-gradient(135deg, #046de5, #4c9dfa);
+      color: white;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(4, 109, 229, 0.3);
+    }
+    
+    .timeline-content {
+      margin-left: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      flex: 1;
+    }
+    
+    .contact-info-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .contact-info-item:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 12px rgba(4, 109, 229, 0.15);
+    }
+    
+    .contact-icon {
+      background: linear-gradient(135deg, #046de5, #4c9dfa);
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+  </style>
 </head>
 <body>
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg bg-custom" id="navbar" >
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'home:index' %}">
-                <img src="{% static 'home/img/Logo_Empresa.png' %}" alt="Logo Empresa" width="75" height="75">
-            </a>
-          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-          </button>
 
-          <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-              <li class="nav-item">
-                <a class="nav-link" id="nav-link" href="#conocenos">
-                  Conocenos
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="nav-link" href="#servicios">
-                  Servicios
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" id="nav-link" href="#contacto">
-                  Atencion al Cliente
-                </a>
-              </li>
-            </ul>
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg sticky-top" id="navbar" style="background: linear-gradient(135deg, #046de5, #4c9dfa); box-shadow: 0 4px 12px rgba(4, 109, 229, 0.2);">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#inicio">
+      <img src="{% static 'home/img/Logo_Empresa.png' %}" alt="Logo Empresa" width="200" height="65">
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" style="border-color: rgba(255,255,255,0.5);">
+      <span class="navbar-toggler-icon" style="filter: brightness(0) invert(1);"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link text-white fw-semibold" href="#inicio">Inicio</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white fw-semibold" href="#conocenos">Conócenos</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white fw-semibold" href="#servicios">Servicios</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white fw-semibold" href="#resenas">Reseñas</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white fw-semibold" href="#contacto">Contacto</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Barra de transición -->
+<div style="height: 40px; background: linear-gradient(to bottom, #4c9dfa 0%, rgba(76, 157, 250, 0.5) 50%, transparent 100%);"></div>
+
+<!-- Carrusel -->
+<section id="inicio">
+  <div id="carousel" class="carousel slide" data-bs-ride="carousel" style="margin-bottom: 5rem;">
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#carousel" data-bs-slide-to="0" class="active"></button>
+      <button type="button" data-bs-target="#carousel" data-bs-slide-to="1"></button>
+      <button type="button" data-bs-target="#carousel" data-bs-slide-to="2"></button>
+    </div>
+    <div class="carousel-inner">
+      <div class="carousel-item active" data-bs-interval="3000">
+        <img src="{% static 'home/img/prom1.jpeg' %}" class="d-block w-100" alt="Servicios Profesionales" style="height: 500px; object-fit: cover;">
+        <div class="carousel-caption">
+          <h3 class="display-5 fw-bold">Servicios Electromecánicos de Calidad</h3>
+          <p class="fs-5">Más de 20 años de experiencia en el rubro</p>
+        </div>
+      </div>
+      <div class="carousel-item" data-bs-interval="3000">
+        <img src="{% static 'home/img/prom2.jpeg' %}" class="d-block w-100" alt="Instalación de Bombas" style="height: 500px; object-fit: cover;">
+        <div class="carousel-caption">
+          <h3 class="display-5 fw-bold">Instalación y Mantención</h3>
+          <p class="fs-5">Bombas de agua superficie y sumergibles</p>
+        </div>
+      </div>
+      <div class="carousel-item" data-bs-interval="3000">
+        <img src="{% static 'home/img/prom3.jpeg' %}" class="d-block w-100" alt="Atención Personalizada" style="height: 500px; object-fit: cover;">
+        <div class="carousel-caption">
+          <h3 class="display-5 fw-bold">Atención Personalizada</h3>
+          <p class="fs-5">Tu satisfacción es nuestra prioridad</p>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-control-prev" type="button" data-bs-target="#carousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon"></span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#carousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon"></span>
+    </button>
+  </div>
+</section>
+
+<!-- Sección Conócenos -->
+<section id="conocenos" class="seccion-conocenos">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-4 fw-bold" style="color: #046de5;">Conócenos</h2>
+      <p class="lead text-muted">Jose E. Alvarado N. - Servicios Electromecánicos</p>
+    </div>
+
+    <!-- Información principal -->
+    <div class="row g-4 mb-5">
+      <div class="col-md-4">
+        <div class="info-card text-center">
+          <div class="info-icon">🏢</div>
+          <h4 class="fw-bold mb-3">Nuestra Empresa</h4>
+          <p class="text-muted">Empresa especializada en servicios electromecánicos, con enfoque en instalación, mantención y reparación de bombas de agua, tanto de superficie como sumergibles.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card text-center">
+          <div class="info-icon">🎯</div>
+          <h4 class="fw-bold mb-3">Nuestra Misión</h4>
+          <p class="text-muted">Proporcionar soluciones electromecánicas de calidad, garantizando la satisfacción de nuestros clientes mediante un servicio profesional y confiable.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="info-card text-center">
+          <div class="info-icon">🌟</div>
+          <h4 class="fw-bold mb-3">Nuestra Visión</h4>
+          <p class="text-muted">Ser la empresa líder en servicios electromecánicos de la región, reconocida por nuestra excelencia técnica y compromiso con nuestros clientes.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Línea de tiempo / Especialidades -->
+    <div class="row">
+      <div class="col-md-8 mx-auto">
+        <h3 class="text-center fw-bold mb-4" style="color: #046de5;">Nuestras Especialidades</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-icon">💧</div>
+            <div class="timeline-content">
+              <h5 class="fw-bold">Bombas de Agua</h5>
+              <p class="mb-0">Instalación, mantención y reparación de bombas de agua superficie y sumergibles para uso doméstico e industrial.</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-icon">⚡</div>
+            <div class="timeline-content">
+              <h5 class="fw-bold">Servicios Eléctricos</h5>
+              <p class="mb-0">Instalación de tableros eléctricos, sistemas de control y automatización para equipos de bombeo.</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-icon">🔧</div>
+            <div class="timeline-content">
+              <h5 class="fw-bold">Mantenimiento Preventivo</h5>
+              <p class="mb-0">Programas de mantenimiento para asegurar el óptimo funcionamiento de tus equipos.</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-icon">🏗️</div>
+            <div class="timeline-content">
+              <h5 class="fw-bold">Proyectos a Medida</h5>
+              <p class="mb-0">Diseño y ejecución de proyectos electromecánicos personalizados según tus necesidades.</p>
+            </div>
           </div>
         </div>
-</nav>
-<div class="navbar-decor-bar" style="margin-bottom: 2rem;"></div>
+      </div>
+    </div>
 
-<!-- Carrusel con Imagenes Promocionales -->
-<div id="carousel" class="carousel slide" data-bs-ride="carousel" style="margin-bottom: 7rem;">
-  <div class="carousel-inner">
-    <div class="carousel-item active" data-bs-interval="3000">
-      <img src="{% static 'home/img/prom1.jpeg' %}" class="d-block w-100" alt="Promoción 1">
-    </div>
-    <div class="carousel-item" data-bs-interval="3000">
-      <img src="{% static 'home/img/prom2.jpeg' %}" class="d-block w-100" alt="Promoción 2">
-    </div>
-    <div class="carousel-item" data-bs-interval="3000">
-      <img src="{% static 'home/img/prom3.jpeg' %}" class="d-block w-100" alt="Promoción 3">
+    <!-- Valores -->
+    <div class="row g-4 mt-5">
+      <div class="col-12 text-center mb-4">
+        <h3 class="fw-bold" style="color: #046de5;">Nuestros Valores</h3>
+      </div>
+      <div class="col-md-3">
+        <div class="info-card text-center">
+          <div class="info-icon">✅</div>
+          <h5 class="fw-bold">Calidad</h5>
+          <p class="mb-0 text-muted">Trabajo bien hecho desde el primer momento</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="info-card text-center">
+          <div class="info-icon">🤝</div>
+          <h5 class="fw-bold">Confianza</h5>
+          <p class="mb-0 text-muted">Construimos relaciones duraderas</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="info-card text-center">
+          <div class="info-icon">⚡</div>
+          <h5 class="fw-bold">Rapidez</h5>
+          <p class="mb-0 text-muted">Respuesta inmediata a tus necesidades</p>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="info-card text-center">
+          <div class="info-icon">💼</div>
+          <h5 class="fw-bold">Profesionalismo</h5>
+          <p class="mb-0 text-muted">Equipo capacitado y con experiencia</p>
+        </div>
+      </div>
     </div>
   </div>
-  <button class="carousel-control-prev" type="button" data-bs-target="#carousel" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Previous</span>
-  </button>
-  <button class="carousel-control-next" type="button" data-bs-target="#carousel" data-bs-slide="next">
-    <span class="carousel-control-next-icon" aria-hidden="true"></span>
-    <span class="visually-hidden">Next</span>
-  </button>
-</div>
+</section>
 
-<!-- Tarjetas de Servicios -->
-<div class="container my-5" id="servicios">
+<!-- Servicios -->
+<section class="container my-5" id="servicios">
+  <div class="text-center mb-5">
+    <h2 class="display-5 fw-bold" style="color: #046de5;">Nuestros Servicios</h2>
+    <p class="lead text-muted">Soluciones profesionales adaptadas a tus necesidades</p>
+  </div>
+  
   <div class="row g-4">
-    <!-- Tarjeta 1 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen (30%) -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">💧</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 1 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Pozo Profundo</h5>
+          <p class="card-text">Instalación y mantención de pozos profundos con equipos especializados.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Pozo Profundo', false)">Solicitar</button>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta 2 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen (30%) -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">🔧</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 2 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Instalación de Bomba</h5>
+          <p class="card-text">Instalación profesional de bombas de superficie y sumergibles.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Instalación de Bomba', false)">Solicitar</button>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta 3 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">🛠️</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 3 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Mantenimiento</h5>
+          <p class="card-text">Servicio de mantenimiento preventivo y correctivo de equipos.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Mantenimiento', false)">Solicitar</button>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta 4 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">⚡</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 4 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Tablero Eléctrico</h5>
+          <p class="card-text">Diseño e instalación de tableros eléctricos industriales.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Tablero Eléctrico', false)">Solicitar</button>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta 5 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">🚰</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 5 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Estanque</h5>
+          <p class="card-text">Instalación de estanques de almacenamiento de agua.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Estanque', false)">Solicitar</button>
         </div>
       </div>
     </div>
 
-    <!-- Tarjeta 6 -->
     <div class="col-md-4">
-      <div class="card h-100 d-flex flex-row align-items-center p-2">
-        <!-- Imagen -->
-        <div style="flex: 0 0 30%; display: flex; align-items: center; justify-content: center;">
-          <img src="{% static 'home/img/Placeholder.png' %}"
-              alt="Ícono servicio"
-              class="img-fluid"
-              style="max-width: 100%; max-height: 120px; object-fit: contain;">
-        </div>
-
-        <!-- Texto -->
+      <div class="card h-100 d-flex flex-row align-items-center p-3">
+        <div class="emoji-icon" style="flex: 0 0 30%;">📋</div>
         <div class="card-body" style="flex: 1;">
-          <h5 class="card-title">Servicio 6 🛠️</h5>
-          <p class="card-text">Descripción del servicio en cuestión.</p>
-          <p class="card-text">Precio: $10.000</p>
-          <a href="#" class="btn btn-primary">Solicitar</a>
+          <h5 class="fw-bold">Consultoría</h5>
+          <p class="card-text">Asesoría técnica especializada para tu proyecto.</p>
+          <button class="btn btn-primary" onclick="solicitarServicio('Consultoría', false)">Solicitar</button>
         </div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- Servicio Personalizado -->
-<a href="{% url 'home:index' %}" class="interactive-banner" style="margin-bottom: 7rem;">
-  <div class="banner-content">
-    <p>¿No Encuentra el Servicio que busca?</p>
-    <h2>Solicite Servicio Personalizado</h2>
+<!-- Banner Servicio Personalizado -->
+<a href="javascript:void(0)" class="interactive-banner d-block text-white text-decoration-none container" onclick="solicitarServicioPersonalizado()">
+  <div class="banner-content text-center">
+    <p class="fs-5 mb-2">¿No Encuentra el Servicio que busca?</p>
+    <h2 class="display-4 fw-bold mb-3">Solicite Servicio Personalizado</h2>
+    <p class="fs-5">Contáctenos y crearemos una solución a su medida</p>
   </div>
 </a>
 
-<!-- Resenyas -->
-<section class="zona-resenas" style="margin-bottom: 7rem;">
-  <!-- Cantidad Resenyas -->
-  <div class="resena-destacada">
-    <h2>+20</h2>
-    <p><strong>Cliente Satisfecho</strong></p>
+<!-- Reseñas -->
+<section class="container my-5" id="resenas">
+  <div class="text-center mb-5">
+    <h2 class="display-5 fw-bold" style="color: #046de5;">Lo que dicen nuestros clientes</h2>
+    <p class="lead text-muted">Testimonios reales de clientes satisfechos</p>
   </div>
-
-<!-- Carrusel Resenyas -->
-<div class="carrusel-wrapper">
-    <button class="carrusel-btn left" onclick="scrollCarrusel(-1)">&#10094;</button>
-    <div class="carrusel-scroll" id="carrusel-scroll">
-      <div class="resena-card">
-        <h5>Servicio Excelente</h5>
-        <div class="estrellas">★★★★★</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Pedro</strong>
-      </div>
-      <div class="resena-card">
-        <h5>Muy Recomendado</h5>
-        <div class="estrellas">★★★★☆</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Laura</strong>
-      </div>
-      <div class="resena-card">
-        <h5>Buena Atención</h5>
-        <div class="estrellas">★★★★☆</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Diego</strong>
-      </div>
-      <div class="resena-card">
-        <h5>Volveré Seguro</h5>
-        <div class="estrellas">★★★★★</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Ana</strong>
-      </div>
-      <div class="resena-card">
-        <h5>Volveré Seguro</h5>
-        <div class="estrellas">★★★★★</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Hector</strong>
-      </div>
-      <div class="resena-card">
-        <h5>Volveré Seguro</h5>
-        <div class="estrellas">★★★★★</div>
-        <p>"Texto Prueba Texto Prueba Texto Prueba Texto"</p>
-        <strong>- Manuel</strong>
+  
+  <div class="row">
+    <div class="col-md-3">
+      <div class="text-center p-4 bg-light rounded">
+        <h2 class="display-1 fw-bold text-primary">+20</h2>
+        <p class="fw-bold">Clientes Satisfechos</p>
+        <div class="text-warning fs-4">★★★★★</div>
+        <p class="text-muted mt-2">Calificación promedio</p>
       </div>
     </div>
-    <button class="carrusel-btn right" onclick="scrollCarrusel(1)">&#10095;</button>
-</div>
+    <div class="col-md-9">
+      <div class="position-relative">
+        <button class="btn btn-primary position-absolute start-0 top-50 translate-middle-y" onclick="scrollCarrusel(-1)" style="z-index: 10;">‹</button>
+        <div class="d-flex gap-3 overflow-auto px-5 " id="carrusel-scroll" style="scroll-behavior: smooth;">
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Servicio Excelente</h5>
+            <div class="text-warning">★★★★★</div>
+            <p>"Excelente trabajo, muy profesionales y cumplieron con los plazos establecidos."</p>
+            <strong>- Pedro M.</strong>
+          </div>
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Muy Recomendado</h5>
+            <div class="text-warning">★★★★☆</div>
+            <p>"Rápidos y eficientes. El equipo funcionó perfectamente desde el primer día."</p>
+            <strong>- Laura G.</strong>
+          </div>
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Buena Atención</h5>
+            <div class="text-warning">★★★★☆</div>
+            <p>"Muy atentos y respondieron todas mis dudas. Trabajo de calidad."</p>
+            <strong>- Diego R.</strong>
+          </div>
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Volveré Seguro</h5>
+            <div class="text-warning">★★★★★</div>
+            <p>"Impecable servicio de mantenimiento. Totalmente recomendados."</p>
+            <strong>- Ana S.</strong>
+          </div>
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Volveré Seguro</h5>
+            <div class="text-warning">★★★★★</div>
+            <p>"Impecable servicio de mantenimiento. Totalmente recomendados."</p>
+            <strong>- Ana S.</strong>
+          </div>
+          <div class="resena-card flex-shrink-0" style="width: 280px;">
+            <h5 class="fw-bold">Volveré Seguro</h5>
+            <div class="text-warning">★★★★★</div>
+            <p>"Impecable servicio de mantenimiento. Totalmente recomendados."</p>
+            <strong>- Ana S.</strong>
+          </div>
+        </div>
+        <button class="btn btn-primary position-absolute end-0 top-50 translate-middle-y" onclick="scrollCarrusel(1)" style="z-index: 10;">›</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Sección de Contacto -->
+<section class="seccion-conocenos" id="contacto">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="display-4 fw-bold" style="color: #046de5;">Contáctanos</h2>
+      <p class="lead text-muted">Estamos aquí para ayudarte</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="contact-info-item">
+          <div class="contact-icon">📍</div>
+          <div>
+            <h6 class="fw-bold mb-1">Dirección</h6>
+            <p class="mb-0 text-muted">Pje. Santa Elisa 2437, Osorno</p>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-icon">📱</div>
+          <div>
+            <h6 class="fw-bold mb-1">Teléfono</h6>
+            <a href="tel:+56976193683" class="text-decoration-none text-primary">+56 9 7619 3683</a>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-icon">📧</div>
+          <div>
+            <h6 class="fw-bold mb-1">Email</h6>
+            <a href="mailto:seelmec@gmail.com" class="text-decoration-none text-primary">seelmec@gmail.com</a>
+          </div>
+        </div>
+        <div class="contact-info-item">
+          <div class="contact-icon">🕐</div>
+          <div>
+            <h6 class="fw-bold mb-1">Horario de Atención</h6>
+            <p class="mb-0 text-muted">Lunes a Viernes: 9:00 - 18:00<br>Sábados: 10:00 - 14:00</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 d-flex align-items-center">
+        <div class="info-card w-100 text-center">
+          <br><br><br>
+          <h4 class=" mb-4 text-center">Solicita una Cotización</h4>
+          <p class="text-muted text-center mb-4">Completa el formulario y te responderemos en menos de 24 horas</p>
+          <button class="btn btn-primary btn-lg" onclick="solicitarServicioPersonalizado()">
+            📋 Solicitar Servicio
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- Footer -->
-<footer class="footer" id="contacto">
-  <div class="footer-content">
-    <!-- Columna 1: Logo y horario -->
-    <div class="footer-col">
-      <img src="{% static 'home/img/logo_empresa.png' %}" alt="Logo" class="footer-logo">
-      <p class="footer-horario">Lun a Vie: 9:00 - 18:00<br>Sáb: 10:00 - 14:00</p>
+<footer class="py-5" style="background: linear-gradient(135deg, #046de5, #4c9dfa); color: white;">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-md-3">
+        <img src="{% static 'home/img/logo_empresa.png' %}" alt="Logo" class="img-fluid mb-3" style="max-width: 150px; filter: brightness(0) invert(1);">
+        <p><strong>JOSE E. ALVARADO N.</strong></p>
+        <p>Servicios Electromecánicos</p>
+      </div>
+      <div class="col-md-3">
+        <h5 class="fw-bold mb-3">Navegación</h5>
+        <ul class="list-unstyled">
+          <li class="mb-2"><a href="#inicio" class="text-white text-opacity-75 text-decoration-none">Inicio</a></li>
+          <li class="mb-2"><a href="#conocenos" class="text-white text-opacity-75 text-decoration-none">Conócenos</a></li>
+          <li class="mb-2"><a href="#servicios" class="text-white text-opacity-75 text-decoration-none">Servicios</a></li>
+          <li class="mb-2"><a href="#resenas" class="text-white text-opacity-75 text-decoration-none">Reseñas</a></li>
+          <li class="mb-2"><a href="#contacto" class="text-white text-opacity-75 text-decoration-none">Contacto</a></li>
+        </ul>
+      </div>
+      <div class="col-md-3">
+        <h5 class="fw-bold mb-3">Servicios</h5>
+        <ul class="list-unstyled">
+          <li class="mb-2"><a href="#servicios" class="text-white text-opacity-75 text-decoration-none">Pozos Profundos</a></li>
+          <li class="mb-2"><a href="#servicios" class="text-white text-opacity-75 text-decoration-none">Instalación de Bombas</a></li>
+          <li class="mb-2"><a href="#servicios" class="text-white text-opacity-75 text-decoration-none">Mantenimiento</a></li>
+          <li class="mb-2"><a href="#servicios" class="text-white text-opacity-75 text-decoration-none">Tableros Eléctricos</a></li>
+        </ul>
+      </div>
+      <div class="col-md-3">
+        <h5 class="fw-bold mb-3">Contacto</h5>
+        <ul class="list-unstyled">
+          <li class="mb-2">
+            <a href="mailto:seelmec@gmail.com" class="text-white text-opacity-75 text-decoration-none">
+              📧 seelmec@gmail.com
+            </a>
+          </li>
+          <li class="mb-2">
+            <a href="tel:+56976193683" class="text-white text-opacity-75 text-decoration-none">
+              📱 +56 9 7619 3683
+            </a>
+          </li>
+          <li class="mb-2 text-white text-opacity-75">
+            📍 Pje. Santa Elisa 2437<br>Osorno, Chile
+          </li>
+        </ul>
+      </div>
     </div>
-
-    <!-- Columna 2: Links 1 -->
-    <div class="footer-col" id="conocenos">
-      <h5>Empresa</h5>
-      <ul>
-        <li><a href="#conocenos">Conócenos</a></li>
-        <li><a href="#mision">Misión y Visión</a></li>
-        <li><a href="#equipo">Equipo</a></li>
-      </ul>
+    <hr class="my-4 opacity-25">
+    <div class="text-center">
+      <p class="mb-2">&copy; 2025 Jose E. Alvarado N. - Todos los derechos reservados.</p>
+      <small class="text-white text-opacity-75">Servicios Electromecánicos • Osorno, Chile</small>
     </div>
-
-    <!-- Columna 3: Links 2 -->
-    <div class="footer-col">
-      <h5>Servicios</h5>
-      <ul>
-        <li><a href="#servicios">Consultoría</a></li>
-        <li><a href="#servicios">Soporte</a></li>
-        <li><a href="#servicios">Planes</a></li>
-      </ul>
-    </div>
-
-    <!-- Columna 4: Links 3 -->
-    <div class="footer-col">
-      <h5>Contacto</h5>
-      <ul>
-        <li><a href="#contacto">Formulario</a></li>
-        <li><a href="https://wa.me/56912345678" target="_blank">WhatsApp</a></li>
-        <li><a href="#ubicacion">Ubicación</a></li>
-      </ul>
-    </div>
-
-    <!-- Columna 5: Espacio vacío -->
-    <div class="footer-col footer-empty"></div>
   </div>
 </footer>
 
-<!-- Mini Footer -->
-<div class="mini-footer">
-  <div><a href="/terminos">Términos y Condiciones</a></div>
+<!-- Modal de Solicitud -->
+<div class="modal fade" id="modalServicio" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header text-white">
+        <h5 class="modal-title">
+          <span id="modal-icon">📋</span> Solicitar Servicio
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <form id="formSolicitud">
+          <input type="hidden" id="tipo_servicio">
+          <input type="hidden" id="es_personalizado" value="false">
+          
+          <div class="alert alert-info" id="servicio-info">
+            <strong>Servicio:</strong> <span id="servicio-nombre"></span>
+          </div>
 
-  <div class="mini-footer-center">
-    &copy; 2025 - Empresa | Todos los derechos reservados
-    <img src="{% static 'home/img/logo_blanco.png' %}" width="20px" height="20px" alt="Logo">
+          <div class="mb-3" id="campo-personalizado" style="display: none;">
+            <label class="form-label fw-bold">¿Qué servicio necesitas? *</label>
+            <input type="text" class="form-control" id="servicio_personalizado" 
+                   placeholder="Ej: Instalación de sistema de riego">
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">Nombre Completo *</label>
+              <input type="text" class="form-control" id="nombre" required placeholder="Juan Pérez">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold">Teléfono *</label>
+              <input type="tel" class="form-control" id="telefono" required placeholder="+56 9 1234 5678">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Email *</label>
+            <input type="email" class="form-control" id="email" required placeholder="correo@ejemplo.com">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Ubicación del Trabajo *</label>
+            <input type="text" class="form-control" id="ubicacion" required 
+                   placeholder="Ej: Osorno, Sector rural">
+            <small class="text-muted">Dirección o sector donde se realizará el trabajo</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Información Adicional</label>
+            <textarea class="form-control" id="info_extra" rows="4" 
+                      placeholder="Describe más detalles sobre el trabajo..."></textarea>
+          </div>
+
+          <div class="alert alert-warning">
+            <strong>📌 Importante:</strong> Recibirás un correo de confirmación y te enviaremos una cotización en máximo 24 horas.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="enviarSolicitud()" id="btn-enviar">
+          <span id="btn-text">✉️ Enviar Solicitud</span>
+          <span id="btn-spinner" class="spinner-border spinner-border-sm d-none"></span>
+        </button>
+      </div>
+    </div>
   </div>
-
-  <div class="hidden-login" onclick="window.location.href='{% url 'home:login' %}'">Login</div>
 </div>
 
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+  <div id="toastNotificacion" class="toast hide" role="alert">
+    <div class="toast-header" id="toast-header">
+      <strong class="me-auto" id="toast-title">Notificación</strong>
+      <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+    </div>
+    <div class="toast-body" id="toast-body">Mensaje</div>
+  </div>
+</div>
+
+<!-- Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="{% static 'home/js/scripts.js' %}"></script>
+<script>
+// Scroll suave para los enlaces del menú
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+  anchor.addEventListener('click', function (e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+      // Cerrar navbar en móvil
+      const navbar = document.getElementById('navbarSupportedContent');
+      if (navbar.classList.contains('show')) {
+        bootstrap.Collapse.getInstance(navbar).hide();
+      }
+    }
+  });
+});
+
+// Carrusel de reseñas
+function scrollCarrusel(direction) {
+  const carrusel = document.getElementById('carrusel-scroll');
+  const scrollAmount = 300;
+  carrusel.scrollBy({
+    left: direction * scrollAmount,
+    behavior: 'smooth'
+  });
+}
+
+// CSRF token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Solicitar servicio
+function solicitarServicio(nombreServicio, esPersonalizado) {
+  document.getElementById('tipo_servicio').value = nombreServicio;
+  document.getElementById('es_personalizado').value = esPersonalizado ? 'true' : 'false';
+  document.getElementById('servicio-nombre').textContent = nombreServicio;
+  
+  if (esPersonalizado) {
+    document.getElementById('campo-personalizado').style.display = 'block';
+    document.getElementById('servicio-info').style.display = 'none';
+    document.getElementById('modal-icon').textContent = '✨';
+  } else {
+    document.getElementById('campo-personalizado').style.display = 'none';
+    document.getElementById('servicio-info').style.display = 'block';
+    document.getElementById('modal-icon').textContent = '📋';
+  }
+  
+  const modal = new bootstrap.Modal(document.getElementById('modalServicio'));
+  modal.show();
+}
+
+function solicitarServicioPersonalizado() {
+  solicitarServicio('Servicio Personalizado', true);
+}
+
+// Enviar solicitud
+async function enviarSolicitud() {
+  const form = document.getElementById('formSolicitud');
+  const btnEnviar = document.getElementById('btn-enviar');
+  const btnText = document.getElementById('btn-text');
+  const btnSpinner = document.getElementById('btn-spinner');
+  
+  if (!form.checkValidity()) {
+    form.reportValidity();
+    return;
+  }
+  
+  const esPersonalizado = document.getElementById('es_personalizado').value === 'true';
+  let tipoServicio = document.getElementById('tipo_servicio').value;
+  
+  if (esPersonalizado) {
+    const servicioPersonalizado = document.getElementById('servicio_personalizado').value.trim();
+    if (!servicioPersonalizado) {
+      mostrarToast('Error', 'Por favor describe el servicio que necesitas', 'danger');
+      return;
+    }
+    tipoServicio = servicioPersonalizado;
+  }
+  
+  const ubicacion = document.getElementById('ubicacion').value.trim();
+  if (!ubicacion) {
+    mostrarToast('Error', 'La ubicación del trabajo es obligatoria', 'danger');
+    return;
+  }
+  
+  btnEnviar.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpinner.classList.remove('d-none');
+  
+  try {
+    const response = await fetch('{% url "home:solicitar_servicio_publico" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        nombre: document.getElementById('nombre').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        telefono: document.getElementById('telefono').value.trim(),
+        tipo_servicio: tipoServicio,
+        ubicacion: ubicacion,
+        info_extra: document.getElementById('info_extra').value.trim(),
+        es_personalizado: esPersonalizado
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalServicio'));
+      modal.hide();
+      form.reset();
+      mostrarToast('¡Solicitud Enviada!', data.message, 'success');
+    } else {
+      mostrarToast('Error', data.error, 'danger');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    mostrarToast('Error', 'Error de conexión. Intenta nuevamente.', 'danger');
+  } finally {
+    btnEnviar.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpinner.classList.add('d-none');
+  }
+}
+
+// Toast
+function mostrarToast(titulo, mensaje, tipo) {
+  const toast = document.getElementById('toastNotificacion');
+  const toastHeader = document.getElementById('toast-header');
+  const toastTitle = document.getElementById('toast-title');
+  const toastBody = document.getElementById('toast-body');
+  
+  toastHeader.className = 'toast-header';
+  if (tipo === 'success') {
+    toastHeader.style.backgroundColor = '#d4edda';
+    toastHeader.style.color = '#155724';
+    toastTitle.textContent = '✅ ' + titulo;
+  } else if (tipo === 'danger') {
+    toastHeader.style.backgroundColor = '#f8d7da';
+    toastHeader.style.color = '#721c24';
+    toastTitle.textContent = '❌ ' + titulo;
+  } else {
+    toastHeader.style.backgroundColor = '#d1ecf1';
+    toastHeader.style.color = '#0c5460';
+    toastTitle.textContent = 'ℹ️ ' + titulo;
+  }
+  
+  toastBody.textContent = mensaje;
+  const bsToast = new bootstrap.Toast(toast, { delay: 5000 });
+  bsToast.show();
+}
+
+// Botón volver arriba
+window.addEventListener('scroll', function() {
+  if (window.scrollY > 300) {
+    if (!document.getElementById('btnVolverArriba')) {
+      const btn = document.createElement('button');
+      btn.id = 'btnVolverArriba';
+      btn.innerHTML = '↑';
+      btn.className = 'btn btn-primary';
+      btn.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        font-size: 24px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(4, 109, 229, 0.4);
+      `;
+      btn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.appendChild(btn);
+    }
+  } else {
+    const btn = document.getElementById('btnVolverArriba');
+    if (btn) btn.remove();
+  }
+});
+
+// Highlight navbar activo
+window.addEventListener('scroll', function() {
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('.nav-link');
+  
+  let current = '';
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop - 100;
+    if (window.scrollY >= sectionTop) {
+      current = section.getAttribute('id');
+    }
+  });
+  
+  navLinks.forEach(link => {
+    link.classList.remove('active');
+    if (link.getAttribute('href') === `#${current}`) {
+      link.classList.add('active');
+      link.style.background = 'rgba(255, 255, 255, 0.2)';
+    } else {
+      link.style.background = 'transparent';
+    }
+  });
+});
+
+console.log('✅ Página cargada correctamente');
+</script>
 </body>
 </html>

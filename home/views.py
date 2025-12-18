@@ -23,6 +23,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.urls import reverse
 from cotizaciones.utils_mantenimiento import verificar_mantenimientos_materiales
+from django.views.decorators.csrf import csrf_exempt
+from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo
+from notificaciones.utils import crear_notificacion
 
 def index(request):
     return render(request, 'home/index.html')
@@ -206,6 +209,118 @@ def reset_password(request, uidb64, token):
             'El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo.'
         )
         return redirect('home:recuperar_password')
+
+
+
+
+
+
+
+
+
+ # Asegúrate de que la ruta sea correcta
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def solicitar_servicio_publico(request):
+    """
+    Crea una solicitud desde la landing y notifica a los administradores.
+    """
+    try:
+        data = json.loads(request.body)
+        
+        # 1. Extraer y limpiar datos
+        nombre = data.get('nombre', '').strip()
+        email = data.get('email', '').strip()
+        telefono = data.get('telefono', '').strip()
+        tipo_servicio_nombre = data.get('tipo_servicio', '').strip()
+        ubicacion = data.get('ubicacion', '').strip()
+        info_extra = data.get('info_extra', '').strip()
+        es_personalizado = data.get('es_personalizado', False)
+
+        if not all([nombre, email, telefono, ubicacion]):
+            return JsonResponse({'success': False, 'error': 'Faltan campos obligatorios'}, status=400)
+
+        # 2. Manejo del Cliente (Aquí queda guardado el email para Resend)
+        cliente, created = Cliente.objects.update_or_create(
+            email=email,
+            defaults={
+                'nombre': nombre,
+                'telefono': telefono,
+            }
+        )
+
+        # 3. Obtener el usuario de sistema para la autoría
+        usuario_sistema, _ = User.objects.get_or_create(
+            username='solicitudes_web',
+            defaults={'first_name': 'Sistema', 'is_active': False}
+        )
+
+        # 4. Buscar el tipo de trabajo si existe
+        tipo_trabajo = None
+        if not es_personalizado:
+            tipo_trabajo = TipoTrabajo.objects.filter(nombre=tipo_servicio_nombre, activo=True).first()
+
+        # 5. Crear la Cotización mapeando los campos del Form
+        cotizacion = Cotizacion.objects.create(
+            cliente=cliente,
+            tipo_trabajo=tipo_trabajo,
+            lugar=ubicacion,
+            referencia=tipo_servicio_nombre,
+            estado='pedido',
+            creado_por=usuario_sistema,
+            observaciones=info_extra
+        )
+
+        # 6. NOTIFICACIONES AL EQUIPO (Lógica integrada para evitar errores)
+        try:
+            usuarios_notificar = User.objects.filter(
+                is_active=True
+            ).filter(
+                Q(is_superuser=True) | Q(groups__name__in=['Administrador', 'Gerente'])
+            ).distinct()
+
+            for usuario in usuarios_notificar:
+                crear_notificacion(
+                    usuario, # Primer parámetro es el User
+                    tipo='info',
+                    titulo='Nueva Solicitud Web',
+                    mensaje=f'Cliente: {nombre} solicita {tipo_servicio_nombre}',
+                    url=f'/cotizaciones/solicitudes-pendientes/'
+                )
+        except Exception as e:
+            print(f"⚠️ Error en notificaciones internas: {str(e)}")
+
+        # 7. ENVÍO DE EMAIL DE CONFIRMACIÓN (Opcional en este paso)
+        # Aquí puedes llamar a tu función enviar_email_con_reintentos
+        # usando cliente.email
+
+        return JsonResponse({
+            'success': True, 
+            'message': 'Solicitud recibida correctamente',
+            'solicitud_id': cotizacion.id
+        })
+
+    except Exception as e:
+        print(f"❌ Error crítico: {str(e)}")
+        return JsonResponse({'success': False, 'error': 'Error interno del servidor'}, status=500)
+
+@require_http_methods(["GET"])
+def obtener_tipos_trabajo_publicos(request):
+    """
+    Vista para obtener los tipos de trabajo activos
+    """
+    try:
+        tipos = TipoTrabajo.objects.filter(activo=True).values('id', 'nombre', 'descripcion')
+        return JsonResponse({
+            'success': True,
+            'tipos': list(tipos)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @prevent_cache
 @login_required

@@ -1,0 +1,293 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Solicitudes Web Pendientes - Sistema de Cotizaciones</title>
+  <link rel="stylesheet" href="{% static 'css/main.css' %}">
+</head>
+<body>
+  <!-- Header -->
+  <div class="topbar">
+    <div class="logo">
+      📊 Sistema de Cotizaciones
+      <span class="badge">Solicitudes Web</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="user-menu">
+      <a href="{% url 'cotizaciones:dashboard' %}">📊 Menú</a>
+      <a href="{% url 'cotizaciones:lista' %}">📄 Todas las Cotizaciones</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="actions">
+      <div class="actions-left">
+        <h1 style="margin: 0; color: var(--azul-700);">
+          🔔 Solicitudes Web Pendientes
+        </h1>
+      </div>
+      <div class="actions-right">
+        <span class="badge" style="font-size: 1rem; padding: 8px 16px;">
+          {{ total_solicitudes }} solicitud{{ total_solicitudes|pluralize:"es" }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Alerta si hay solicitudes -->
+    {% if total_solicitudes > 0 %}
+    <div class="alert warning" style="margin-bottom: 24px;">
+      <strong>⚠️ Atención:</strong> Tienes {{ total_solicitudes }} solicitud{{ total_solicitudes|pluralize:"es" }} de clientes que requieren ser convertidas a cotizaciones formales.
+    </div>
+    {% endif %}
+
+    <!-- Info Card -->
+    <div class="card" style="margin-bottom: 24px;">
+      <h3>💡 ¿Qué son las Solicitudes Web?</h3>
+      <p style="margin: 0; color: var(--gris-600);">
+        Las solicitudes web son pedidos realizados por clientes desde la página principal. 
+        Para procesarlas, debes convertirlas a cotizaciones borradores, completar servicios/materiales 
+        y luego enviarlas al cliente.
+      </p>
+    </div>
+
+    <!-- Tabla de Solicitudes -->
+    {% if solicitudes %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Servicio Solicitado</th>
+            <th>Ubicación</th>
+            <th>Contacto</th>
+            <th>Detalles</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for solicitud in solicitudes %}
+          <tr id="solicitud-{{ solicitud.id }}">
+            <td>
+              <strong>{{ solicitud.fecha_creacion|date:"d/m/Y" }}</strong><br>
+              <small style="color: var(--gris-600);">{{ solicitud.fecha_creacion|date:"H:i" }}</small>
+            </td>
+            <td>
+              <div class="user-info">
+                <div class="avatar">{{ solicitud.cliente.nombre|slice:":1"|upper }}</div>
+                <div>
+                  <strong>{{ solicitud.cliente.nombre }}</strong><br>
+                  <small style="color: var(--gris-600);">Cliente #{{ solicitud.cliente.id }}</small>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if solicitud.tipo_trabajo %}
+                <span class="pill enviada">
+                  {{ solicitud.tipo_trabajo.nombre }}
+                </span>
+              {% else %}
+                <span class="pill borrador">
+                  Personalizado
+                </span>
+                <br>
+                <small style="color: var(--gris-600);">{{ solicitud.referencia|truncatewords:5 }}</small>
+              {% endif %}
+            </td>
+            <td>
+              📍 {{ solicitud.lugar|truncatewords:5 }}
+            </td>
+            <td>
+              📧 {{ solicitud.cliente.email }}<br>
+              📱 {{ solicitud.cliente.telefono }}
+            </td>
+            <td>
+              <button class="btn small secondary" onclick="verDetalles({{ solicitud.id }})">
+                👁️ Ver Info
+              </button>
+            </td>
+            <td>
+              <button class="btn small success" onclick="convertirSolicitud({{ solicitud.id }})">
+                ✅ Convertir a Cotización
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    {% if solicitudes.has_other_pages %}
+    <div class="pagination">
+      {% if solicitudes.has_previous %}
+        <a href="?page={{ solicitudes.previous_page_number }}">« Anterior</a>
+      {% endif %}
+      
+      <span class="current">
+        Página {{ solicitudes.number }} de {{ solicitudes.paginator.num_pages }}
+      </span>
+      
+      {% if solicitudes.has_next %}
+        <a href="?page={{ solicitudes.next_page_number }}">Siguiente »</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Estado vacío -->
+    <div class="card" style="text-align: center; padding: 60px;">
+      <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;">📭</div>
+      <h3 style="color: var(--gris-600);">No hay solicitudes pendientes</h3>
+      <p style="color: var(--gris-500);">
+        Cuando los clientes soliciten servicios desde la web, aparecerán aquí.
+      </p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Modal de Detalles -->
+  <div class="modal" id="modalDetalles">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3>📋 Detalles de la Solicitud</h3>
+        <button class="close" onclick="cerrarModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body-detalles">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Cargando...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Ver detalles de solicitud
+    function verDetalles(solicitudId) {
+      const modal = document.getElementById('modalDetalles');
+      const modalBody = document.getElementById('modal-body-detalles');
+      
+      // Mostrar modal
+      modal.classList.add('show');
+      
+      // Buscar la fila
+      const fila = document.getElementById(`solicitud-${solicitudId}`);
+      
+      // Extraer información
+      const cliente = fila.querySelector('.user-info strong').textContent;
+      const email = fila.querySelectorAll('td')[4].textContent.split('📧')[1].split('📱')[0].trim();
+      const telefono = fila.querySelectorAll('td')[4].textContent.split('📱')[1].trim();
+      const ubicacion = fila.querySelectorAll('td')[3].textContent.replace('📍', '').trim();
+      const fecha = fila.querySelectorAll('td')[0].querySelector('strong').textContent;
+      
+      // Obtener observaciones completas (hacer fetch)
+      fetch(`/cotizaciones/${solicitudId}/`)
+        .then(response => response.text())
+        .then(html => {
+          // Aquí podrías parsear el HTML o hacer una API específica
+          modalBody.innerHTML = `
+            <div style="background: var(--gris-100); padding: 20px; border-radius: 8px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px; color: var(--azul-700);">👤 Información del Cliente</h4>
+              <p style="margin: 0;"><strong>Nombre:</strong> ${cliente}</p>
+              <p style="margin: 0;"><strong>Email:</strong> ${email}</p>
+              <p style="margin: 0;"><strong>Teléfono:</strong> ${telefono}</p>
+              <p style="margin: 0;"><strong>Fecha:</strong> ${fecha}</p>
+            </div>
+            
+            <div style="background: var(--azul-100); padding: 20px; border-radius: 8px; margin-bottom: 16px;">
+              <h4 style="margin: 0 0 12px; color: var(--azul-700);">📍 Ubicación del Trabajo</h4>
+              <p style="margin: 0;">${ubicacion}</p>
+            </div>
+            
+            <div class="alert warning">
+              <strong>💡 Próximo paso:</strong> Convierte esta solicitud a cotización para agregar servicios, materiales y enviarla al cliente.
+            </div>
+            
+            <div style="text-align: right; margin-top: 20px;">
+              <button class="btn secondary" onclick="cerrarModal()">Cerrar</button>
+              <button class="btn success" onclick="convertirSolicitud(${solicitudId})">
+                ✅ Convertir a Cotización
+              </button>
+            </div>
+          `;
+        })
+        .catch(error => {
+          modalBody.innerHTML = '<p style="color: var(--rojo-600);">Error al cargar detalles</p>';
+        });
+    }
+
+    // Cerrar modal
+    function cerrarModal() {
+      document.getElementById('modalDetalles').classList.remove('show');
+    }
+
+    // Convertir solicitud a cotización
+    function convertirSolicitud(solicitudId) {
+      if (!confirm('¿Convertir esta solicitud a cotización borrador?\n\nPodrás editarla y completarla después.')) {
+        return;
+      }
+
+      // Deshabilitar botón
+      const btn = event.target;
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Convirtiendo...';
+
+      fetch(`/cotizaciones/${solicitudId}/convertir-a-borrador/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Mostrar mensaje de éxito
+          alert(`✅ ${data.message}\n\nSerás redirigido al editor de cotización.`);
+          
+          // Redirigir a editar
+          window.location.href = data.redirect_url;
+        } else {
+          alert(`❌ Error: ${data.error}`);
+          btn.disabled = false;
+          btn.innerHTML = textoOriginal;
+        }
+      })
+      .catch(error => {
+        alert('❌ Error de conexión. Intenta nuevamente.');
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+      });
+    }
+
+    // Obtener CSRF token
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // Cerrar modal al hacer clic fuera
+    window.onclick = function(event) {
+      const modal = document.getElementById('modalDetalles');
+      if (event.target === modal) {
+        cerrarModal();
+      }
+    }
+  </script>
+</body>
+</html>

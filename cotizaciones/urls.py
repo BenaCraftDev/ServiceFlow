@@ -20,6 +20,10 @@ urlpatterns = [
     path('<int:pk>/editar-aprobada/', views.editar_cotizacion_aprobada, name='editar_cotizacion_aprobada'),
     path('feedbacks-pendientes/', views.ver_feedbacks_pendientes, name='feedbacks_pendientes'),
     
+    # Solicitudes Web
+    path('solicitudes-pendientes/', views.ver_solicitudes_pendientes, name='solicitudes_pendientes'),
+    path('<int:pk>/convertir-a-borrador/', views.convertir_solicitud_a_borrador, name='convertir_a_borrador'),
+    
     # Gestión de items de cotización (AJAX)
     path('<int:cotizacion_pk>/item-servicio/', views.agregar_item_servicio, name='agregar_item_servicio'),
     path('<int:cotizacion_pk>/item-material/', views.agregar_item_material, name='agregar_item_material'),

@@ -1120,3 +1120,94 @@ class HistorialPrestamo(models.Model):
     def duracion_dias(self):
         """Duración real del préstamo"""
         return (self.fecha_devuelto - self.fecha_prestamo).day
+
+# ============================================================
+# APP MOVIL -EVIDENCIA
+# ============================================================
+
+class EvidenciaTrabajo(models.Model):
+    """Evidencias fotográficas del trabajo realizado"""
+    trabajo = models.ForeignKey(
+        TrabajoEmpleado,
+        on_delete=models.CASCADE,
+        related_name='evidencias'
+    )
+    imagen = models.ImageField(
+        upload_to='evidencias_trabajos/%Y/%m/%d/',
+        help_text='Foto de evidencia del trabajo'
+    )
+    descripcion = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Descripción de la evidencia'
+    )
+    fecha_subida = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-fecha_subida']
+        verbose_name = 'Evidencia de Trabajo'
+        verbose_name_plural = 'Evidencias de Trabajos'
+    
+    def __str__(self):
+        return f"Evidencia {self.id} - Trabajo {self.trabajo.id}"
+
+
+class GastoTrabajo(models.Model):
+    """Gastos asociados a un trabajo"""
+    trabajo = models.OneToOneField(
+        TrabajoEmpleado,
+        on_delete=models.CASCADE,
+        related_name='gastos'
+    )
+    
+    # Campos de gastos
+    materiales = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Costo de materiales'
+    )
+    materiales_detalle = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Detalle de materiales utilizados'
+    )
+    
+    transporte = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Costo de transporte'
+    )
+    transporte_detalle = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Detalle del transporte'
+    )
+    
+    otros = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Otros gastos'
+    )
+    otros_detalle = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Detalle de otros gastos'
+    )
+    
+    # Total calculado
+    @property
+    def total(self):
+        return self.materiales + self.transporte + self.otros
+    
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Gasto de Trabajo'
+        verbose_name_plural = 'Gastos de Trabajos'
+    
+    def __str__(self):
+        return f"Gastos - Trabajo {self.trabajo.id} - Total: ${self.total}"

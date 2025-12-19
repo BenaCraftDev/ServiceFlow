@@ -31,7 +31,7 @@ def mis_trabajos_empleado(request):
             'error': 'No tienes un perfil de empleado asignado'
         }, status=403)
     
-    # Filtrar solo cotizaciones aprobadas - SIN select_related problemático
+    # Filtrar solo cotizaciones aprobadas
     trabajos = TrabajoEmpleado.objects.filter(
         empleado=perfil_empleado,
         cotizacion__estado='aprobada'
@@ -51,8 +51,8 @@ def mis_trabajos_empleado(request):
             num_evidencias = trabajo.evidencias.count()
             tiene_gastos = hasattr(trabajo, 'gastos') and trabajo.gastos is not None
             
-            # Descripción - usar str() del item_mano_obra
-            descripcion = str(trabajo.item_mano_obra) if trabajo.item_mano_obra else 'Sin descripción'
+            # Descripción del ItemManoObra
+            descripcion = trabajo.item_mano_obra.descripcion if trabajo.item_mano_obra else 'Sin descripción'
             
             trabajos_data.append({
                 'id': trabajo.id,

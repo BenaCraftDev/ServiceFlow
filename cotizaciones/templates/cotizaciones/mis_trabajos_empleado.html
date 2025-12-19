@@ -7,6 +7,260 @@
   <title>Mis Trabajos - {{ perfil_empleado.nombre_completo }}</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
   <meta name="csrf-token" content="{{ csrf_token }}">
+  <style>
+    .hours-slider-container {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      padding: 24px;
+      background: var(--gris-100);
+      border-radius: 8px;
+      border: 1px solid var(--gris-300);
+    }
+
+    .slider-horizontal-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .slider-labels-horizontal {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gris-600);
+      padding: 0 4px;
+    }
+
+    .horizontal-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      background: var(--gris-300);
+      border-radius: 4px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .horizontal-slider:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .horizontal-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: var(--azul-600);
+      border: 2px solid var(--blanco);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    .horizontal-slider::-webkit-slider-thumb:hover {
+      background: var(--azul-700);
+      transform: scale(1.1);
+    }
+
+    .horizontal-slider::-webkit-slider-thumb:active {
+      transform: scale(0.95);
+    }
+
+    .horizontal-slider:disabled::-webkit-slider-thumb {
+      background: var(--gris-400);
+      cursor: not-allowed;
+    }
+
+    .horizontal-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: var(--azul-600);
+      border: 2px solid var(--blanco);
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+    }
+
+    .horizontal-slider::-moz-range-thumb:hover {
+      background: var(--azul-700);
+      transform: scale(1.1);
+    }
+
+    .horizontal-slider:disabled::-moz-range-thumb {
+      background: var(--gris-400);
+      cursor: not-allowed;
+    }
+
+    .horizontal-slider::-webkit-slider-runnable-track {
+      background: linear-gradient(to right, 
+        var(--azul-600) 0%, 
+        var(--azul-600) var(--slider-progress, 0%), 
+        var(--gris-300) var(--slider-progress, 0%), 
+        var(--gris-300) 100%);
+      border-radius: 4px;
+    }
+
+    .hours-info-panel {
+      display: flex;
+      gap: 16px;
+    }
+
+    .hours-display-main {
+      flex: 1;
+      text-align: center;
+      padding: 16px;
+      background: var(--blanco);
+      border-radius: 8px;
+      border: 1px solid var(--gris-300);
+    }
+
+    .hours-display-label {
+      font-size: 0.75rem;
+      color: var(--gris-600);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .hours-display-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--azul-700);
+      line-height: 1;
+    }
+
+    .hours-display-value .unit {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--gris-600);
+      margin-left: 4px;
+    }
+
+    .hours-stats-grid {
+      flex: 2;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .stat-box {
+      text-align: center;
+      padding: 12px;
+      background: var(--blanco);
+      border-radius: 8px;
+      border: 1px solid var(--gris-300);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--gris-600);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--azul-700);
+    }
+
+    .estado-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: var(--gris-100);
+      border: 1px solid var(--gris-300);
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gris-700);
+    }
+
+    .estado-badge.en_progreso {
+      background: var(--naranja-100);
+      border-color: var(--naranja-600);
+      color: var(--naranja-600);
+    }
+
+    .estado-badge.completado {
+      background: var(--verde-100);
+      border-color: var(--verde-600);
+      color: var(--verde-600);
+    }
+
+    .estado-badge.suspendido {
+      background: var(--rojo-100);
+      border-color: var(--rojo-600);
+      color: var(--rojo-600);
+    }
+
+    .slider-disabled-message {
+      text-align: center;
+      padding: 12px;
+      background: var(--verde-100);
+      border: 1px solid var(--verde-600);
+      border-radius: 6px;
+      color: var(--verde-600);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .estado-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--gris-100);
+      border-radius: 8px;
+      border: 1px solid var(--gris-300);
+      margin-bottom: 16px;
+    }
+
+    .estado-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gris-600);
+      margin-right: 8px;
+    }
+
+    .btn-suspender {
+      background: var(--blanco);
+      color: var(--rojo-600);
+      border: 1px solid var(--rojo-600);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-suspender:hover {
+      background: var(--rojo-600);
+      color: var(--blanco);
+    }
+
+    @media (max-width: 768px) {
+      .hours-info-panel {
+        flex-direction: column;
+      }
+
+      .hours-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
 </head>
 <body>
   <!-- Header -->
@@ -73,7 +327,7 @@
     {% if not trabajos %}
     <!-- Sin trabajos -->
     <div class="card" style="text-align: center; padding: 60px 20px;">
-      <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;">📭</div>
+      <div style="font-size: 4rem; margin-bottom: 20px; opacity: 0.3;">🔭</div>
       <h3 style="color: var(--gris-600); margin: 0 0 10px 0;">No tienes trabajos asignados</h3>
       <p style="color: var(--gris-500); margin: 0;">
         Los trabajos aparecerán aquí cuando se aprueben cotizaciones con tareas asignadas para ti.
@@ -82,7 +336,7 @@
     {% else %}
     <!-- Lista de Trabajos -->
     <div class="card">
-      <h3>📝 Lista de Trabajos</h3>
+      <h3>🔍 Lista de Trabajos</h3>
       
       <div class="table-wrap">
         <table>
@@ -93,7 +347,7 @@
               <th>Descripción del Trabajo</th>
               <th>Estado Cotización</th>
               <th>Estado Trabajo</th>
-              <th>Fecha Asignación</th>
+              <th>Fecha Inicio</th>
               <th>Horas</th>
               <th>Acciones</th>
             </tr>
@@ -139,9 +393,17 @@
               </td>
               <td>
                 {% if trabajo.estado != 'completado' %}
-                  <button type="button" class="btn small" onclick="editarTrabajo({{ trabajo.id }}, '{{ trabajo.estado }}', '{{ trabajo.horas_trabajadas }}', `{{ trabajo.observaciones_empleado|default:'' }}`)">
-                    ✏️ Editar
-                  </button>
+                    <button type="button" 
+                        class="btn-tu-clase"
+                        onclick="editarTrabajo(
+                            '{{ trabajo.id }}', 
+                            '{{ trabajo.estado }}', 
+                            '{{ trabajo.horas_trabajadas|floatformat:2 }}'.replace(',', '.'), 
+                            '{{ trabajo.horas_estimadas|floatformat:2 }}'.replace(',', '.'), 
+                            '{{ trabajo.observaciones_empleado|escapejs }}'
+                        )">
+                        Editar Trabajo
+                    </button>
                   {% if trabajo.estado == 'pendiente' %}
                     <button type="button" class="btn small warning" onclick="iniciarTrabajo({{ trabajo.id }})">
                       ▶️ Iniciar
@@ -167,42 +429,97 @@
 
   <!-- Modal Editar Trabajo -->
   <div id="modal-editar-trabajo" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 800px;">
       <div class="modal-header">
-        <h3>Actualizar Trabajo</h3>
+        <h3>Registrar Horas de Trabajo</h3>
         <button type="button" class="close" onclick="cerrarModal('modal-editar-trabajo')">&times;</button>
       </div>
       
+      <!-- Control de Estado -->
+      <div class="estado-controls">
+        <div>
+          <span class="estado-label">Estado:</span>
+          <span class="estado-badge" id="estado-badge">Pendiente</span>
+        </div>
+        <button type="button" class="btn-suspender" id="btn-suspender" onclick="suspenderTrabajo()" style="display: none;">
+          Suspender Trabajo
+        </button>
+      </div>
+      
+      <!-- Control de Horas -->
       <div class="form-group">
-        <label for="estado-trabajo">Estado</label>
-        <select id="estado-trabajo" class="form-control">
-          {% for key, value in estados_choices %}
-          <option value="{{ key }}">{{ value }}</option>
-          {% endfor %}
-        </select>
+        <label>Control de Horas</label>
+        <div class="hours-slider-container">
+          <div class="slider-horizontal-wrapper">
+            <input 
+              type="range" 
+              id="horas-slider" 
+              class="horizontal-slider"
+              min="0" 
+              max="100" 
+              step="0.5" 
+              value="0"
+              oninput="actualizarHoras(this.value)"
+            >
+            <div class="slider-labels-horizontal" id="slider-labels">
+              <!-- Se generará dinámicamente -->
+            </div>
+          </div>
+          
+          <div class="hours-info-panel">
+            <div class="hours-display-main">
+              <div class="hours-display-label">Esta Sesión</div>
+              <div class="hours-display-value" id="hours-display-session">
+                0.0<span class="unit">hrs</span>
+              </div>
+            </div>
+            
+            <div class="hours-stats-grid">
+              <div class="stat-box">
+                <div class="stat-label">Anteriores</div>
+                <div class="stat-value" id="hours-previous">0.0 hrs</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Total</div>
+                <div class="stat-value" id="hours-total">0.0 hrs</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Estimadas</div>
+                <div class="stat-value" id="hours-estimated">0.0 hrs</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Restantes</div>
+                <div class="stat-value" id="hours-remaining">0.0 hrs</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="slider-disabled-msg" style="display: none;" class="slider-disabled-message">
+            Trabajo completado - Todas las horas estimadas fueron registradas
+          </div>
+        </div>
       </div>
       
       <div class="form-group">
-        <label for="horas-trabajadas">Horas Trabajadas</label>
-        <input type="number" id="horas-trabajadas" step="0.5" min="0" class="form-control">
-      </div>
-      
-      <div class="form-group">
-        <label for="observaciones-trabajo">Observaciones</label>
-        <textarea id="observaciones-trabajo" rows="4" class="form-control" placeholder="Describe el trabajo realizado, dificultades encontradas, etc."></textarea>
+        <label for="observaciones-trabajo">Observaciones de la Sesión</label>
+        <textarea id="observaciones-trabajo" rows="4" class="form-control" placeholder="Describe el trabajo realizado, avances y observaciones..."></textarea>
       </div>
       
       <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
         <button type="button" class="btn secondary" onclick="cerrarModal('modal-editar-trabajo')">Cancelar</button>
-        <button type="button" class="btn" onclick="guardarTrabajo()">Guardar Cambios</button>
+        <button type="button" class="btn" id="btn-guardar" onclick="guardarTrabajo()">Guardar Cambios</button>
       </div>
     </div>
   </div>
 
   <script>
     let trabajoEditando = null;
+    let horasPrevias = 0; // Horas ya trabajadas (acumuladas)
+    let horasEstimadas = 0; // Horas totales estimadas (límite máximo)
+    let horasSesionActual = 0; // Horas de la sesión actual
+    let estadoOriginal = '';
+    let trabajoGuardadoComoCompletado = false;
 
-    // Función para obtener el token CSRF
     function getCSRFToken() {
         const meta = document.querySelector('meta[name="csrf-token"]');
         if (meta) return meta.getAttribute('content');
@@ -213,7 +530,109 @@
         return '';
     }
 
-    // Filtrar por estado
+    function generarEtiquetasSlider(max) {
+        const labels = document.getElementById('slider-labels');
+        labels.innerHTML = '';
+        const steps = 6;
+        const increment = max / (steps - 1);
+        
+        for (let i = 0; i < steps; i++) {
+            const value = (increment * i).toFixed(1);
+            const span = document.createElement('span');
+            span.textContent = value + 'h';
+            labels.appendChild(span);
+        }
+    }
+
+    function actualizarEstadoBadge(estado) {
+        const badge = document.getElementById('estado-badge');
+        const btnSuspender = document.getElementById('btn-suspender');
+        
+        badge.className = 'estado-badge ' + estado;
+        
+        switch(estado) {
+            case 'pendiente':
+                badge.textContent = 'Pendiente';
+                btnSuspender.style.display = 'none';
+                break;
+            case 'en_progreso':
+                badge.textContent = 'En Progreso';
+                btnSuspender.style.display = 'block';
+                break;
+            case 'completado':
+                badge.textContent = 'Completado';
+                btnSuspender.style.display = 'none';
+                break;
+            case 'suspendido':
+                badge.textContent = 'Suspendido';
+                btnSuspender.style.display = 'none';
+                break;
+        }
+    }
+
+    function actualizarHoras(valor) {
+        const valorBarra = parseFloat(valor);
+        
+        // BLOQUEO: No permitir ir hacia atrás de las horas previas
+        if (valorBarra < horasPrevias) {
+            const slider = document.getElementById('horas-slider');
+            slider.value = horasPrevias;
+            return;
+        }
+        
+        // La sesión actual es la diferencia entre el valor de la barra y las horas previas
+        horasSesionActual = valorBarra - horasPrevias;
+        const horasTotal = horasPrevias + horasSesionActual;
+        const horasRestantes = Math.max(0, horasEstimadas - horasTotal);
+        
+        // Actualizar displays
+        const displaySession = document.getElementById('hours-display-session');
+        displaySession.innerHTML = `${horasSesionActual.toFixed(1)}<span class="unit">hrs</span>`;
+        
+        document.getElementById('hours-previous').textContent = `${horasPrevias.toFixed(1)} hrs`;
+        document.getElementById('hours-total').textContent = `${horasTotal.toFixed(1)} hrs`;
+        document.getElementById('hours-estimated').textContent = `${horasEstimadas.toFixed(1)} hrs`;
+        document.getElementById('hours-remaining').textContent = `${horasRestantes.toFixed(1)} hrs`;
+        
+        // Actualizar progreso visual del slider
+        const slider = document.getElementById('horas-slider');
+        const progress = (valorBarra / parseFloat(slider.max)) * 100;
+        slider.style.setProperty('--slider-progress', progress + '%');
+        
+        // Actualizar estado automático
+        const sliderMsg = document.getElementById('slider-disabled-msg');
+        
+        let nuevoEstado = estadoOriginal;
+        
+        if (horasSesionActual > 0 && estadoOriginal === 'pendiente') {
+            nuevoEstado = 'en_progreso';
+        }
+        
+        if (horasSesionActual === 0 && estadoOriginal === 'pendiente') {
+            nuevoEstado = 'pendiente';
+        }
+        
+        if (horasTotal >= horasEstimadas && horasEstimadas > 0 && !trabajoGuardadoComoCompletado) {
+            nuevoEstado = 'completado';
+            sliderMsg.style.display = 'block';
+        } else {
+            sliderMsg.style.display = 'none';
+        }
+        
+        actualizarEstadoBadge(nuevoEstado);
+    }
+
+    function suspenderTrabajo() {
+        if (!confirm('¿Está seguro de suspender este trabajo?\n\nDeberá contactar a su supervisor para reactivarlo.')) {
+            return;
+        }
+        
+        estadoOriginal = 'suspendido';
+        actualizarEstadoBadge('suspendido');
+        
+        alert('El trabajo será marcado como SUSPENDIDO al guardar.');
+    }
+
     function filtrarPorEstado(estado) {
         const url = new URL(window.location);
         if (estado) {
@@ -224,7 +643,6 @@
         window.location.href = url.toString();
     }
 
-    // Iniciar trabajo
     async function iniciarTrabajo(trabajoId) {
         if (!confirm('¿Deseas iniciar este trabajo ahora?')) {
             return;
@@ -245,18 +663,17 @@
             const result = await response.json();
             
             if (result.success) {
-                alert('✅ Trabajo iniciado exitosamente');
+                alert('Trabajo iniciado exitosamente');
                 location.reload();
             } else {
-                alert('❌ Error: ' + result.error);
+                alert('Error: ' + result.error);
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('❌ Error al iniciar trabajo');
+            alert('Error al iniciar trabajo');
         }
     }
 
-    // Completar trabajo
     async function completarTrabajo(trabajoId) {
         if (!confirm('¿Estás seguro de marcar este trabajo como completado?')) {
             return;
@@ -273,36 +690,114 @@
             const result = await response.json();
             
             if (result.success) {
-                alert('✅ Trabajo completado exitosamente');
+                alert('Trabajo completado exitosamente');
                 location.reload();
             } else {
-                alert('❌ Error: ' + result.error);
+                alert('Error: ' + result.error);
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('❌ Error al completar trabajo');
+            alert('Error al completar trabajo');
         }
     }
 
-    // Editar trabajo
-    function editarTrabajo(trabajoId, estado, horas, observaciones) {
+    function editarTrabajo(trabajoId, estado, horasActuales, horasEstimadasTrabajo, observaciones) {
+        console.log('=== DEBUG INICIO ===');
+        console.log('ID Trabajo:', trabajoId);
+        console.log('Horas Actuales (de BD):', horasActuales);
+        console.log('Horas Estimadas (de BD):', horasEstimadasTrabajo);
+        
+        // 1. Asignación de variables globales
         trabajoEditando = trabajoId;
         
-        // Cargar datos actuales
-        document.getElementById('estado-trabajo').value = estado;
-        document.getElementById('horas-trabajadas').value = horas;
-        document.getElementById('observaciones-trabajo').value = observaciones;
+        // Convertimos a float para cálculos en JS (DecimalField viene como string o número)
+        horasPrevias = parseFloat(horasActuales) || 0;
+        let valorEstimado = parseFloat(horasEstimadasTrabajo);
+
+        // 2. Definición del Máximo del Slider
+        // Si por alguna razón extrema es 0 o NaN, usamos el valor trabajado como mínimo
+        if (isNaN(valorEstimado) || valorEstimado <= 0) {
+            horasEstimadas = (horasPrevias > 0) ? horasPrevias : 35;
+            console.warn('Advertencia: El campo horas_estimadas llegó vacío. Usando:', horasEstimadas);
+        } else {
+            horasEstimadas = valorEstimado;
+        }
+
+        console.log('Slider Max final:', horasEstimadas);
         
-        mostrarModal('modal-editar-trabajo');
+        // 3. Reset de estado de sesión
+        horasSesionActual = 0;
+        estadoOriginal = estado;
+        trabajoGuardadoComoCompletado = (estado === 'completado');
+        
+        // 4. Configuración del elemento Slider
+        const slider = document.getElementById('horas-slider');
+        if (slider) {
+            slider.max = horasEstimadas; 
+            slider.value = horasPrevias;
+            slider.disabled = trabajoGuardadoComoCompletado;
+            
+            // Sincronizar visualmente
+            if (typeof generarEtiquetasSlider === 'function') {
+                generarEtiquetasSlider(horasEstimadas);
+            }
+        }
+        
+        // 5. Cargar observaciones
+        const campoObs = document.getElementById('observaciones-trabajo');
+        if (campoObs) {
+            campoObs.value = observaciones && observaciones !== 'None' ? observaciones : '';
+        }
+        
+        // 6. Control de UI (Botones y mensajes)
+        const btnGuardar = document.getElementById('btn-guardar');
+        const msgDisabled = document.getElementById('slider-disabled-msg');
+        
+        if (trabajoGuardadoComoCompletado) {
+            if (btnGuardar) btnGuardar.disabled = true;
+            if (msgDisabled) msgDisabled.style.display = 'block';
+        } else {
+            if (btnGuardar) btnGuardar.disabled = false;
+            if (msgDisabled) msgDisabled.style.display = 'none';
+        }
+        
+        // 7. Refrescar interfaz de horas
+        if (typeof actualizarEstadoBadge === 'function') {
+            actualizarEstadoBadge(estado);
+        }
+        if (typeof actualizarHoras === 'function') {
+            // Esta función suele actualizar el texto "X de Y horas"
+            actualizarHoras(horasPrevias); 
+        }
+        
+        // 8. Abrir Modal
+        if (typeof mostrarModal === 'function') {
+            mostrarModal('modal-editar-trabajo');
+        }
+        
+        console.log('=== DEBUG FIN ===');
     }
 
-    // Guardar cambios del trabajo
     async function guardarTrabajo() {
         if (!trabajoEditando) return;
 
-        const estado = document.getElementById('estado-trabajo').value;
-        const horasTrabajadas = document.getElementById('horas-trabajadas').value;
+        const horasTotales = horasPrevias + horasSesionActual;
         const observaciones = document.getElementById('observaciones-trabajo').value;
+        
+        let estadoFinal = estadoOriginal;
+        
+        if (estadoOriginal === 'suspendido') {
+            estadoFinal = 'suspendido';
+        } else if (horasTotales >= horasEstimadas && horasEstimadas > 0) {
+            estadoFinal = 'completado';
+        } else if (horasSesionActual > 0 && estadoOriginal === 'pendiente') {
+            estadoFinal = 'en_progreso';
+        }
+
+        if (horasSesionActual === 0 && estadoFinal !== 'suspendido') {
+            alert('Debe agregar horas trabajadas en esta sesión o suspender el trabajo');
+            return;
+        }
 
         try {
             const response = await fetch(`/cotizaciones/trabajo/${trabajoEditando}/actualizar/`, {
@@ -312,8 +807,8 @@
                     'X-CSRFToken': getCSRFToken()
                 },
                 body: JSON.stringify({
-                    estado: estado,
-                    horas_trabajadas: parseFloat(horasTrabajadas),
+                    estado: estadoFinal,
+                    horas_trabajadas: horasTotales,
                     observaciones_empleado: observaciones
                 })
             });
@@ -321,18 +816,17 @@
             const result = await response.json();
             
             if (result.success) {
-                alert('✅ Trabajo actualizado exitosamente');
+                alert(`Trabajo actualizado exitosamente\n\nHoras de esta sesión: ${horasSesionActual.toFixed(1)} hrs\nTotal acumulado: ${horasTotales.toFixed(1)} hrs\nEstado: ${estadoFinal === 'completado' ? 'Completado' : estadoFinal === 'en_progreso' ? 'En Progreso' : estadoFinal === 'suspendido' ? 'Suspendido' : 'Pendiente'}`);
                 location.reload();
             } else {
-                alert('❌ Error: ' + result.error);
+                alert('Error: ' + result.error);
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('❌ Error al actualizar trabajo');
+            alert('Error al actualizar trabajo');
         }
     }
 
-    // Cerrar modal
     function cerrarModal(modalId) {
         const modal = document.getElementById(modalId);
         modal.classList.remove('show');
@@ -340,27 +834,20 @@
         
         if (modalId === 'modal-editar-trabajo') {
             trabajoEditando = null;
-            document.getElementById('estado-trabajo').value = '';
-            document.getElementById('horas-trabajadas').value = '';
+            horasPrevias = 0;
+            horasEstimadas = 0;
+            horasSesionActual = 0;
+            estadoOriginal = '';
+            trabajoGuardadoComoCompletado = false;
+            document.getElementById('horas-slider').value = 0;
             document.getElementById('observaciones-trabajo').value = '';
         }
     }
 
-    // Mostrar modal
     function mostrarModal(modalId) {
         const modal = document.getElementById(modalId);
         modal.classList.add('show');
         modal.style.display = 'flex';
-    }
-
-    // Cerrar modal al hacer click fuera
-    window.onclick = function(event) {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            if (event.target === modal) {
-                cerrarModal(modal.id);
-            }
-        });
     }
   </script>
 </body>

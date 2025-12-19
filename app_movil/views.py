@@ -17,22 +17,57 @@ import json
 import base64
 from datetime import datetime
 
+from django.contrib.auth import authenticate, login
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+def login_movil(request):
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'error': 'Método no permitido'
+        }, status=405)
+
+    usuario = request.POST.get('username')
+    contrasena = request.POST.get('password')
+
+    if not usuario or not contrasena:
+        return JsonResponse({
+            'success': False,
+            'error': 'Usuario y contraseña son obligatorios'
+        }, status=400)
+
+    user = authenticate(request, username=usuario, password=contrasena)
+
+    if user is None:
+        # ❌ LOGIN INCORRECTO
+        return JsonResponse({
+            'success': False,
+            'error': 'Credenciales incorrectas'
+        }, status=401)
+
+    # ✅ LOGIN CORRECTO
+    login(request, user)
+
+    return JsonResponse({
+        'success': True,
+        'usuario': {
+            'username': user.username
+        }
+    }, status=200)
+
+
 
 # ==================== TRABAJOS ====================
 
 @csrf_exempt
 @login_required
 def mis_trabajos_empleado(request):
-    """
-    Retorna todas las cotizaciones aprobadas que tienen trabajos
-    asignados al empleado autenticado.
-    """
-
     try:
-        # Obtener perfil del empleado
         perfil = PerfilEmpleado.objects.get(user=request.user)
 
-        # Obtener trabajos asociados a cotizaciones APROBADAS
         trabajos = (
             TrabajoEmpleado.objects
             .select_related('cotizacion', 'item_mano_obra')
@@ -43,67 +78,43 @@ def mis_trabajos_empleado(request):
             .order_by('-fecha_inicio')
         )
 
-        trabajos_data = []
+        data = []
 
         for trabajo in trabajos:
-            cotizacion = trabajo.cotizacion
+            cot = trabajo.cotizacion
 
-            # ------------------------
-            # DATOS SEGUROS
-            # ------------------------
-
-            numero_cotizacion = cotizacion.numero if cotizacion else ''
-
-            # Cliente
-            cliente = 'N/A'
-            try:
-                if cotizacion and cotizacion.cliente:
-                    cliente = cotizacion.cliente.nombre
-                elif cotizacion and hasattr(cotizacion, 'get_nombre_cliente'):
-                    cliente = cotizacion.get_nombre_cliente()
-            except Exception:
-                cliente = 'N/A'
-
-            # Descripción del trabajo
-            descripcion = 'Sin descripción'
-            if trabajo.item_mano_obra:
-                descripcion = trabajo.item_mano_obra.descripcion
-
-            # Fechas
-            fecha_inicio = (
-                trabajo.fecha_inicio.strftime('%Y-%m-%d')
-                if trabajo.fecha_inicio else None
-            )
-
-            fecha_entrega = (
-                cotizacion.fecha_realizacion.strftime('%Y-%m-%d')
-                if cotizacion and cotizacion.fecha_realizacion else None
-            )
-
-            trabajos_data.append({
+            data.append({
                 'id': trabajo.id,
-                'numero_cotizacion': numero_cotizacion,
-                'cliente': cliente,
-                'descripcion': descripcion,
+                'numero_cotizacion': cot.numero if cot else '',
+                'cliente': cot.cliente.nombre if cot and cot.cliente else 'N/A',
+                'descripcion': (
+                    trabajo.item_mano_obra.descripcion
+                    if trabajo.item_mano_obra else 'Sin descripción'
+                ),
                 'estado': trabajo.estado,
-                'fecha_inicio': fecha_inicio,
-                'fecha_entrega': fecha_entrega,
+                'fecha_inicio': (
+                    trabajo.fecha_inicio.strftime('%Y-%m-%d')
+                    if trabajo.fecha_inicio else None
+                ),
+                'fecha_entrega': (
+                    cot.fecha_realizacion.strftime('%Y-%m-%d')
+                    if cot and cot.fecha_realizacion else None
+                ),
                 'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
                 'observaciones': trabajo.observaciones_empleado or '',
-                'num_evidencias': trabajo.evidencias.count() if hasattr(trabajo, 'evidencias') else 0,
-                'tiene_gastos': trabajo.gastos.exists() if hasattr(trabajo, 'gastos') else False,
+                'tiene_gastos': hasattr(trabajo, 'gastos')
             })
 
         return JsonResponse({
             'success': True,
-            'total': len(trabajos_data),
-            'trabajos': trabajos_data
+            'total': len(data),
+            'trabajos': data
         }, status=200)
 
     except PerfilEmpleado.DoesNotExist:
         return JsonResponse({
             'success': False,
-            'message': 'El usuario no tiene un perfil de empleado asociado.'
+            'error': 'Perfil de empleado no encontrado'
         }, status=404)
 
     except Exception as e:
@@ -111,6 +122,8 @@ def mis_trabajos_empleado(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
 
 
 @login_required

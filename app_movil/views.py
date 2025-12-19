@@ -1,5 +1,6 @@
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from cotizaciones.models import TrabajoEmpleado, EvidenciaTrabajo, GastoTrabajo
@@ -83,23 +84,40 @@ def mis_trabajos_empleado(request):
 def actualizar_trabajo_empleado(request, trabajo_id):
     """API para app móvil - Actualizar trabajo"""
     try:
-        perfil_empleado = request.user.perfilempleado
-        trabajo = TrabajoEmpleado.objects.get(pk=trabajo_id, empleado=perfil_empleado)
-        
         data = json.loads(request.body)
-        trabajo.estado = data.get('estado', trabajo.estado)
-        trabajo.horas_trabajadas = data.get('horas_trabajadas', trabajo.horas_trabajadas)
-        trabajo.observaciones_empleado = data.get('observaciones_empleado', trabajo.observaciones_empleado)
+        trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=request.user)
         
-        if data.get('estado') == 'en_progreso' and not trabajo.fecha_inicio:
-            trabajo.fecha_inicio = timezone.now()
-        elif data.get('estado') == 'completado' and not trabajo.fecha_fin:
-            trabajo.fecha_fin = timezone.now()
+        # Actualizar observaciones del empleado
+        if 'observaciones_empleado' in data:
+            trabajo.observaciones_empleado = data['observaciones_empleado']
         
+        # Actualizar estado
+        if 'estado' in data:
+            trabajo.estado = data['estado']
+        
+        # Actualizar horas trabajadas
+        if 'horas_trabajadas' in data:
+            trabajo.horas_trabajadas = float(data['horas_trabajadas'])
+        
+        # Guardar cambios
         trabajo.save()
-        return JsonResponse({'success': True, 'message': 'Trabajo actualizado exitosamente'})
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Trabajo actualizado correctamente',
+            'trabajo': {
+                'id': trabajo.id,
+                'estado': trabajo.estado,
+                'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
+                'observaciones_empleado': trabajo.observaciones_empleado or '',
+            }
+        })
+        
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 @login_required
 @csrf_exempt

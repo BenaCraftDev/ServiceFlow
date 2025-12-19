@@ -31,13 +31,19 @@ def mis_trabajos_empleado(request):
             'error': 'No tienes un perfil de empleado asignado'
         }, status=403)
     
-    # CAMBIO: Filtrar solo cotizaciones aprobadas
+    # Filtrar solo cotizaciones aprobadas
     trabajos = TrabajoEmpleado.objects.filter(
         empleado=perfil_empleado,
         cotizacion__estado='aprobada'
-    ).select_related('cotizacion', 'item_mano_obra').order_by('-id')
+    ).select_related(
+        'cotizacion',
+        'cotizacion__cliente',
+        'item_mano_obra',
+        'item_mano_obra__categoria_empleado'
+    ).order_by('-id')
     
     # Estadísticas
+    from django.db.models import Sum
     trabajos_pendientes = trabajos.filter(estado='pendiente').count()
     trabajos_en_progreso = trabajos.filter(estado='en_progreso').count()
     trabajos_completados = trabajos.filter(estado='completado').count()
@@ -50,11 +56,19 @@ def mis_trabajos_empleado(request):
             num_evidencias = trabajo.evidencias.count()
             tiene_gastos = hasattr(trabajo, 'gastos') and trabajo.gastos is not None
             
+            # Descripción del trabajo
+            descripcion = 'Sin descripción'
+            if trabajo.item_mano_obra:
+                if hasattr(trabajo.item_mano_obra, 'categoria_empleado') and trabajo.item_mano_obra.categoria_empleado:
+                    descripcion = trabajo.item_mano_obra.categoria_empleado.nombre
+                else:
+                    descripcion = str(trabajo.item_mano_obra)
+            
             trabajos_data.append({
                 'id': trabajo.id,
                 'numero_cotizacion': trabajo.cotizacion.numero_cotizacion,
-                'cliente': trabajo.cotizacion.cliente.nombre,
-                'descripcion': trabajo.item_mano_obra.categoria_empleado.nombre if trabajo.item_mano_obra else 'Sin descripción',
+                'cliente': trabajo.cotizacion.cliente.nombre if trabajo.cotizacion.cliente else 'N/A',
+                'descripcion': descripcion,
                 'estado': trabajo.estado,
                 'fecha_inicio': trabajo.fecha_inicio.strftime('%Y-%m-%d') if trabajo.fecha_inicio else None,
                 'fecha_entrega': trabajo.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.cotizacion.fecha_estimada else None,
@@ -63,6 +77,7 @@ def mis_trabajos_empleado(request):
                 'num_evidencias': num_evidencias,
                 'tiene_gastos': tiene_gastos,
             })
+            
         except Exception as e:
             print(f"❌ Error procesando trabajo {trabajo.id}: {str(e)}")
             import traceback

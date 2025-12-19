@@ -392,7 +392,6 @@ def obtener_notificaciones_empleado(request):
                 'leida': notif.leida,
                 'url': notif.url or '',
                 'fecha': notif.fecha_creacion.strftime('%Y-%m-%d %H:%M:%S'),
-                'fecha_relativa': notif.tiempo_transcurrido()
             })
         
         # Contar no leídas

@@ -325,7 +325,7 @@ def solicitar_servicio_publico(request):
         print(traceback.format_exc())
         return JsonResponse({'success': False, 'error': 'Error interno de servidor'}, status=500)
 
-
+@login_required
 @require_http_methods(["GET"])
 def obtener_tipos_trabajo_publicos(request):
     """

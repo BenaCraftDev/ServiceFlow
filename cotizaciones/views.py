@@ -293,7 +293,7 @@ def gestionar_materiales(request):
     """Gestión de materiales"""
     
     # Código original de la vista
-    materiales = Material.objects.all().order_by('categoria', 'nombre')
+    materiales = Material.objects.select_related('categoria', 'unidad').all().order_by('categoria__nombre', 'nombre')
     
     busqueda = request.GET.get('busqueda', '')
     categoria_filtro = request.GET.get('categoria', '')
@@ -306,10 +306,10 @@ def gestionar_materiales(request):
         )
     
     if categoria_filtro:
-        materiales = materiales.filter(categoria=categoria_filtro)
+        materiales = materiales.filter(categoria_id=categoria_filtro)
     
-    categorias = Material.objects.values_list('categoria', flat=True).distinct().order_by('categoria')
-    categorias = [cat for cat in categorias if cat]  # Filtrar valores vacíos
+    categorias = CategoriaMaterial.objects.filter(activo=True).order_by('orden', 'nombre')
+    unidades = UnidadMaterial.objects.filter(activo=True).order_by('orden', 'abreviatura')
     
     # Estadísticas
     materiales_activos = materiales.filter(activo=True).count()
@@ -322,6 +322,7 @@ def gestionar_materiales(request):
     return render(request, 'cotizaciones/gestionar_materiales.html', {
         'materiales': materiales,
         'categorias': categorias,
+        'unidades': unidades,
         'busqueda': busqueda,
         'categoria_filtro': categoria_filtro,
         'materiales_activos': materiales_activos,
@@ -2436,13 +2437,29 @@ def crear_material(request):
             except:
                 pass
         
+        # Obtener categoría si viene
+        categoria = None
+        if data.get('categoria'):
+            try:
+                categoria = CategoriaMaterial.objects.get(pk=data.get('categoria'))
+            except CategoriaMaterial.DoesNotExist:
+                pass
+        
+        # Obtener unidad si viene
+        unidad = None
+        if data.get('unidad'):
+            try:
+                unidad = UnidadMaterial.objects.get(pk=data.get('unidad'))
+            except UnidadMaterial.DoesNotExist:
+                pass
+        
         material = Material.objects.create(
             codigo=data.get('codigo'),
             nombre=data.get('nombre'),
             descripcion=data.get('descripcion', ''),
             precio_unitario=data.get('precio_unitario'),
-            unidad=data.get('unidad', 'UND'),
-            categoria=data.get('categoria', ''),
+            unidad=unidad,
+            categoria=categoria,
             activo=data.get('activo', True),
             
             # Campos de mantenimiento
@@ -2490,8 +2507,8 @@ def obtener_material(request, material_id):
                 'nombre': material.nombre,
                 'descripcion': material.descripcion or '',
                 'precio_unitario': float(material.precio_unitario),
-                'unidad': material.unidad,
-                'categoria': material.categoria or '',
+                'unidad': material.unidad.id if material.unidad else '',
+                'categoria': material.categoria.id if material.categoria else '',
                 'activo': material.activo,
                 'requiere_mantenimiento': material.requiere_mantenimiento,
                 
@@ -2529,8 +2546,25 @@ def editar_material(request, material_id):
         material.nombre = data.get('nombre', material.nombre)
         material.descripcion = data.get('descripcion', material.descripcion)
         material.precio_unitario = data.get('precio_unitario', material.precio_unitario)
-        material.unidad = data.get('unidad', material.unidad)
-        material.categoria = data.get('categoria', material.categoria)
+        
+        # Actualizar unidad
+        if data.get('unidad'):
+            try:
+                material.unidad = UnidadMaterial.objects.get(pk=data.get('unidad'))
+            except UnidadMaterial.DoesNotExist:
+                material.unidad = None
+        else:
+            material.unidad = None
+        
+        # Actualizar categoría
+        if data.get('categoria'):
+            try:
+                material.categoria = CategoriaMaterial.objects.get(pk=data.get('categoria'))
+            except CategoriaMaterial.DoesNotExist:
+                material.categoria = None
+        else:
+            material.categoria = None
+        
         material.activo = data.get('activo', material.activo)
         
         # Campos de mantenimiento
@@ -5694,6 +5728,114 @@ def obtener_historial(request):
         return JsonResponse({
             'success': True,
             'historial': data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+# ========== CATEGORÍAS DE MATERIALES ==========
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["POST"])
+def crear_categoria_material(request):
+    """Crear nueva categoría de material vía AJAX"""
+    try:
+        data = json.loads(request.body)
+        
+        categoria = CategoriaMaterial.objects.create(
+            nombre=data.get('nombre'),
+            descripcion=data.get('descripcion', ''),
+            orden=data.get('orden', 0),
+            activo=True
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'categoria_id': categoria.id,
+            'message': 'Categoría creada exitosamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["GET"])
+def obtener_categoria_material(request, categoria_id):
+    """Obtener datos de una categoría de material"""
+    try:
+        categoria = get_object_or_404(CategoriaMaterial, pk=categoria_id)
+        
+        return JsonResponse({
+            'success': True,
+            'categoria': {
+                'id': categoria.id,
+                'nombre': categoria.nombre,
+                'descripcion': categoria.descripcion,
+                'orden': categoria.orden,
+                'activo': categoria.activo
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["PUT", "POST"])
+def editar_categoria_material(request, categoria_id):
+    """Editar categoría de material existente"""
+    try:
+        categoria = get_object_or_404(CategoriaMaterial, pk=categoria_id)
+        data = json.loads(request.body)
+        
+        categoria.nombre = data.get('nombre', categoria.nombre)
+        categoria.descripcion = data.get('descripcion', categoria.descripcion)
+        categoria.orden = data.get('orden', categoria.orden)
+        categoria.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Categoría actualizada exitosamente'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["DELETE"])
+def eliminar_categoria_material(request, categoria_id):
+    """Eliminar categoría de material"""
+    try:
+        categoria = get_object_or_404(CategoriaMaterial, pk=categoria_id)
+        
+        # Verificar si hay materiales asociados
+        materiales_count = categoria.materiales.count()
+        
+        if materiales_count > 0:
+            return JsonResponse({
+                'success': False,
+                'error': f'No se puede eliminar la categoría porque tiene {materiales_count} material(es) asociado(s)'
+            })
+        
+        categoria.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Categoría eliminada exitosamente'
         })
         
     except Exception as e:

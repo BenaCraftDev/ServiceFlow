@@ -109,6 +109,9 @@
           <button type="button" class="btn" onclick="mostrarModal('modal-material')">
             ➕ Nuevo Material
           </button>
+          <button type="button" class="btn secondary" onclick="mostrarModal('modal-ver-categorias')">
+            🏷️ Categorías
+          </button>
         </div>
       </div>
 
@@ -119,9 +122,9 @@
           <select id="categoria" name="categoria">
             <option value="">Todas las categorías</option>
             {% for categoria in categorias %}
-              <option value="{{ categoria }}" 
-                      {% if categoria == categoria_filtro %}selected{% endif %}>
-                {{ categoria }}
+              <option value="{{ categoria.id }}" 
+                      {% if categoria.id|stringformat:"s" == categoria_filtro %}selected{% endif %}>
+                {{ categoria.nombre }}
               </option>
             {% endfor %}
           </select>
@@ -178,7 +181,7 @@
           <tbody>
             {% for material in materiales %}
             <tr data-estado="{% if material.activo %}activo{% else %}inactivo{% endif %}"
-                data-categoria="{{ material.categoria }}">
+                data-categoria="{{ material.categoria.id|default:'' }}">
               <td><strong>{{ material.codigo }}</strong></td>
               <td>
                 <strong>{{ material.nombre }}</strong>
@@ -190,13 +193,19 @@
               </td>
               <td>
                 {% if material.categoria %}
-                  <span class="pill enviada">{{ material.categoria }}</span>
+                  <span class="pill enviada">{{ material.categoria.nombre }}</span>
                 {% else %}
                   <span class="pill borrador">Sin categoría</span>
                 {% endif %}
               </td>
               <td><strong>${{ material.precio_unitario|floatformat:0 }}</strong></td>
-              <td>{{ material.unidad }}</td>
+              <td>
+                {% if material.unidad %}
+                  {{ material.unidad.abreviatura }}
+                {% else %}
+                  <span style="color: var(--gris-500);">-</span>
+                {% endif %}
+              </td>
               <td data-mantenimiento-estado="{% if material.requiere_mantenimiento %}{% with estado=material.get_estado_mantenimiento %}{{ estado.estado }}{% endwith %}{% else %}sin-mantenimiento{% endif %}">
                 {% if material.requiere_mantenimiento %}
                   {% with estado=material.get_estado_mantenimiento %}
@@ -272,42 +281,161 @@
 
       <!-- Modal Ver Categorías -->
       <div id="modal-ver-categorias" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-content" style="max-width: 900px;">
           <div class="modal-header">
-            <h3>📦 Categorías de Materiales</h3>
+            <h3>🏷️ Gestión de Categorías de Materiales</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
           </div>
           
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
-            {% for categoria in categorias %}
-            <div class="card" style="cursor: pointer; margin: 0;" 
-                 onclick="filtrarPorCategoria('{{ categoria }}')">
-              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                <h4 style="margin: 0; color: var(--azul-700); border: none; padding: 0;">{{ categoria }}</h4>
-                <span class="pill enviada">{{ forloop.counter }}</span>
-              </div>
-              <div style="text-align: right; margin-top: 12px;">
-                <span style="color: var(--azul-600); font-size: 0.85rem; font-weight: 600;">
-                  Ver materiales →
-                </span>
-              </div>
-            </div>
-            {% empty %}
-            <div style="text-align: center; color: var(--gris-600); padding: 40px; grid-column: 1/-1;">
-              Las categorías se crean automáticamente al agregar materiales.
-              <br><br>
-              <button type="button" class="btn" onclick="cerrarModal('modal-ver-categorias'); mostrarModal('modal-material');">
-                Crear Primer Material
-              </button>
-            </div>
-            {% endfor %}
+          <!-- Botón Nueva Categoría -->
+          <div style="margin-bottom: 16px;">
+            <button type="button" class="btn" onclick="abrirNuevaCategoriaMaterial()">
+              ➕ Nueva Categoría
+            </button>
           </div>
           
-          <div style="display: flex; gap: 8px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid var(--gris-300);">
+          <!-- Filtros de búsqueda -->
+          <div class="filters" style="margin-bottom: 16px;">
+            <div class="filter-group">
+              <label for="filtro-categoria-nombre">🔍 Buscar Categoría</label>
+              <input type="text" id="filtro-categoria-nombre" 
+                     placeholder="Nombre de la categoría..."
+                     onkeyup="filtrarCategoriasMaterial()">
+            </div>
+            
+            <div class="filter-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategoriasMaterial()">
+                🔄 Limpiar
+              </button>
+            </div>
+          </div>
+          
+          <!-- Tabla de Categorías -->
+          <div style="max-height: 450px; overflow-y: auto;">
+            <table id="tabla-categorias-modal">
+              <thead>
+                <tr>
+                  <th onclick="ordenarCategoriasMaterial('nombre')" style="cursor: pointer;">
+                    Nombre <span id="sort-nombre">⇅</span>
+                  </th>
+                  <th>Descripción</th>
+                  <th onclick="ordenarCategoriasMaterial('orden')" style="cursor: pointer;">
+                    Orden <span id="sort-orden">⇅</span>
+                  </th>
+                  <th onclick="ordenarCategoriasMaterial('materiales')" style="cursor: pointer;">
+                    Materiales <span id="sort-materiales">⇅</span>
+                  </th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-categorias">
+                {% for categoria in categorias %}
+                <tr data-nombre="{{ categoria.nombre|lower }}" 
+                    data-orden="{{ categoria.orden|default:0 }}"
+                    data-materiales="{{ categoria.materiales.count }}">
+                  <td>
+                    <strong>{{ categoria.nombre }}</strong>
+                  </td>
+                  <td>
+                    {{ categoria.descripcion|default:"-"|truncatewords:15 }}
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700); border-color: var(--azul-300);">
+                      {{ categoria.orden|default:0 }}
+                    </span>
+                  </td>
+                  <td style="text-align: center;">
+                    <span class="pill" style="background: var(--verde-100); color: var(--verde-600); border-color: var(--verde-600);">
+                      {{ categoria.materiales.count }} material{{ categoria.materiales.count|pluralize:"es" }}
+                    </span>
+                  </td>
+                  <td>
+                    <div style="display: flex; gap: 4px;">
+                      <button type="button" class="btn small secondary" 
+                              onclick="editarCategoriaMaterial({{ categoria.id }})" title="Editar">
+                        ✏️
+                      </button>
+                      <button type="button" class="btn small danger" 
+                              onclick="eliminarCategoriaMaterial({{ categoria.id }}, '{{ categoria.nombre }}')" title="Eliminar">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr id="row-sin-categorias">
+                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
+                    No hay categorías registradas aún.
+                    <br><br>
+                    <button type="button" class="btn" onclick="abrirNuevaCategoriaMaterial()">
+                      Crear Primera Categoría
+                    </button>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Mensaje cuando no hay resultados del filtro -->
+          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
+            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron categorías</h4>
+            <p style="margin: 0;">Intenta ajustar la búsqueda</p>
+          </div>
+          
+          <!-- Footer con resumen y botón cerrar -->
+          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gris-300);">
+            <div style="color: var(--gris-600);">
+              <strong>Total categorías:</strong> {{ categorias|length }}
+            </div>
             <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
               Cerrar
             </button>
           </div>
+        </div>
+      </div>
+
+      <!-- Modal Nueva/Editar Categoría -->
+      <div id="modal-categoria" class="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-categoria-titulo">Nueva Categoría</h3>
+            <button type="button" class="close" onclick="cerrarModal('modal-categoria')">&times;</button>
+          </div>
+          
+          <form id="form-categoria">
+            {% csrf_token %}
+            <input type="hidden" id="categoria-id" value="">
+            
+            <div class="form-group">
+              <label for="categoria-nombre">Nombre de la Categoría *</label>
+              <input type="text" id="categoria-nombre" required 
+                    placeholder="Ej: Bombas, Estanques, Eléctrico">
+            </div>
+            
+            <div class="form-group">
+              <label for="categoria-descripcion">Descripción</label>
+              <textarea id="categoria-descripcion" rows="3"
+                        placeholder="Descripción de la categoría (opcional)"></textarea>
+            </div>
+            
+            <div class="form-group">
+              <label for="categoria-orden">Orden de Visualización</label>
+              <input type="number" id="categoria-orden" min="0" value="0"
+                    placeholder="0 = Primera, 1 = Segunda, etc.">
+            </div>
+            
+            <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+              <button type="button" class="btn secondary" onclick="cerrarModalCategoriaMaterial()">
+                Cancelar
+              </button>
+              <button type="submit" class="btn">
+                Guardar Categoría
+              </button>
+            </div>
+          </form>
         </div>
       </div>
 
@@ -331,8 +459,12 @@
               </div>
               <div class="form-group">
                 <label for="material-categoria">Categoría</label>
-                <input type="text" id="material-categoria" 
-                      placeholder="Ej: Bombas, Estanques, Eléctrico">
+                <select id="material-categoria">
+                  <option value="">Sin categoría</option>
+                  {% for categoria in categorias %}
+                    <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
+                  {% endfor %}
+                </select>
               </div>
             </div>
             
@@ -356,8 +488,12 @@
               </div>
               <div class="form-group">
                 <label for="material-unidad">Unidad *</label>
-                <input type="text" id="material-unidad" required
-                      placeholder="UND, MT, KG, LT, etc.">
+                <select id="material-unidad" required>
+                  <option value="">Seleccionar unidad...</option>
+                  {% for unidad in unidades %}
+                    <option value="{{ unidad.id }}">{{ unidad.abreviatura }} - {{ unidad.nombre }}</option>
+                  {% endfor %}
+                </select>
               </div>
             </div>
             
@@ -516,6 +652,7 @@
           </form>
         </div>
       </div>
+
     </main>
   </div>
 
@@ -1216,6 +1353,219 @@
     // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
     if (e.target === this) {
       e.stopPropagation(); // Evitar que se cierre
+    }
+  });
+
+  // ========== FUNCIONES DE CATEGORÍAS DE MATERIALES ==========
+  
+  // Formulario de categoría
+  document.getElementById('form-categoria').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const categoriaId = document.getElementById('categoria-id').value;
+    const isEditing = categoriaId !== '';
+    
+    const formData = {
+      nombre: document.getElementById('categoria-nombre').value,
+      descripcion: document.getElementById('categoria-descripcion').value,
+      orden: document.getElementById('categoria-orden').value
+    };
+    
+    try {
+      const url = isEditing ? 
+        `/cotizaciones/categoria-material/${categoriaId}/editar/` : 
+        '/cotizaciones/categoria-material/crear/';
+      
+      const method = isEditing ? 'PUT' : 'POST';
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        cerrarModal('modal-categoria');
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error guardando categoría:', error);
+      alert('Error al guardar la categoría');
+    }
+  });
+  
+  // Función para editar categoría
+  async function editarCategoriaMaterial(categoriaId) {
+    try {
+      const response = await fetch(`/cotizaciones/categoria-material/${categoriaId}/`);
+      const result = await response.json();
+      
+      if (result.success) {
+        document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
+        document.getElementById('categoria-id').value = categoriaId;
+        document.getElementById('categoria-nombre').value = result.categoria.nombre;
+        document.getElementById('categoria-descripcion').value = result.categoria.descripcion || '';
+        document.getElementById('categoria-orden').value = result.categoria.orden || 0;
+        
+        cerrarModal('modal-ver-categorias');
+        mostrarModal('modal-categoria');
+      } else {
+        alert('Error al cargar los datos de la categoría: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error cargando categoría:', error);
+      alert('Error al cargar los datos de la categoría');
+    }
+  }
+  
+  // Función para eliminar categoría
+  async function eliminarCategoriaMaterial(categoriaId, nombreCategoria) {
+    if (!confirm(`¿Estás seguro de eliminar la categoría "${nombreCategoria}"?\n\nEsto podría afectar a los materiales asociados.`)) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/cotizaciones/categoria-material/${categoriaId}/eliminar/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCSRFToken()
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        alert(result.message);
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('Error eliminando categoría:', error);
+      alert('Error al eliminar la categoría');
+    }
+  }
+  
+  // Función para abrir modal de nueva categoría desde el modal de ver categorías
+  function abrirNuevaCategoriaMaterial() {
+    cerrarModal('modal-ver-categorias');
+    mostrarModal('modal-categoria');
+  }
+  
+  // Limpiar formulario de categoría al cerrar
+  function cerrarModalCategoriaMaterial() {
+    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('categoria-id').value = '';
+    document.getElementById('form-categoria').reset();
+    cerrarModal('modal-categoria');
+    // Volver a abrir el modal de ver categorías
+    mostrarModal('modal-ver-categorias');
+  }
+  
+  // ===== FILTROS Y ORDENAMIENTO DEL MODAL DE CATEGORÍAS =====
+  
+  // Filtrar categorías en el modal
+  function filtrarCategoriasMaterial() {
+    const busqueda = document.getElementById('filtro-categoria-nombre').value.toLowerCase();
+    const tbody = document.getElementById('tbody-categorias');
+    const filas = tbody.querySelectorAll('tr:not(#row-sin-categorias)');
+    const sinResultados = document.getElementById('sin-resultados-categorias');
+    
+    let visibles = 0;
+    
+    filas.forEach(fila => {
+      const nombre = fila.getAttribute('data-nombre') || '';
+      const mostrar = nombre.includes(busqueda);
+      
+      fila.style.display = mostrar ? '' : 'none';
+      if (mostrar) visibles++;
+    });
+    
+    // Mostrar u ocultar mensaje de sin resultados
+    if (visibles === 0 && filas.length > 0) {
+      sinResultados.style.display = 'block';
+      tbody.style.display = 'none';
+    } else {
+      sinResultados.style.display = 'none';
+      tbody.style.display = '';
+    }
+  }
+  
+  // Limpiar filtros de categorías
+  function limpiarFiltrosCategoriasMaterial() {
+    document.getElementById('filtro-categoria-nombre').value = '';
+    filtrarCategoriasMaterial();
+  }
+  
+  // Ordenar categorías en el modal
+  let ordenCategoriasMaterial = {
+    columna: null,
+    ascendente: true
+  };
+  
+  function ordenarCategoriasMaterial(columna) {
+    const tbody = document.getElementById('tbody-categorias');
+    const filas = Array.from(tbody.querySelectorAll('tr:not(#row-sin-categorias)'));
+    
+    // Si es la misma columna, invertir orden
+    if (ordenCategoriasMaterial.columna === columna) {
+      ordenCategoriasMaterial.ascendente = !ordenCategoriasMaterial.ascendente;
+    } else {
+      ordenCategoriasMaterial.columna = columna;
+      ordenCategoriasMaterial.ascendente = true;
+    }
+    
+    // Ordenar filas
+    filas.sort((a, b) => {
+      let valorA, valorB;
+      
+      if (columna === 'nombre') {
+        valorA = a.getAttribute('data-nombre') || '';
+        valorB = b.getAttribute('data-nombre') || '';
+        return ordenCategoriasMaterial.ascendente ? 
+          valorA.localeCompare(valorB) : 
+          valorB.localeCompare(valorA);
+      } else if (columna === 'orden' || columna === 'materiales') {
+        valorA = parseInt(a.getAttribute('data-' + columna)) || 0;
+        valorB = parseInt(b.getAttribute('data-' + columna)) || 0;
+        return ordenCategoriasMaterial.ascendente ? 
+          valorA - valorB : 
+          valorB - valorA;
+      }
+    });
+    
+    // Actualizar tabla
+    filas.forEach(fila => tbody.appendChild(fila));
+    
+    // Actualizar iconos de ordenamiento
+    document.querySelectorAll('#tabla-categorias-modal th span').forEach(span => {
+      span.textContent = '⇅';
+    });
+    
+    const icono = ordenCategoriasMaterial.ascendente ? '↑' : '↓';
+    document.getElementById('sort-' + columna).textContent = icono;
+  }
+  
+  // Evitar que el modal de categorías se cierre al hacer clic fuera
+  document.getElementById('modal-ver-categorias').addEventListener('click', function(e) {
+    if (e.target === this) {
+      e.stopPropagation();
+    }
+  });
+  
+  document.getElementById('modal-categoria').addEventListener('click', function(e) {
+    if (e.target === this) {
+      e.stopPropagation();
     }
   });
 

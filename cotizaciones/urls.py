@@ -100,6 +100,12 @@ urlpatterns = [
     path('categoria-empleado/<int:categoria_id>/editar/', views.editar_categoria_empleado, name='editar_categoria_empleado'),
     path('categoria-empleado/<int:categoria_id>/eliminar/', views.eliminar_categoria_empleado, name='eliminar_categoria_empleado'),
     
+    # Gestión de categorías de materiales
+    path('categoria-material/crear/', views.crear_categoria_material, name='crear_categoria_material'),
+    path('categoria-material/<int:categoria_id>/', views.obtener_categoria_material, name='obtener_categoria_material'),
+    path('categoria-material/<int:categoria_id>/editar/', views.editar_categoria_material, name='editar_categoria_material'),
+    path('categoria-material/<int:categoria_id>/eliminar/', views.eliminar_categoria_material, name='eliminar_categoria_material'),
+    
     # Asignación de empleados a categorías
     path('empleado-categoria/asignar/', views.asignar_empleado_categoria, name='asignar_empleado_categoria'),
     path('empleado-categoria/<int:asignacion_id>/eliminar/', views.eliminar_empleado_categoria, name='eliminar_empleado_categoria'),

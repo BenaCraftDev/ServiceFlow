@@ -6,6 +6,35 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import uuid
 
+class CategoriaMaterial(models.Model):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(blank=True, null=True)
+    orden = models.IntegerField(default=0)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['orden', 'nombre']
+        verbose_name = "Categoría de Material"
+        verbose_name_plural = "Categorías de Materiales"
+
+    def __str__(self):
+        return self.nombre
+
+class UnidadMaterial(models.Model):
+    nombre = models.CharField(max_length=50, unique=True)
+    abreviatura = models.CharField(max_length=10)
+    descripcion = models.TextField(blank=True, null=True)
+    orden = models.IntegerField(default=0)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['orden', 'abreviatura']
+        verbose_name = "Unidad de Material"
+        verbose_name_plural = "Unidades de Materiales"
+
+    def __str__(self):
+        return f"{self.abreviatura} - {self.nombre}"
+
 class Cliente(models.Model):
     nombre = models.CharField(max_length=200)
     rut = models.CharField(max_length=20, blank=True, null=True)
@@ -105,8 +134,8 @@ class Material(models.Model):
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True, null=True)
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
-    unidad = models.CharField(max_length=50, default='UND')
-    categoria = models.CharField(max_length=100, blank=True, null=True)
+    unidad = models.ForeignKey(UnidadMaterial, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiales')
+    categoria = models.ForeignKey(CategoriaMaterial, on_delete=models.SET_NULL, null=True, blank=True, related_name='materiales')
     activo = models.BooleanField(default=True)
     
     # Campos de mantenimiento

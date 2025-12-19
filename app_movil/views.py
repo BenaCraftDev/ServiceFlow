@@ -31,16 +31,11 @@ def mis_trabajos_empleado(request):
             'error': 'No tienes un perfil de empleado asignado'
         }, status=403)
     
-    # Filtrar solo cotizaciones aprobadas
+    # Filtrar solo cotizaciones aprobadas - SIN select_related problemático
     trabajos = TrabajoEmpleado.objects.filter(
         empleado=perfil_empleado,
         cotizacion__estado='aprobada'
-    ).select_related(
-        'cotizacion',
-        'cotizacion__cliente',
-        'item_mano_obra',
-        'item_mano_obra__categoria_empleado'
-    ).order_by('-id')
+    ).select_related('cotizacion', 'cotizacion__cliente', 'item_mano_obra').order_by('-id')
     
     # Estadísticas
     from django.db.models import Sum
@@ -56,13 +51,8 @@ def mis_trabajos_empleado(request):
             num_evidencias = trabajo.evidencias.count()
             tiene_gastos = hasattr(trabajo, 'gastos') and trabajo.gastos is not None
             
-            # Descripción del trabajo
-            descripcion = 'Sin descripción'
-            if trabajo.item_mano_obra:
-                if hasattr(trabajo.item_mano_obra, 'categoria_empleado') and trabajo.item_mano_obra.categoria_empleado:
-                    descripcion = trabajo.item_mano_obra.categoria_empleado.nombre
-                else:
-                    descripcion = str(trabajo.item_mano_obra)
+            # Descripción - usar str() del item_mano_obra
+            descripcion = str(trabajo.item_mano_obra) if trabajo.item_mano_obra else 'Sin descripción'
             
             trabajos_data.append({
                 'id': trabajo.id,

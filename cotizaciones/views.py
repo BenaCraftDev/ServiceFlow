@@ -646,6 +646,7 @@ def agregar_item_mano_obra(request, cotizacion_pk):
                         trabajo_empleado, created = TrabajoEmpleado.objects.get_or_create(
                             empleado=empleado,
                             item_mano_obra=item,
+                            horas_estimadas=horas_por_empleado,
                             defaults={
                                 'cotizacion': cotizacion,
                                 'estado': 'pendiente'
@@ -3081,25 +3082,30 @@ def agregar_empleado_mano_obra(request, cotizacion_pk, item_pk):
         
         data = json.loads(request.body)
         empleado_id = data.get('empleado_id')
-        horas_asignadas = data.get('horas_asignadas', 0)
-        observaciones = data.get('observaciones', '')
         
+        # ASEGURAR QUE LAS HORAS SEAN NUMÉRICAS:
+        # Intentamos obtener horas_asignadas, si no viene o es vacío, usamos las del item_mano_obra
+        try:
+            horas_asignadas = float(data.get('horas_asignadas', 0))
+            if horas_asignadas <= 0:
+                horas_asignadas = float(item_mano_obra.horas or 0)
+        except (ValueError, TypeError):
+            horas_asignadas = float(item_mano_obra.horas or 0)
+
+        observaciones = data.get('observaciones', '')
         empleado = get_object_or_404(PerfilEmpleado, pk=empleado_id)
         
+        valor_final = horas_asignadas if horas_asignadas > 0 else float(item_mano_obra.horas or 1.0)
+
         # Verificar si ya está asignado
-        asignacion_existente = ItemManoObraEmpleado.objects.filter(
-            item_mano_obra=item_mano_obra,
-            empleado=empleado
-        ).first()
-        
-        if asignacion_existente:
+        if ItemManoObraEmpleado.objects.filter(item_mano_obra=item_mano_obra, empleado=empleado).exists():
             return JsonResponse({
                 'success': False,
                 'error': 'El empleado ya está asignado a este trabajo'
             })
         
         with transaction.atomic():
-            # Crear asignación
+            # 1. Crear asignación técnica
             asignacion = ItemManoObraEmpleado.objects.create(
                 item_mano_obra=item_mano_obra,
                 empleado=empleado,
@@ -3107,25 +3113,29 @@ def agregar_empleado_mano_obra(request, cotizacion_pk, item_pk):
                 observaciones=observaciones
             )
             
-            # Crear registro en TrabajoEmpleado para la vista del empleado
-            TrabajoEmpleado.objects.create(
+            # 2. Crear registro en TrabajoEmpleado para la vista del empleado
+            # FORZAMOS el guardado de horas_estimadas aquí
+            trabajo = TrabajoEmpleado.objects.create(
                 empleado=empleado,
                 cotizacion=cotizacion,
                 item_mano_obra=item_mano_obra,
-                estado='pendiente'
-            )
+                horas_estimadas=valor_final, # <--- Este es el campo clave
+                observaciones_empleado=observaciones,
+                defaults={
+                    'estado': 'pendiente',
+                    'horas_estimadas': item_mano_obra.horas,  # <--- ESTA ES LA LÍNEA QUE FALTA
+                }
+            ) 
         
         return JsonResponse({
             'success': True,
             'asignacion_id': asignacion.id,
-            'message': f'{empleado.nombre_completo} asignado al trabajo'
+            'horas_guardadas': horas_asignadas, # Enviamos esto para debugear en el navegador
+            'message': f'{empleado.nombre_completo} asignado con {horas_asignadas} hrs.'
         })
         
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
+        return JsonResponse({'success': False, 'error': str(e)})
 
 @login_required
 @requiere_gerente_o_superior
@@ -3170,7 +3180,7 @@ def eliminar_empleado_mano_obra(request, cotizacion_pk, item_pk, empleado_id):
 
 @login_required
 def mis_trabajos_empleado(request):
-    """Vista de trabajos para empleados"""
+    """Vista de trabajos para empleados corregida"""
     try:
         perfil_empleado = request.user.perfilempleado
     except PerfilEmpleado.DoesNotExist:
@@ -3180,11 +3190,8 @@ def mis_trabajos_empleado(request):
     # Obtener trabajos del empleado - SOLO DE COTIZACIONES APROBADAS
     trabajos = TrabajoEmpleado.objects.filter(
         empleado=perfil_empleado,
-        cotizacion__estado='aprobada'  # FILTRO CRÍTICO: Solo trabajos aprobados
-    ).select_related(
-        'cotizacion__cliente',
-        'item_mano_obra'
-    ).order_by('-id', 'estado')
+        cotizacion__estado='aprobada'
+    ).select_related('cotizacion', 'item_mano_obra', 'empleado').order_by('-fecha_inicio')
     
     # Filtros
     estado_filtro = request.GET.get('estado', '')
@@ -3214,20 +3221,29 @@ def mis_trabajos_empleado(request):
         'model_exists': True,
     }
 
-    # Detectar si la petición es desde la app móvil
-    if request.headers.get('Accept') == 'application/json':
+    # Detectar si la petición es desde la app móvil o requiere JSON
+    if request.headers.get('Accept') == 'application/json' or request.GET.get('format') == 'json':
         trabajos_data = []
         
         for trabajo in trabajos:
+            # IMPORTANTE: Convertimos Decimal a float para que el JSON lo entienda
+            h_estimadas = float(trabajo.horas_estimadas or 0)
+            h_trabajadas = float(trabajo.horas_trabajadas or 0)
+            
+            # Si por alguna razón la BD tiene 0 pero el item tiene horas, rescatamos el dato
+            if h_estimadas <= 0 and trabajo.item_mano_obra:
+                h_estimadas = float(trabajo.item_mano_obra.horas or 0)
+
             trabajos_data.append({
                 'id': trabajo.id,
                 'numero_cotizacion': trabajo.cotizacion.numero_cotizacion,
                 'cliente': trabajo.cotizacion.cliente.nombre,
                 'descripcion': trabajo.item_mano_obra.categoria_empleado.nombre if trabajo.item_mano_obra else 'Sin descripción',
                 'estado': trabajo.estado,
+                'horas_estimadas': h_estimadas,  # <--- DATO CORREGIDO
+                'horas_trabajadas': h_trabajadas,
                 'fecha_asignacion': trabajo.fecha_asignacion.strftime('%Y-%m-%d') if trabajo.fecha_asignacion else None,
                 'fecha_entrega': trabajo.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.cotizacion.fecha_estimada else None,
-                'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
                 'observaciones': trabajo.observaciones_empleado or '',
             })
         

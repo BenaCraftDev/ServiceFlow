@@ -5,18 +5,7 @@
 
 {% block content %}
 <main>
-    <div class="actions">
-        <div class="actions-left">
-            <h1 style="margin: 0; color: var(--azul-700);">🌐 Solicitudes desde Sitio Web</h1>
-            <p class="muted">Gestión de prospectos recibidos desde el formulario público</p>
-        </div>
-        <div class="actions-right">
-            <a href="{% url 'cotizaciones:exportar_solicitudes_web' %}" class="btn success">📊 Exportar Excel</a>
-            <a href="{% url 'cotizaciones:lista_solicitudes_web' %}" class="btn secondary">🔄 Actualizar</a>
-        </div>
-    </div>
-
-    <div class="cards">
+        <div class="cards">
         <div class="card">
             <h4>⏳ Pendientes</h4>
             <div class="kpi">{{ stats.pendientes }}</div>
@@ -38,6 +27,19 @@
             <div class="muted">Más de 2 días</div>
         </div>
     </div>
+
+    <div class="actions">
+        <div class="actions-left">
+            <h1 style="margin: 0; color: var(--azul-700);">🌐 Solicitudes desde Sitio Web</h1>
+            <p class="muted">Gestión de prospectos recibidos desde el formulario público</p>
+        </div>
+        <div class="actions-right">
+            <a href="{% url 'cotizaciones:exportar_solicitudes_web' %}" class="btn success">📊 Exportar Excel</a>
+            
+        </div>
+    </div>
+
+
 
     <div class="card" style="margin-bottom: 24px;">
         <form method="get" class="filters" style="display: grid; grid-template-columns: 1fr 2fr auto; gap: 15px; align-items: end;">
@@ -97,7 +99,11 @@
                         {% else %}-{% endif %}
                     </td>
                     <td>
+                        {% if solicitud.estado != 'convertida' %}
                         <a href="{% url 'cotizaciones:detalle_solicitud_web' solicitud.id %}" class="btn small secondary">👁️ Ver Detalle</a>
+                        {% else %}
+                        <a href="{% url 'cotizaciones:detalle' solicitud.cotizacion_generada.id %}" class="btn small secondary"> 📝 Ver Cotización</a>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}

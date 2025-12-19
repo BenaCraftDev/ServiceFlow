@@ -917,6 +917,7 @@ class ItemManoObraEmpleado(models.Model):
     )
     fecha_asignacion = models.DateTimeField(auto_now_add=True)
     horas_asignadas = models.DecimalField(
+        default=0.0,
         max_digits=8, 
         decimal_places=2, 
         validators=[MinValueValidator(0)]
@@ -969,6 +970,11 @@ class TrabajoEmpleado(models.Model):
     )
     fecha_inicio = models.DateTimeField(blank=True, null=True)
     fecha_fin = models.DateTimeField(blank=True, null=True)
+    horas_estimadas = models.DecimalField(
+        max_digits=8, 
+        decimal_places=2, 
+        validators=[MinValueValidator(0)]
+    )
     horas_trabajadas = models.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -976,6 +982,7 @@ class TrabajoEmpleado(models.Model):
         validators=[MinValueValidator(0)]
     )
     observaciones_empleado = models.TextField(blank=True, null=True)
+
 
     class Meta:
         unique_together = ('empleado', 'item_mano_obra')

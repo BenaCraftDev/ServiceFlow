@@ -14,6 +14,7 @@ import base64
 # ==================== TRABAJOS ====================
 
 @login_required
+@csrf_exempt
 def mis_trabajos_empleado(request):
     """API para app móvil - Obtener trabajos del empleado"""
     try:
@@ -77,6 +78,7 @@ def mis_trabajos_empleado(request):
     })
 
 @login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def actualizar_trabajo_empleado(request, trabajo_id):
     """API para app móvil - Actualizar trabajo"""
@@ -100,6 +102,7 @@ def actualizar_trabajo_empleado(request, trabajo_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 @login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def completar_trabajo_empleado(request, trabajo_id):
     """API para app móvil - Completar trabajo"""
@@ -119,6 +122,7 @@ def completar_trabajo_empleado(request, trabajo_id):
 # ==================== NOTIFICACIONES ====================
 
 @login_required
+@csrf_exempt
 def obtener_notificaciones_empleado(request):
     """API para app móvil - Obtener notificaciones"""
     try:
@@ -159,6 +163,7 @@ def obtener_notificaciones_empleado(request):
         }, status=500)
 
 @login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def marcar_notificacion_leida(request, notificacion_id):
     """API para app móvil - Marcar notificación como leída"""
@@ -185,6 +190,7 @@ def marcar_notificacion_leida(request, notificacion_id):
         }, status=400)
 
 @login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def marcar_todas_notificaciones_leidas(request):
     """API para app móvil - Marcar todas como leídas"""
@@ -271,6 +277,7 @@ def subir_evidencia_trabajo(request, trabajo_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
+@csrf_exempt
 def obtener_evidencias_trabajo(request, trabajo_id):
     """API para app móvil - Obtener evidencias de un trabajo"""
     try:
@@ -299,6 +306,7 @@ def obtener_evidencias_trabajo(request, trabajo_id):
 # ==================== GASTOS ====================
 
 @login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def registrar_gasto_trabajo(request, trabajo_id):
     """API para app móvil - Registrar gastos de trabajo"""
@@ -344,6 +352,7 @@ def registrar_gasto_trabajo(request, trabajo_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 @login_required
+@csrf_exempt
 def obtener_gastos_trabajo(request, trabajo_id):
     """API para app móvil - Obtener gastos de un trabajo"""
     try:

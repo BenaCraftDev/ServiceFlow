@@ -394,7 +394,7 @@
               <td>
                 {% if trabajo.estado != 'completado' %}
                     <button type="button" 
-                        class="btn-tu-clase"
+                        class="btn small"
                         onclick="editarTrabajo(
                             '{{ trabajo.id }}', 
                             '{{ trabajo.estado }}', 
@@ -402,7 +402,7 @@
                             '{{ trabajo.horas_estimadas|floatformat:2 }}'.replace(',', '.'), 
                             '{{ trabajo.observaciones_empleado|escapejs }}'
                         )">
-                        Editar Trabajo
+                        ✏️ Editar
                     </button>
                   {% if trabajo.estado == 'pendiente' %}
                     <button type="button" class="btn small warning" onclick="iniciarTrabajo({{ trabajo.id }})">

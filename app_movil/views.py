@@ -46,21 +46,39 @@ def mis_trabajos_empleado(request):
             num_evidencias = trabajo.evidencias.count()
             tiene_gastos = hasattr(trabajo, 'gastos') and trabajo.gastos is not None
             
+            # CAMBIO: Verificar si item_mano_obra existe
+            if not trabajo.item_mano_obra:
+                print(f"⚠️ Trabajo {trabajo.id} no tiene item_mano_obra")
+                continue
+            
+            # CAMBIO: Verificar si cotización existe
+            if not trabajo.item_mano_obra.cotizacion:
+                print(f"⚠️ Trabajo {trabajo.id} no tiene cotización")
+                continue
+            
+            # CAMBIO: Verificar si cliente existe
+            cliente_nombre = 'N/A'
+            if trabajo.item_mano_obra.cotizacion.cliente:
+                cliente_nombre = trabajo.item_mano_obra.cotizacion.cliente.nombre
+            
             trabajos_data.append({
                 'id': trabajo.id,
-                'numero_cotizacion': trabajo.item_mano_obra.cotizacion.numero_cotizacion if trabajo.item_mano_obra else 'N/A',
-                'cliente': trabajo.item_mano_obra.cotizacion.cliente.nombre if trabajo.item_mano_obra else 'N/A',
-                'descripcion': str(trabajo.item_mano_obra) if trabajo.item_mano_obra else 'Sin descripción',
+                'numero_cotizacion': trabajo.item_mano_obra.cotizacion.numero_cotizacion,
+                'cliente': cliente_nombre,
+                'descripcion': str(trabajo.item_mano_obra),
                 'estado': trabajo.estado,
                 'fecha_inicio': trabajo.fecha_inicio.strftime('%Y-%m-%d') if trabajo.fecha_inicio else None,
-                'fecha_entrega': trabajo.item_mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.item_mano_obra and trabajo.item_mano_obra.cotizacion.fecha_estimada else None,
+                'fecha_entrega': trabajo.item_mano_obra.cotizacion.fecha_estimada.strftime('%Y-%m-%d') if trabajo.item_mano_obra.cotizacion.fecha_estimada else None,
                 'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
                 'observaciones': trabajo.observaciones_empleado or '',
                 'num_evidencias': num_evidencias,
                 'tiene_gastos': tiene_gastos,
             })
         except Exception as e:
-            print(f"Error procesando trabajo {trabajo.id}: {str(e)}")
+            # CAMBIO: Imprimir el error para debugging
+            print(f"❌ Error procesando trabajo {trabajo.id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             continue
     
     return JsonResponse({

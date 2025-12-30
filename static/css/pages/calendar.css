@@ -1,0 +1,554 @@
+/* ============================================
+   CALENDARIO.CSS - Sistema de Calendario
+   ============================================ */
+
+/* HEADER DEL CALENDARIO */
+.calendario-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--azul-100);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.calendario-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendario-controls h2 {
+  margin: 0;
+  min-width: 200px;
+  text-align: center;
+  color: var(--azul-700);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.calendario-filtros {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.calendario-filtros label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.calendario-filtros input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.filtro-badge {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 2px solid;
+  transition: all 0.2s ease;
+}
+
+.filtro-badge.trabajos {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #3b82f6;
+}
+
+.filtro-badge.mantenciones {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
+}
+
+.filtro-badge.prestamos {
+  background: #ede9fe;
+  color: #5b21b6;
+  border-color: #8b5cf6;
+}
+
+.filtro-badge.notas {
+  background: #e0e7ff;
+  color: #3730a3;
+  border-color: #6366f1;
+}
+
+/* GRID DEL CALENDARIO */
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  background: var(--gris-100);
+  padding: 8px;
+  border-radius: var(--radius);
+}
+
+.dia-semana {
+  text-align: center;
+  font-weight: 700;
+  color: var(--azul-700);
+  padding: 12px;
+  background: linear-gradient(135deg, var(--azul-100), var(--blanco));
+  border-radius: 8px;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+.dia-celda {
+  background: var(--blanco);
+  border: 2px solid var(--gris-300);
+  border-radius: var(--radius);
+  min-height: 120px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.dia-celda:hover {
+  border-color: var(--azul-500);
+  box-shadow: 0 8px 20px rgba(37, 117, 192, 0.2);
+  transform: translateY(-2px);
+}
+
+.dia-celda.otro-mes {
+  background: var(--gris-100);
+  opacity: 0.5;
+}
+
+.dia-celda.hoy {
+  border-color: var(--azul-600);
+  border-width: 3px;
+  box-shadow: 0 0 0 3px rgba(37, 117, 192, 0.1);
+}
+
+.dia-celda.seleccionado {
+  background: linear-gradient(135deg, var(--azul-100), var(--blanco));
+  border-color: var(--azul-700);
+  border-width: 3px;
+}
+
+.dia-numero {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--gris-800);
+  margin-bottom: 8px;
+}
+
+.dia-celda.hoy .dia-numero {
+  background: var(--azul-600);
+  color: var(--blanco);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dia-eventos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.evento-mini {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evento-mini:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.evento-mini.trabajo {
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  color: #1e40af;
+  border-left: 3px solid #3b82f6;
+}
+
+.evento-mini.mantencion {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+  border-left: 3px solid #f59e0b;
+}
+
+.evento-mini.prestamo {
+  background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+  color: #5b21b6;
+  border-left: 3px solid #8b5cf6;
+}
+
+.evento-mini.nota {
+  color: white;
+  border-left: 3px solid rgba(0, 0, 0, 0.2);
+}
+
+.evento-contador {
+  background: var(--gris-600);
+  color: white;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* EVENTOS DEL DÍA */
+#eventos-dia {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.evento-detalle {
+  background: var(--blanco);
+  border: 2px solid;
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.evento-detalle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.evento-detalle.trabajo {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), white);
+}
+
+.evento-detalle.mantencion {
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.05), white);
+}
+
+.evento-detalle.prestamo {
+  border-color: #8b5cf6;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), white);
+}
+
+.evento-detalle.nota {
+  border-left-width: 6px;
+}
+
+.evento-detalle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 8px;
+}
+
+.evento-detalle h4 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--azul-700);
+}
+
+.evento-detalle-tipo {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.evento-detalle-tipo.trabajo {
+  background: #3b82f6;
+  color: white;
+}
+
+.evento-detalle-tipo.mantencion {
+  background: #f59e0b;
+  color: white;
+}
+
+.evento-detalle p {
+  margin: 8px 0;
+  color: var(--gris-700);
+  line-height: 1.5;
+}
+
+.evento-detalle-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--gris-300);
+  font-size: 0.85rem;
+  color: var(--gris-600);
+}
+
+.evento-acciones {
+  display: flex;
+  gap: 8px;
+}
+
+/* MODAL DE NOTA */
+.color-picker {
+  display: flex;
+  gap: 12px;
+}
+
+.color-picker input[type="radio"] {
+  display: none;
+}
+
+.color-picker label {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-picker label:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.color-picker input[type="radio"]:checked + label {
+  border-color: var(--azul-700);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  transform: scale(1.15);
+}
+
+/* BADGES DE PRIORIDAD */
+.prioridad-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.prioridad-badge.alta {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.prioridad-badge.media {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.prioridad-badge.baja {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+/* LOADING */
+.calendario-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--gris-600);
+}
+
+.calendario-loading .spinner {
+  margin: 0 auto 16px;
+}
+
+/* ESTADOS ESPECIALES */
+.dia-celda.tiene-eventos::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--azul-600);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.2);
+  }
+}
+
+/* MODAL DE EVENTO */
+#evento-contenido {
+  padding: 20px 0;
+}
+
+.evento-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.evento-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.evento-info-label {
+  font-size: 0.85rem;
+  color: var(--gris-600);
+  font-weight: 600;
+}
+
+.evento-info-value {
+  font-size: 1rem;
+  color: var(--azul-700);
+  font-weight: 500;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .calendario-grid {
+    gap: 6px;
+  }
+  
+  .dia-celda {
+    min-height: 100px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .calendario-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .calendario-controls {
+    justify-content: center;
+  }
+  
+  .calendario-filtros {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendario-grid {
+    gap: 4px;
+    padding: 4px;
+  }
+  
+  .dia-celda {
+    min-height: 80px;
+    padding: 4px;
+  }
+  
+  .dia-numero {
+    font-size: 0.9rem;
+  }
+  
+  .evento-mini {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+  
+  .dia-semana {
+    font-size: 0.75rem;
+    padding: 8px 4px;
+  }
+  
+  .evento-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendario-controls h2 {
+    font-size: 1.2rem;
+    min-width: 150px;
+  }
+  
+  .dia-celda {
+    min-height: 60px;
+  }
+  
+  .evento-mini {
+    font-size: 0.65rem;
+  }
+  
+  /* Ocultar texto en eventos mini, solo mostrar emoji */
+  .evento-mini span:not(:first-child) {
+    display: none;
+  }
+}
+
+/* ANIMACIONES */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dia-celda {
+  animation: slideInFromBottom 0.3s ease;
+}
+
+.evento-detalle {
+  animation: slideInFromBottom 0.3s ease;
+}
+
+/* PRINT STYLES */
+@media print {
+  .calendario-header {
+    page-break-after: avoid;
+  }
+  
+  .dia-celda {
+    page-break-inside: avoid;
+  }
+  
+  .calendario-filtros,
+  .btn {
+    display: none;
+  }
+  
+  .calendario-grid {
+    gap: 2px;
+  }
+}

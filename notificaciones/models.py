@@ -74,3 +74,47 @@ class Notificacion(models.Model):
         notificaciones_a_eliminar.delete()
         
         return cantidad
+
+class NotaCalendario(models.Model):
+    """
+    Modelo para notas personalizables en el calendario
+    """
+    PRIORIDADES = [
+        ('baja', 'Baja'),
+        ('media', 'Media'),
+        ('alta', 'Alta'),
+    ]
+    
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notas_calendario')
+    titulo = models.CharField(max_length=200, verbose_name='Título')
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+    fecha = models.DateField(verbose_name='Fecha')
+    prioridad = models.CharField(max_length=10, choices=PRIORIDADES, default='media', verbose_name='Prioridad')
+    color = models.CharField(max_length=7, default='#3b82f6', verbose_name='Color')
+    
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_modificacion = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Nota de Calendario'
+        verbose_name_plural = 'Notas de Calendario'
+        ordering = ['fecha', '-prioridad']
+    
+    def __str__(self):
+        return f"{self.titulo} - {self.fecha}"
+    
+    @property
+    def es_pasado(self):
+        """Verifica si la fecha de la nota ya pasó"""
+        return self.fecha < timezone.now().date()
+    
+    @property
+    def es_hoy(self):
+        """Verifica si la nota es para hoy"""
+        return self.fecha == timezone.now().date()
+    
+    @property
+    def es_urgente(self):
+        """Verifica si la nota es urgente (alta prioridad y fecha cercana)"""
+        dias_diferencia = (self.fecha - timezone.now().date()).days
+        return self.prioridad == 'alta' and 0 <= dias_diferencia <= 3

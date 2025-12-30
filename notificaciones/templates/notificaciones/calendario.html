@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario - ServiceFlow</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/pages/calendar.css' %}">
+</head>
+<body>
+    {% include 'notificaciones/helmet.html' %}
+
+    <main>
+        <div class="card">
+            <div class="calendario-header">
+                <div class="calendario-controls">
+                    <button class="btn secondary" id="btn-prev-mes">
+                        <span>←</span>
+                    </button>
+                    <h2 id="mes-actual">Enero 2025</h2>
+                    <button class="btn secondary" id="btn-next-mes">
+                        <span>→</span>
+                    </button>
+                    <button class="btn secondary" id="btn-hoy">Hoy</button>
+                </div>
+
+                <div class="calendario-filtros">
+                    <label>
+                        <input type="checkbox" id="filter-trabajos" checked>
+                        <span class="filtro-badge trabajos">🔧 Trabajos</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="filter-mantenciones" checked>
+                        <span class="filtro-badge mantenciones">⚙️ Mantenciones</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="filter-prestamos" checked>
+                        <span class="filtro-badge prestamos">📦 Préstamos</span>
+                    </label>
+                    <label>
+                        <input type="checkbox" id="filter-notas" checked>
+                        <span class="filtro-badge notas">📝 Notas</span>
+                    </label>
+                    <button class="btn" id="btn-nueva-nota">+ Nueva Nota</button>
+                </div>
+            </div>
+
+            <div class="calendario-grid" id="calendario-grid">
+                <!-- Los días de la semana y las celdas se insertan aquí por JavaScript -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Eventos del día seleccionado</h3>
+            <div id="eventos-dia">
+                <p class="muted">Selecciona un día para ver sus eventos</p>
+            </div>
+        </div>
+    </main>
+    
+
+    <!-- Modal para crear/editar notas -->
+    <div class="modal" id="modal-nota">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-nota-titulo">Nueva Nota</h3>
+                <button class="close" id="close-modal-nota">&times;</button>
+            </div>
+            <form id="form-nota">
+                {% csrf_token %}
+                <input type="hidden" id="nota-id" name="nota_id">
+                
+                <div class="form-group">
+                    <label>Título *</label>
+                    <input type="text" id="nota-titulo" name="titulo" required maxlength="200">
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="nota-descripcion" name="descripcion" rows="4"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha *</label>
+                        <input type="date" id="nota-fecha" name="fecha" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Prioridad</label>
+                        <select id="nota-prioridad" name="prioridad">
+                            <option value="baja">🟢 Baja</option>
+                            <option value="media" selected>🟡 Media</option>
+                            <option value="alta">🔴 Alta</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Color</label>
+                    <div class="color-picker">
+                        <input type="radio" name="color" value="#3b82f6" id="color-azul" checked>
+                        <label for="color-azul" style="background: #3b82f6;"></label>
+                        
+                        <input type="radio" name="color" value="#10b981" id="color-verde">
+                        <label for="color-verde" style="background: #10b981;"></label>
+                        
+                        <input type="radio" name="color" value="#f59e0b" id="color-naranja">
+                        <label for="color-naranja" style="background: #f59e0b;"></label>
+                        
+                        <input type="radio" name="color" value="#ef4444" id="color-rojo">
+                        <label for="color-rojo" style="background: #ef4444;"></label>
+                        
+                        <input type="radio" name="color" value="#8b5cf6" id="color-morado">
+                        <label for="color-morado" style="background: #8b5cf6;"></label>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn secondary" id="btn-cancelar-nota">Cancelar</button>
+                    <button type="submit" class="btn">Guardar Nota</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para ver detalles de evento -->
+    <div class="modal" id="modal-evento">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="evento-titulo">Detalles del Evento</h3>
+                <button class="close" id="close-modal-evento">&times;</button>
+            </div>
+            <div id="evento-contenido"></div>
+        </div>
+    </div>
+
+    <script src="{% static 'js/calendario.js' %}"></script>
+</body>
+</html>

@@ -6,150 +6,82 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mis Notificaciones</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}">
-</head>
-<body>
-  {% include 'notificaciones/helmet.html' %}
-
-    <!-- Main Content -->
-    <main>
-      <!-- Header con stats -->
-      <div class="notifications-page-header">
-        <div>
-          <h1>📬 Todas mis Notificaciones</h1>
-          <div style="display: flex; gap: 16px; margin-top: 12px;">
-            <span class="pill activo">Total: {{ stats.total }}</span>
-            <span class="pill enviada">No leídas: {{ stats.no_leidas }}</span>
-            <span class="pill aprobada">Importantes: {{ stats.importantes }}</span>
-          </div>
-        </div>
-        
-        <!-- Filtros -->
-        <div class="notification-filters">
-          <button class="filter-btn {% if filtro_actual == 'todas' %}active{% endif %}" 
-                  onclick="filtrar('todas')">
-            📋 Todas
-          </button>
-          <button class="filter-btn {% if filtro_actual == 'no_leidas' %}active{% endif %}" 
-                  onclick="filtrar('no_leidas')">
-            🔵 No leídas
-          </button>
-          <button class="filter-btn {% if filtro_actual == 'importantes' %}active{% endif %}" 
-                  onclick="filtrar('importantes')">
-            ⭐ Importantes
-          </button>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="actions" style="margin-bottom: 20px;">
-        <div class="actions-left">
-          <button class="btn secondary" onclick="marcarTodasLeidas()">
-            ✓ Marcar todas como leídas
-          </button>
-        </div>
-        <div class="actions-right">
-          <button class="btn warning" onclick="confirmarLimpiar()">
-            🗑️ Limpiar antiguas
-          </button>
-        </div>
-      </div>
-
-      <!-- Notificaciones Card -->
-      <div class="notifications-page-list">
-        {% if notificaciones %}
-          {% for notif in notificaciones %}
-          <div class="notification-item {% if not notif.leida %}unread{% endif %}" 
-               data-id="{{ notif.id }}" 
-               data-url="{{ notif.url }}"
-               style="padding: 20px 24px; position: relative; display: flex; gap: 12px;">
-            
-            <!-- Icono de tipo - Izquierda -->
-            <div class="notification-type-icon {{ notif.tipo }}" style="flex-shrink: 0;">
-              {% if notif.tipo == 'info' %}ℹ️
-              {% elif notif.tipo == 'success' %}✅
-              {% elif notif.tipo == 'warning' %}⚠️
-              {% elif notif.tipo == 'danger' %}🚨
-              {% endif %}
-            </div>
-            
-            <!-- Contenido principal -->
-            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding-right: 140px;">
-              
-              <!-- Fila 1: Título + Estado + (Fecha y Estrella en esquina) -->
-              <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; position: relative;">
-                <!-- Título -->
-                <h4 style="margin: 0; color: var(--azul-700); font-size: 1rem; flex: 1; min-width: 0;">
-                  🎉 {{ notif.titulo }}
-                </h4>
-                
-                <!-- Estado (Badge) -->
-                {% if not notif.leida %}
-                  <span class="pill enviada" style="font-size: 0.75rem; flex-shrink: 0;">🔵 No leída</span>
-                {% else %}
-                  <span class="pill activo" style="font-size: 0.75rem; flex-shrink: 0;">✓ Leída</span>
-                {% endif %}
-              </div>
-              
-              <!-- Fila 2: Mensaje -->
-              <p style="margin: 0 0 12px 0; color: var(--gris-800); line-height: 1.5;">
-                {{ notif.mensaje }}
-              </p>
-              
-              <!-- Fila 3: Botón "Ver detalle" + Importante badge (abajo izquierda) -->
-              <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  {% if notif.url %}
-                  <a href="{{ notif.url }}" 
-                     class="btn small secondary" 
-                     onclick="marcarLeida({{ notif.id }}, event)">
-                    Ver detalle →
-                  </a>
-                  {% endif %}
-                  
-                  {% if notif.importante %}
-                    <span class="pill aprobada" style="font-size: 0.75rem;">⭐ Importante</span>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-            
-            <!-- ESQUINA SUPERIOR DERECHA: Fecha + Estrella -->
-            <div style="position: absolute; top: 20px; right: 24px; display: flex; gap: 8px; align-items: center;">
-              <!-- Fecha -->
-              <span style="font-size: 0.8rem; color: var(--gris-500); white-space: nowrap;">
-                {{ notif.fecha_creacion|date:"d/m/y H:i" }}
-              </span>
-              
-              <!-- Estrella -->
-              <button class="btn-star {% if notif.importante %}starred{% endif %}" 
-                      onclick="toggleImportante({{ notif.id }}, this); event.stopPropagation();"
-                      title="{% if notif.importante %}Quitar de importantes{% else %}Marcar como importante{% endif %}">
-                {% if notif.importante %}⭐{% else %}☆{% endif %}
-              </button>
-            </div>
-            
-          </div>
-          {% endfor %}
-        {% else %}
-          <div style="text-align: center; padding: 80px 20px; color: var(--gris-600);">
-            <div style="font-size: 5rem; margin-bottom: 20px;">📭</div>
-            <h3>No hay notificaciones</h3>
-            <p>
-              {% if filtro_actual == 'no_leidas' %}
-                No tienes notificaciones sin leer
-              {% elif filtro_actual == 'importantes' %}
-                No has marcado ninguna notificación como importante
-              {% else %}
-                Cuando recibas notificaciones aparecerán aquí
-              {% endif %}
-            </p>
-          </div>
-        {% endif %}
-      </div>
-    </main>
-  </div>
-
   <style>
+    /* KPIs más compactos */
+    .cards {
+      gap: 12px !important;
+      margin-bottom: 16px !important;
+    }
+
+    .cards .card {
+      padding: 12px 14px !important;
+      margin-bottom: 0 !important;
+    }
+
+    .cards .card h4 {
+      font-size: 0.85rem !important;
+      margin-bottom: 8px !important;
+      padding-bottom: 6px !important;
+    }
+
+    .cards .card .kpi {
+      font-size: 1.4rem !important;
+      margin-bottom: 4px;
+    }
+
+    .cards .card .muted {
+      font-size: 0.8rem !important;
+    }
+
+    /* Desactivar interactividad de KPIs de solo lectura */
+    #kpi-promedio-dias,
+    #kpi-tasa-lectura {
+      cursor: default !important;
+    }
+    
+    #kpi-promedio-dias:hover,
+    #kpi-tasa-lectura:hover {
+      transform: none !important;
+      box-shadow: var(--shadow) !important;
+    }
+    
+    #kpi-promedio-dias:active,
+    #kpi-tasa-lectura:active {
+      transform: none !important;
+    }
+
+    /* Header más compacto */
+    .actions {
+      margin-bottom: 12px !important;
+    }
+
+    .actions h1 {
+      font-size: 1.5rem !important;
+    }
+
+    /* Filtros más compactos */
+    .filters {
+      padding: 12px !important;
+      gap: 10px !important;
+      margin-bottom: 16px !important;
+    }
+
+    .filter-group label {
+      font-size: 0.8rem !important;
+      margin-bottom: 2px;
+    }
+
+    .filter-group select,
+    .filter-group input {
+      padding: 6px 8px !important;
+      font-size: 0.85rem !important;
+    }
+
+    .filter-group .btn {
+      padding: 6px 12px !important;
+      font-size: 0.85rem !important;
+    }
+
     /* NOTIFICACIÓN LEÍDA - Estilo sutil y apagado */
     .notification-item {
       background: var(--blanco);
@@ -173,8 +105,6 @@
       background: linear-gradient(90deg, rgba(37, 117, 192, 0.12), var(--gris-100));
       border-left-color: var(--azul-700);
     }
-
-    /* Sin punto indicador - removido para evitar confusión */
 
     /* Títulos */
     .notification-item h4 {
@@ -245,19 +175,309 @@
     .notification-item.unread .notification-type-icon {
       opacity: 1;
     }
+
+    /* Estado vacío mejorado */
+    .empty-state {
+      text-align: center;
+      padding: 50px 20px;
+      color: var(--gris-600);
+      animation: fadeIn 0.5s ease;
+    }
+
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+      opacity: 0.3;
+    }
+
+    .empty-state h3 {
+      color: var(--azul-700);
+      margin-bottom: 6px;
+      font-size: 1.2rem;
+    }
+
+    .empty-state p {
+      font-size: 0.9rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Lista de notificaciones más compacta */
+    .notifications-page-list {
+      border-radius: var(--radius);
+    }
+
+    .notification-item {
+      border-bottom: 1px solid var(--gris-300);
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
   </style>
+</head>
+<body>
+  {% include 'notificaciones/helmet.html' %}
+
+    <main>
+
+      <!-- KPIs Estadísticos Clickeables - MÁS COMPACTOS -->
+      <div class="cards">
+        <div class="card" id="kpi-total" onclick="filtrarPorKPI('todas')">
+          <h4>📬 Total</h4>
+          <div class="kpi">{{ stats.total }}</div>
+          <div class="muted">Todas</div>
+        </div>
+        <div class="card" id="kpi-no-leidas" onclick="filtrarPorKPI('no_leidas')">
+          <h4>🔵 Sin Leer</h4>
+          <div class="kpi">{{ stats.no_leidas }}</div>
+          <div class="muted">Pendientes</div>
+        </div>
+        <div class="card" id="kpi-importantes" onclick="filtrarPorKPI('importantes')">
+          <h4>⭐ Importantes</h4>
+          <div class="kpi">{{ stats.importantes }}</div>
+          <div class="muted">Marcadas</div>
+        </div>
+        <div class="card" id="kpi-tasa-lectura">
+          <h4>📊 Tasa</h4>
+          <div class="kpi">0%</div>
+          <div class="muted">Leídas</div>
+        </div>
+      </div>
+
+      <!-- Header + Acciones en una línea -->
+      <div class="actions" style="align-items: center;">
+        <div class="actions-left">
+          <h1 style="margin: 0; color: var(--azul-700);">📬 Notificaciones</h1>
+        </div>
+        <div class="actions-right">
+          <button class="btn secondary small" onclick="marcarTodasLeidas()">
+            ✓ Marcar leídas
+          </button>
+          <button class="btn warning small" onclick="confirmarLimpiar()">
+            🗑️ Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Interactivos - MÁS COMPACTOS -->
+      <div class="filters">
+        <div class="filter-group">
+          <label for="filtro-estado">📋 Estado</label>
+          <select id="filtro-estado" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            <option value="no_leidas" {% if filtro_actual == 'no_leidas' %}selected{% endif %}>No leídas</option>
+            <option value="leidas">Leídas</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-importancia">⭐ Importancia</label>
+          <select id="filtro-importancia" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            <option value="importantes" {% if filtro_actual == 'importantes' %}selected{% endif %}>Importantes</option>
+            <option value="normales">Normales</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-tipo">🏷️ Tipo</label>
+          <select id="filtro-tipo" onchange="aplicarFiltros()">
+            <option value="">Todos</option>
+            <option value="info">Info</option>
+            <option value="success">Éxito</option>
+            <option value="warning">Advertencia</option>
+            <option value="danger">Urgente</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filtro-fecha">📅 Fecha</label>
+          <select id="filtro-fecha" onchange="aplicarFiltros()">
+            <option value="">Todas</option>
+            <option value="hoy">Hoy</option>
+            <option value="semana">Esta semana</option>
+            <option value="mes">Este mes</option>
+            <option value="antiguos">Antiguas</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <label for="busqueda-notif">🔍 Buscar</label>
+          <input type="text" 
+                 id="busqueda-notif" 
+                 placeholder="Buscar..." 
+                 oninput="aplicarFiltros()">
+        </div>
+
+        <div class="filter-group" style="align-self: end;">
+          <button type="button" class="btn secondary small" onclick="limpiarFiltros()">
+            Limpiar
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Notificaciones -->
+      <div class="notifications-page-list" id="lista-notificaciones">
+        {% if notificaciones %}
+          {% for notif in notificaciones %}
+          <div class="notification-item {% if not notif.leida %}unread{% endif %}" 
+               data-id="{{ notif.id }}" 
+               data-url="{{ notif.url }}"
+               data-tipo="{{ notif.tipo }}"
+               data-leida="{% if notif.leida %}true{% else %}false{% endif %}"
+               data-importante="{% if notif.importante %}true{% else %}false{% endif %}"
+               data-fecha="{{ notif.fecha_creacion|date:'Y-m-d' }}"
+               data-titulo="{{ notif.titulo|lower }}"
+               data-mensaje="{{ notif.mensaje|lower }}"
+               style="padding: 14px 20px; position: relative; display: flex; gap: 12px;">
+            
+            <!-- Icono de tipo - Izquierda -->
+            <div class="notification-type-icon {{ notif.tipo }}" style="flex-shrink: 0; width: 36px; height: 36px; font-size: 1rem;">
+              {% if notif.tipo == 'info' %}ℹ️
+              {% elif notif.tipo == 'success' %}✅
+              {% elif notif.tipo == 'warning' %}⚠️
+              {% elif notif.tipo == 'danger' %}🚨
+              {% endif %}
+            </div>
+            
+            <!-- Contenido principal -->
+            <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; padding-right: 120px;">
+              
+              <!-- Fila 1: Título + Estado -->
+              <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; position: relative;">
+                <!-- Título -->
+                <h4 style="margin: 0; color: var(--azul-700); font-size: 0.95rem; flex: 1; min-width: 0;">
+                  {{ notif.titulo }}
+                </h4>
+                
+                <!-- Estado (Badge) -->
+                {% if not notif.leida %}
+                  <span class="pill enviada" style="font-size: 0.7rem; padding: 3px 8px; flex-shrink: 0;">🔵 No leída</span>
+                {% else %}
+                  <span class="pill activo" style="font-size: 0.7rem; padding: 3px 8px; flex-shrink: 0;">✓ Leída</span>
+                {% endif %}
+              </div>
+              
+              <!-- Fila 2: Mensaje -->
+              <p style="margin: 0 0 10px 0; color: var(--gris-800); line-height: 1.4; font-size: 0.9rem;">
+                {{ notif.mensaje }}
+              </p>
+              
+              <!-- Fila 3: Botón "Ver detalle" + Importante badge -->
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 6px; align-items: center;">
+                  {% if notif.url %}
+                  <a href="{{ notif.url }}" 
+                     class="btn small secondary" 
+                     style="padding: 5px 10px; font-size: 0.8rem;"
+                     onclick="marcarLeida({{ notif.id }}, event)">
+                    Ver detalle →
+                  </a>
+                  {% endif %}
+                  
+                  {% if notif.importante %}
+                    <span class="pill aprobada" style="font-size: 0.7rem; padding: 3px 8px;">⭐ Importante</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            
+            <!-- ESQUINA SUPERIOR DERECHA: Fecha + Estrella -->
+            <div style="position: absolute; top: 14px; right: 20px; display: flex; gap: 6px; align-items: center;">
+              <!-- Fecha -->
+              <span style="font-size: 0.75rem; color: var(--gris-500); white-space: nowrap;">
+                {{ notif.fecha_creacion|date:"d/m/y H:i" }}
+              </span>
+              
+              <!-- Estrella -->
+              <button class="btn-star {% if notif.importante %}starred{% endif %}" 
+                      style="width: 28px; height: 28px; font-size: 1rem;"
+                      onclick="toggleImportante({{ notif.id }}, this); event.stopPropagation();"
+                      title="{% if notif.importante %}Quitar de importantes{% else %}Marcar como importante{% endif %}">
+                {% if notif.importante %}⭐{% else %}☆{% endif %}
+              </button>
+            </div>
+            
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state" id="estado-vacio">
+            <div class="empty-state-icon">🔭</div>
+            <h3>No hay notificaciones</h3>
+            <p id="mensaje-vacio">
+              {% if filtro_actual == 'no_leidas' %}
+                No tienes notificaciones sin leer
+              {% elif filtro_actual == 'importantes' %}
+                No has marcado ninguna notificación como importante
+              {% else %}
+                Cuando recibas notificaciones aparecerán aquí
+              {% endif %}
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </main>
+  </div>
 
   <script>
+    // ===== GESTIÓN DE CSRF TOKEN =====
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    // ===== ACCIONES DE NOTIFICACIONES =====
+    
     // Marcar como leída
     function marcarLeida(id, event) {
       event.preventDefault();
+      const url = event.target.href;
+      
       fetch(`/notificaciones/marcar-leida/${id}/`, {
         method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken'),
         }
-      }).then(() => {
-        window.location.href = event.target.href;
+      }).then(response => {
+        if (response.ok) {
+          // Actualizar el item antes de redirigir
+          const item = document.querySelector(`[data-id="${id}"]`);
+          if (item) {
+            item.setAttribute('data-leida', 'true');
+            item.classList.remove('unread');
+            
+            // Actualizar badge de estado
+            const badge = item.querySelector('.pill.enviada');
+            if (badge) {
+              badge.className = 'pill activo';
+              badge.style.cssText = 'font-size: 0.7rem; padding: 3px 8px; flex-shrink: 0;';
+              badge.innerHTML = '✓ Leída';
+            }
+            
+            // Actualizar contadores
+            actualizarTasaLectura();
+          }
+        }
+        
+        // Redirigir después de actualizar
+        window.location.href = url;
+      }).catch(err => {
+        console.error('Error:', err);
+        window.location.href = url;
       });
     }
 
@@ -288,7 +508,9 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          // Actualizar UI
+          const item = button.closest('.notification-item');
+          
+          // Actualizar UI del botón estrella
           if (data.importante) {
             button.classList.add('starred');
             button.innerHTML = '⭐';
@@ -298,14 +520,55 @@
             button.innerHTML = '☆';
             button.title = 'Marcar como importante';
           }
+          
+          // Actualizar data-importante en el item
+          item.setAttribute('data-importante', data.importante ? 'true' : 'false');
+          
+          // Actualizar el badge "Importante" en el contenido de la notificación
+          const contentDiv = item.querySelector('div[style*="flex: 1"]');
+          const bottomDiv = contentDiv.querySelector('div[style*="justify-content: space-between"]:last-child > div');
+          
+          // Buscar y remover badge importante existente
+          const badgeExistente = bottomDiv.querySelector('.pill.aprobada');
+          if (badgeExistente) {
+            badgeExistente.remove();
+          }
+          
+          // Si ahora es importante, agregar el badge
+          if (data.importante) {
+            const badgeImportante = document.createElement('span');
+            badgeImportante.className = 'pill aprobada';
+            badgeImportante.style.cssText = 'font-size: 0.7rem; padding: 3px 8px;';
+            badgeImportante.innerHTML = '⭐ Importante';
+            bottomDiv.appendChild(badgeImportante);
+          }
+          
+          // Actualizar contador KPI de importantes
+          actualizarContadorImportantes();
+          
+          // Reaplicar filtros para actualizar visibilidad
+          aplicarFiltros();
         }
       })
       .catch(err => console.error('Error:', err));
     }
-
-    // Filtrar notificaciones
-    function filtrar(tipo) {
-      window.location.href = `{% url 'notificaciones:lista' %}?filtro=${tipo}`;
+    
+    // Actualizar contador de importantes en el KPI
+    function actualizarContadorImportantes() {
+      const items = document.querySelectorAll('.notification-item');
+      let countImportantes = 0;
+      
+      items.forEach(item => {
+        if (item.getAttribute('data-importante') === 'true') {
+          countImportantes++;
+        }
+      });
+      
+      // Actualizar el KPI
+      const kpiImportantes = document.querySelector('#kpi-importantes .kpi');
+      if (kpiImportantes) {
+        kpiImportantes.textContent = countImportantes;
+      }
     }
 
     // Confirmar limpieza
@@ -331,21 +594,205 @@
       });
     }
 
-    // Obtener CSRF token
-    function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
+    // ===== SISTEMA DE FILTROS =====
+    
+    // Aplicar filtros
+    function aplicarFiltros() {
+      const filtroEstado = document.getElementById('filtro-estado').value;
+      const filtroImportancia = document.getElementById('filtro-importancia').value;
+      const filtroTipo = document.getElementById('filtro-tipo').value;
+      const filtroFecha = document.getElementById('filtro-fecha').value;
+      const busqueda = document.getElementById('busqueda-notif').value.toLowerCase();
+      
+      const items = document.querySelectorAll('.notification-item');
+      let visibles = 0;
+      
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      
+      const inicioSemana = new Date(hoy);
+      inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+      
+      const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      
+      items.forEach(item => {
+        let mostrar = true;
+        
+        // Filtro por estado (leída/no leída)
+        if (filtroEstado) {
+          const esLeida = item.getAttribute('data-leida') === 'true';
+          if (filtroEstado === 'no_leidas' && esLeida) mostrar = false;
+          if (filtroEstado === 'leidas' && !esLeida) mostrar = false;
+        }
+        
+        // Filtro por importancia
+        if (filtroImportancia) {
+          const esImportante = item.getAttribute('data-importante') === 'true';
+          if (filtroImportancia === 'importantes' && !esImportante) mostrar = false;
+          if (filtroImportancia === 'normales' && esImportante) mostrar = false;
+        }
+        
+        // Filtro por tipo
+        if (filtroTipo) {
+          const tipo = item.getAttribute('data-tipo');
+          if (tipo !== filtroTipo) mostrar = false;
+        }
+        
+        // Filtro por fecha
+        if (filtroFecha) {
+          const fechaItem = new Date(item.getAttribute('data-fecha'));
+          fechaItem.setHours(0, 0, 0, 0);
+          
+          if (filtroFecha === 'hoy' && fechaItem.getTime() !== hoy.getTime()) {
+            mostrar = false;
+          } else if (filtroFecha === 'semana' && fechaItem < inicioSemana) {
+            mostrar = false;
+          } else if (filtroFecha === 'mes' && fechaItem < inicioMes) {
+            mostrar = false;
+          } else if (filtroFecha === 'antiguos' && fechaItem >= inicioMes) {
+            mostrar = false;
           }
         }
-      }
-      return cookieValue;
+        
+        // Filtro por búsqueda
+        if (busqueda) {
+          const titulo = item.getAttribute('data-titulo') || '';
+          const mensaje = item.getAttribute('data-mensaje') || '';
+          
+          if (!titulo.includes(busqueda) && !mensaje.includes(busqueda)) {
+            mostrar = false;
+          }
+        }
+        
+        // Mostrar/ocultar item
+        item.style.display = mostrar ? 'flex' : 'none';
+        if (mostrar) visibles++;
+      });
+      
+      // Mostrar mensaje de "sin resultados"
+      actualizarEstadoVacio(visibles, items.length);
     }
+
+    // Actualizar estado vacío
+    function actualizarEstadoVacio(visibles, total) {
+      const lista = document.getElementById('lista-notificaciones');
+      let estadoVacio = document.getElementById('estado-vacio');
+      
+      if (visibles === 0 && total > 0) {
+        // Hay items pero ninguno visible por los filtros
+        if (!estadoVacio) {
+          estadoVacio = document.createElement('div');
+          estadoVacio.id = 'estado-vacio';
+          estadoVacio.className = 'empty-state';
+          estadoVacio.innerHTML = `
+            <div class="empty-state-icon">🔍</div>
+            <h3>No se encontraron notificaciones</h3>
+            <p>Intenta ajustar los filtros para ver más resultados</p>
+          `;
+          lista.appendChild(estadoVacio);
+        }
+        estadoVacio.style.display = 'block';
+      } else if (estadoVacio) {
+        estadoVacio.style.display = 'none';
+      }
+    }
+
+    // Limpiar filtros
+    function limpiarFiltros() {
+      document.getElementById('filtro-estado').value = '';
+      document.getElementById('filtro-importancia').value = '';
+      document.getElementById('filtro-tipo').value = '';
+      document.getElementById('filtro-fecha').value = '';
+      document.getElementById('busqueda-notif').value = '';
+      
+      // Limpiar selección de KPIs
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+      
+      aplicarFiltros();
+    }
+
+    // ===== FILTRADO POR KPI =====
+    
+    // Filtrar por KPI clickeado
+    function filtrarPorKPI(tipo) {
+      // Limpiar filtros previos
+      limpiarFiltros();
+      
+      // Remover clase active de todos los KPIs
+      document.querySelectorAll('.cards .card').forEach(card => {
+        card.classList.remove('active');
+      });
+      
+      // Agregar clase active al KPI clickeado
+      let kpiSeleccionado = null;
+      
+      if (tipo === 'todas') {
+        kpiSeleccionado = document.getElementById('kpi-total');
+        // No aplicar filtro, mostrar todas
+      } else if (tipo === 'no_leidas') {
+        kpiSeleccionado = document.getElementById('kpi-no-leidas');
+        document.getElementById('filtro-estado').value = 'no_leidas';
+      } else if (tipo === 'importantes') {
+        kpiSeleccionado = document.getElementById('kpi-importantes');
+        document.getElementById('filtro-importancia').value = 'importantes';
+      }
+      
+      if (kpiSeleccionado) {
+        kpiSeleccionado.classList.add('active');
+      }
+      
+      // Aplicar filtros
+      aplicarFiltros();
+    }
+
+    // ===== INICIALIZACIÓN =====
+    
+    // Calcular y actualizar tasa de lectura
+    function actualizarTasaLectura() {
+      const items = document.querySelectorAll('.notification-item');
+      const total = items.length;
+      let leidas = 0;
+      
+      items.forEach(item => {
+        if (item.getAttribute('data-leida') === 'true') {
+          leidas++;
+        }
+      });
+      
+      const tasaLectura = total > 0 ? Math.round((leidas / total) * 100) : 0;
+      
+      // Actualizar el KPI
+      const kpiTasa = document.querySelector('#kpi-tasa-lectura .kpi');
+      if (kpiTasa) {
+        kpiTasa.textContent = tasaLectura + '%';
+      }
+      
+      // Actualizar también el contador de no leídas
+      const noLeidas = total - leidas;
+      const kpiNoLeidas = document.querySelector('#kpi-no-leidas .kpi');
+      if (kpiNoLeidas) {
+        kpiNoLeidas.textContent = noLeidas;
+      }
+    }
+    
+    // Marcar KPI activo según filtro actual de la URL
+    document.addEventListener('DOMContentLoaded', function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const filtroUrl = urlParams.get('filtro');
+      
+      if (filtroUrl) {
+        filtrarPorKPI(filtroUrl);
+      }
+      
+      // Calcular tasa de lectura inicial
+      actualizarTasaLectura();
+      
+      // Aplicar filtros iniciales si hay
+      aplicarFiltros();
+    });
+
   </script>
 </body>
 </html>

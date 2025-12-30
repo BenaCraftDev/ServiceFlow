@@ -11,15 +11,6 @@
   {% include 'notificaciones/helmet.html' %}
 
     <main>
-      <!-- Alerts -->
-      {% if messages %}
-        {% for message in messages %}
-          <div class="alert {{ message.tags }}">
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
-
       <!-- Estadísticas -->
       <div class="cards">
         <div class="card" id="kpi-total" style="margin: 0;">

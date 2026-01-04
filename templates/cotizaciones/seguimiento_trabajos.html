@@ -642,6 +642,19 @@
       }, 600);
     }
     
+    // Función para ordenar tabla por fecha de creación (más recientes primero)
+    function ordenarPorFechaCreacion() {
+      const tbody = document.querySelector('#tabla-trabajos tbody');
+      const filas = Array.from(tbody.querySelectorAll('tr'));
+      
+      // Ordenar filas - asumiendo que el orden por defecto del backend es cronológico
+      // Revertimos para mostrar las más recientes primero
+      filas.reverse();
+      
+      // Reinsertar filas en el nuevo orden
+      filas.forEach(fila => tbody.appendChild(fila));
+    }
+    
     // Event listeners
     document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
     document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
@@ -650,6 +663,9 @@
     // Inicializar
     document.addEventListener('DOMContentLoaded', function() {
       initFiltrosRapidosTrabajos();
+      
+      // Ordenar por fecha de creación al cargar
+      ordenarPorFechaCreacion();
       
       // Eliminar duplicados del select de empleados
       const selectEmpleado = document.getElementById('filtro-empleado');

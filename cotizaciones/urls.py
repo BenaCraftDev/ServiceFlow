@@ -135,6 +135,7 @@ urlpatterns = [
     path('reportes/', views.reportes_dashboard, name='reportes_dashboard'),
     path('api/datos-dashboard/', views.datos_dashboard_reportes, name='datos_dashboard_reportes'),
     path('api/cotizaciones-mes/', views.obtener_cotizaciones_mes, name='obtener_cotizaciones_mes'),
+    path('api/empleado/', views.obtener_datos_empleado, name='obtener_datos_empleado'),
     
     # URLs de exportación
     path('clientes/exportar/', views.exportar_clientes, name='exportar_clientes'),

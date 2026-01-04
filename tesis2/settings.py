@@ -27,12 +27,6 @@ load_dotenv()
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-change-in-production")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-
-DEBUG = os.environ.get("DEBUG", "True") == "True"
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'serviceflow-production.up.railway.app']
-
 # CSRF Trusted Origins
 CSRF_TRUSTED_ORIGINS = [
     'https://serviceflow-production.up.railway.app',
@@ -167,15 +161,6 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Security settings para producción
-if not DEBUG:
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # Email con Gmail
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

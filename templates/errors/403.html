@@ -1,0 +1,74 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - Página no encontrada</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .error-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #046de5 0%, #4c9dfa 100%);
+            padding: 20px;
+        }
+        .error-card {
+            background: white;
+            border-radius: 16px;
+            padding: 60px 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        .error-code {
+            font-size: 120px;
+            font-weight: 900;
+            color: #046de5;
+            margin: 0;
+        }
+        .error-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #0a2342;
+            margin: 20px 0 16px;
+        }
+        .error-message {
+            font-size: 18px;
+            color: #4b5563;
+            margin-bottom: 32px;
+        }
+        .btn-primary {
+            background: #046de5;
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            margin: 0 8px;
+        }
+        .btn-primary:hover {
+            background: #0359c2;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-card">
+            <div style="font-size: 80px; margin-bottom: 20px;">🔍</div>
+            <h1 class="error-code">403</h1>
+            <h2 class="error-title">Página no encontrada</h2>
+            <p class="error-message">Lo sentimos, la página que buscas no existe.</p>
+            <a href="/" class="btn-primary">🏠 Volver al inicio</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -841,6 +841,31 @@ def configuracion_usuario(request):
     }
     return render(request, 'home/configuracion_usuario.html', context)
 
+# HANDLERS DE ERRORES PERSONALIZADOS
 
+def handler404(request, exception):
+    """Página personalizada para error 404"""
+    return render(request, 'errors/404.html', {
+        'error_code': '404',
+        'error_title': 'Página no encontrada',
+        'error_message': 'Lo sentimos, la página que buscas no existe.',
+        'url_solicitada': request.path,
+    }, status=404)
+
+def handler403(request, exception):
+    """Página personalizada para error 403"""
+    return render(request, 'errors/403.html', {
+        'error_code': '403',
+        'error_title': 'Acceso denegado',
+        'error_message': 'No tienes permiso para acceder a esta página.',
+    }, status=403)
+
+def handler500(request):
+    """Página personalizada para error 500"""
+    return render(request, 'errors/500.html', {
+        'error_code': '500',
+        'error_title': 'Error del servidor',
+        'error_message': 'Ha ocurrido un error. Estamos trabajando para solucionarlo.',
+    }, status=500)
 
 

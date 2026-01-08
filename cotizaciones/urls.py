@@ -99,7 +99,8 @@ urlpatterns = [
     path('categoria-empleado/crear/', views.crear_categoria_empleado, name='crear_categoria_empleado'),
     path('categoria-empleado/<int:categoria_id>/editar/', views.editar_categoria_empleado, name='editar_categoria_empleado'),
     path('categoria-empleado/<int:categoria_id>/eliminar/', views.eliminar_categoria_empleado, name='eliminar_categoria_empleado'),
-    
+    path('categoria-empleado/<int:categoria_id>/', views.obtener_categoria_empleado, name='obtener_categoria_empleado'),
+
     # Gestión de categorías de materiales
     path('categoria-material/crear/', views.crear_categoria_material, name='crear_categoria_material'),
     path('categoria-material/<int:categoria_id>/', views.obtener_categoria_material, name='obtener_categoria_material'),

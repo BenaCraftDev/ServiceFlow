@@ -1,3 +1,4 @@
 from django.db import models
 
-# Create your models here.
+# Los modelos EvidenciaTrabajo y GastoTrabajo 
+# ya están definidos en cotizaciones/models.py

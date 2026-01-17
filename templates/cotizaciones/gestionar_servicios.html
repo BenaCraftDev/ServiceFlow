@@ -12,31 +12,32 @@
 
     <main>
 
-      <!-- Estadísticas -->
       <div class="cards">
         <div class="card" id="kpi-total-servicios">
           <h4>Total Servicios</h4>
-          <div class="kpi">{{ servicios|length }}</div>
+          <div class="kpi" id="count-total">{{ servicios|length }}</div>
           <div class="muted">Disponibles</div>
         </div>
-        <div class="card" id="kpi-parametrizables">
-          <h4>Parametrizables</h4>
-          <div class="kpi">{{ servicios_parametrizables|default:0 }}</div>
-          <div class="muted">Con configuración</div>
-        </div>
+
         <div class="card" id="kpi-categorias">
           <h4>Categorías</h4>
-          <div class="kpi">{{ categorias|length }}</div>
-          <div class="muted">Organizadas</div>
-        </div>
-        <div class="card" id="kpi-activos">
-          <h4>Activos</h4>
-          <div class="kpi">{{ servicios_activos|default:0 }}</div>
+          <div class="kpi" id="count-categorias">{{ categories|length }}</div>
           <div class="muted">En uso</div>
+        </div>
+
+        <div class="card" id="kpi-inactivos">
+          <h4>Inactivos</h4>
+          <div class="kpi" id="count-inactivos">-</div>
+          <div class="muted">Fuera de uso</div>
+        </div>
+
+        <div class="card" id="kpi-promedio">
+          <h4>Valor Promedio</h4>
+          <div class="kpi" id="valor-promedio-display">$0</div>
+          <div class="muted">Click para ordenar (Mayor $)</div>
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="actions">
         <div class="actions-left">
           <h1 style="margin: 0; color: var(--azul-700);">Catálogo de Servicios</h1>
@@ -64,7 +65,6 @@
         </div>
       </div>
 
-      <!-- Filtros -->
       <div class="filters">
         <div class="filter-group">
           <label for="categoria">Categoría</label>
@@ -76,15 +76,6 @@
                 {{ categoria.nombre }}
               </option>
             {% endfor %}
-          </select>
-        </div>
-        
-        <div class="filter-group">
-          <label for="filtro-parametrizable">Parametrizable</label>
-          <select id="filtro-parametrizable">
-            <option value="">Todos</option>
-            <option value="si">Sí</option>
-            <option value="no">No</option>
           </select>
         </div>
         
@@ -104,13 +95,12 @@
         </div>
         
         <div class="filter-group" style="align-self: end;">
-          <button type="button" class="btn secondary" onclick="limpiarFiltros()">
+          <button type="button" class="btn secondary" onclick="limpiarTodoYResetear()">
             🗑️ Limpiar
           </button>
         </div>
       </div>
 
-      <!-- Tabla de Servicios -->
       <div class="table-wrap">
         <table id="tabla-servicios">
           <thead>
@@ -119,16 +109,15 @@
               <th>Categoría</th>
               <th>Precio Base</th>
               <th>Unidad</th>
-              <th>Parametrizable</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {% for servicio in servicios %}
-            <tr data-parametrizable="{% if servicio.es_parametrizable %}si{% else %}no{% endif %}" 
-                data-estado="{% if servicio.activo %}activo{% else %}inactivo{% endif %}"
-                data-categoria="{{ servicio.categoria.id }}">
+            <tr data-estado="{% if servicio.activo %}activo{% else %}inactivo{% endif %}"
+                data-categoria="{{ servicio.categoria.id }}"
+                data-precio="{{ servicio.precio_base|stringformat:'f' }}">
               <td>
                 <strong>{{ servicio.nombre }}</strong>
                 <div style="font-size: 0.85rem; color: var(--gris-600); margin-top: 4px;">
@@ -141,23 +130,12 @@
               <td><strong>${{ servicio.precio_base|floatformat:0 }}</strong></td>
               <td>{{ servicio.unidad }}</td>
               <td>
-                {% if servicio.es_parametrizable %}
-                  <span class="pill aprobada">Sí</span>
-                {% else %}
-                  <span class="pill borrador">No</span>
-                {% endif %}
-              </td>
-              <td>
                 <span class="pill {% if servicio.activo %}activo{% else %}inactivo{% endif %}">
                   {% if servicio.activo %}Activo{% else %}Inactivo{% endif %}
                 </span>
               </td>
               <td>
                 <div style="display: flex; gap: 4px;">
-                  <button type="button" class="btn small secondary" 
-                          onclick="verParametros({{ servicio.id }})" title="Ver parámetros">
-                    ⚙️
-                  </button>
                   <button type="button" class="btn small secondary" 
                           onclick="editarServicio({{ servicio.id }})" title="Editar">
                     ✏️
@@ -170,10 +148,10 @@
               </td>
             </tr>
             {% empty %}
-            <tr>
-              <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
+            <tr class="fila-sin-datos-original">
+              <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
                 {% if categoria_filtro or busqueda %}
-                  No se encontraron servicios que coincidan con los filtros aplicados.
+                  No se encontraron servicios.
                 {% else %}
                   No hay servicios registrados aún.
                 {% endif %}
@@ -188,136 +166,69 @@
         </table>
       </div>
 
-      <!-- Modal Ver Categorías -->
       <div id="modal-ver-categorias" class="modal">
         <div class="modal-content" style="max-width: 900px;">
           <div class="modal-header">
             <h3>🏷️ Gestión de Categorías</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
           </div>
-          
-          <!-- Botón Nueva Categoría -->
           <div style="margin-bottom: 16px;">
-            <button type="button" class="btn" onclick="abrirNuevaCategoria()">
-              ➕ Nueva Categoría
-            </button>
+            <button type="button" class="btn" onclick="abrirNuevaCategoria()">➕ Nueva Categoría</button>
           </div>
-          
-          <!-- Filtros de búsqueda -->
           <div class="filters" style="margin-bottom: 16px;">
             <div class="filter-group">
-              <label for="filtro-categoria-nombre">🔍 Buscar Categoría</label>
-              <input type="text" id="filtro-categoria-nombre" 
-                     placeholder="Nombre de la categoría..."
-                     onkeyup="filtrarCategorias()">
+              <label>🔍 Buscar Categoría</label>
+              <input type="text" id="filtro-categoria-nombre" placeholder="Nombre..." onkeyup="filtrarCategorias()">
             </div>
-            
             <div class="filter-group">
-              <label>&nbsp;</label>
-              <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategorias()">
-                🔄 Limpiar
-              </button>
+                <label>&nbsp;</label>
+                <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategorias()">🔄 Limpiar</button>
             </div>
           </div>
-          
-          <!-- Tabla de Categorías -->
           <div style="max-height: 450px; overflow-y: auto;">
             <table id="tabla-categorias-modal">
               <thead>
                 <tr>
-                  <th onclick="ordenarCategorias('nombre')" style="cursor: pointer;">
-                    Nombre <span id="sort-nombre">⇅</span>
-                  </th>
+                  <th onclick="ordenarCategorias('nombre')" style="cursor: pointer;">Nombre <span id="sort-nombre">⇅</span></th>
                   <th>Descripción</th>
-                  <th onclick="ordenarCategorias('orden')" style="cursor: pointer;">
-                    Orden <span id="sort-orden">⇅</span>
-                  </th>
-                  <th onclick="ordenarCategorias('servicios')" style="cursor: pointer;">
-                    Servicios <span id="sort-servicios">⇅</span>
-                  </th>
+                  <th onclick="ordenarCategorias('orden')" style="cursor: pointer;">Orden <span id="sort-orden">⇅</span></th>
+                  <th onclick="ordenarCategorias('servicios')" style="cursor: pointer;">Servicios <span id="sort-servicios">⇅</span></th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody id="tbody-categorias">
                 {% for categoria in categorias %}
-                <tr data-nombre="{{ categoria.nombre|lower }}" 
-                    data-orden="{{ categoria.orden|default:0 }}"
-                    data-servicios="{{ categoria.serviciobase_set.count }}">
-                  <td>
-                    <strong>{{ categoria.nombre }}</strong>
-                  </td>
-                  <td>
-                    {{ categoria.descripcion|default:"-"|truncatewords:15 }}
-                  </td>
-                  <td style="text-align: center;">
-                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700); border-color: var(--azul-300);">
-                      {{ categoria.orden|default:0 }}
-                    </span>
-                  </td>
-                  <td style="text-align: center;">
-                    <span class="pill" style="background: var(--verde-100); color: var(--verde-600); border-color: var(--verde-600);">
-                      {{ categoria.serviciobase_set.count }} servicio{{ categoria.serviciobase_set.count|pluralize }}
-                    </span>
-                  </td>
+                <tr data-nombre="{{ categoria.nombre|lower }}" data-orden="{{ categoria.orden|default:0 }}" data-servicios="{{ categoria.serviciobase_set.count }}">
+                  <td><strong>{{ categoria.nombre }}</strong></td>
+                  <td>{{ categoria.descripcion|default:"-"|truncatewords:15 }}</td>
+                  <td style="text-align: center;"><span class="pill" style="background: var(--azul-100); color: var(--azul-700);">{{ categoria.orden|default:0 }}</span></td>
+                  <td style="text-align: center;"><span class="pill" style="background: var(--verde-100); color: var(--verde-600);">{{ categoria.serviciobase_set.count }}</span></td>
                   <td>
                     <div style="display: flex; gap: 4px;">
-                      <button type="button" class="btn small secondary" 
-                              onclick="editarCategoria({{ categoria.id }})" title="Editar">
-                        ✏️
-                      </button>
-                      <button type="button" class="btn small danger" 
-                              onclick="eliminarCategoria({{ categoria.id }}, '{{ categoria.nombre }}')" title="Eliminar">
-                        🗑️
-                      </button>
+                      <button type="button" class="btn small secondary" onclick="editarCategoria({{ categoria.id }})">✏️</button>
+                      <button type="button" class="btn small danger" onclick="eliminarCategoria({{ categoria.id }}, '{{ categoria.nombre }}')">🗑️</button>
                     </div>
                   </td>
                 </tr>
                 {% empty %}
-                <tr id="row-sin-categorias">
-                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
-                    No hay categorías registradas aún.
-                    <br><br>
-                    <button type="button" class="btn" onclick="abrirNuevaCategoria()">
-                      Crear Primera Categoría
-                    </button>
-                  </td>
-                </tr>
+                <tr id="row-sin-categorias"><td colspan="5" style="text-align: center;">No hay categorías.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-          
-          <!-- Mensaje cuando no hay resultados del filtro -->
-          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
-            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
-            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron categorías</h4>
-            <p style="margin: 0;">Intenta ajustar la búsqueda</p>
-          </div>
-          
-          <!-- Footer con resumen y botón cerrar -->
-          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gris-300);">
-            <div style="color: var(--gris-600);">
-              <strong>Total categorías:</strong> {{ categorias|length }}
-            </div>
-            <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
-              Cerrar
-            </button>
-          </div>
+          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 20px;">No se encontraron categorías</div>
         </div>
       </div>
 
-      <!-- Modal Nuevo Servicio -->
       <div id="modal-servicio" class="modal">
         <div class="modal-content">
           <div class="modal-header">
             <h3 id="modal-servicio-titulo">Nuevo Servicio</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-servicio')">&times;</button>
           </div>
-          
           <form id="form-servicio">
             {% csrf_token %}
             <input type="hidden" id="servicio-id" value="">
-            
             <div class="form-group">
               <label for="servicio-categoria">Categoría *</label>
               <select id="servicio-categoria" required>
@@ -327,939 +238,456 @@
                 {% endfor %}
               </select>
             </div>
-            
-            <div class="form-group">
-              <label for="servicio-nombre">Nombre del Servicio *</label>
-              <input type="text" id="servicio-nombre" required 
-                    placeholder="Ej: Instalación Bomba Sumergible">
-            </div>
-            
-            <div class="form-group">
-              <label for="servicio-descripcion">Descripción *</label>
-              <textarea id="servicio-descripcion" rows="3" required
-                        placeholder="Descripción detallada del servicio"></textarea>
-            </div>
-            
+            <div class="form-group"><label>Nombre *</label><input type="text" id="servicio-nombre" required></div>
+            <div class="form-group"><label>Descripción *</label><textarea id="servicio-descripcion" rows="3" required></textarea></div>
             <div class="form-row">
-              <div class="form-group">
-                <label for="servicio-precio">Precio Base *</label>
-                <input type="number" id="servicio-precio" step="0.01" min="0" required
-                      placeholder="150000">
-              </div>
-              <div class="form-group">
-                <label for="servicio-unidad">Unidad *</label>
-                <input type="text" id="servicio-unidad" required
-                      placeholder="UND, MT, KG, etc.">
-              </div>
+              <div class="form-group"><label>Precio *</label><input type="number" id="servicio-precio" step="0.01" min="0" required></div>
+              <div class="form-group"><label>Unidad *</label><input type="text" id="servicio-unidad" required></div>
             </div>
-            
-            <div class="form-group">
-              <label>
-                <input type="checkbox" id="servicio-parametrizable"> 
-                ¿Es parametrizable?
-              </label>
-              <small style="color: var(--gris-600);">
-                Permite configurar parámetros como potencia, voltaje, etc.
-              </small>
-            </div>
-            
-            <div class="form-group">
-              <label>
-                <input type="checkbox" id="servicio-activo" checked> 
-                Servicio Activo
-              </label>
-            </div>
-            
+            <div class="form-group"><label><input type="checkbox" id="servicio-activo" checked> Servicio Activo</label></div>
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-              <button type="button" class="btn secondary" onclick="cerrarModal('modal-servicio')">
-                Cancelar
-              </button>
-              <button type="submit" class="btn">
-                Guardar Servicio
-              </button>
+              <button type="button" class="btn secondary" onclick="cerrarModal('modal-servicio')">Cancelar</button>
+              <button type="submit" class="btn">Guardar Servicio</button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Modal Ver Categorías -->
-      <div id="modal-ver-categorias" class="modal">
-        <div class="modal-content" style="max-width: 900px;">
-          <div class="modal-header">
-            <h3>🏷️ Gestión de Categorías</h3>
-            <button type="button" class="close" onclick="cerrarModal('modal-ver-categorias')">&times;</button>
-          </div>
-          
-          <!-- Botón Nueva Categoría -->
-          <div style="margin-bottom: 16px;">
-            <button type="button" class="btn" onclick="abrirNuevaCategoria()">
-              ➕ Nueva Categoría
-            </button>
-          </div>
-          
-          <!-- Filtros de búsqueda -->
-          <div class="filters" style="margin-bottom: 16px;">
-            <div class="filter-group">
-              <label for="filtro-categoria-nombre">🔍 Buscar Categoría</label>
-              <input type="text" id="filtro-categoria-nombre" 
-                     placeholder="Nombre de la categoría..."
-                     onkeyup="filtrarCategorias()">
-            </div>
-            
-            <div class="filter-group">
-              <label>&nbsp;</label>
-              <button type="button" class="btn secondary small" onclick="limpiarFiltrosCategorias()">
-                🔄 Limpiar
-              </button>
-            </div>
-          </div>
-          
-          <!-- Tabla de Categorías -->
-          <div style="max-height: 450px; overflow-y: auto;">
-            <table id="tabla-categorias-modal">
-              <thead>
-                <tr>
-                  <th onclick="ordenarCategorias('nombre')" style="cursor: pointer;">
-                    Nombre <span id="sort-nombre">⇅</span>
-                  </th>
-                  <th>Descripción</th>
-                  <th onclick="ordenarCategorias('orden')" style="cursor: pointer;">
-                    Orden <span id="sort-orden">⇅</span>
-                  </th>
-                  <th onclick="ordenarCategorias('servicios')" style="cursor: pointer;">
-                    Servicios <span id="sort-servicios">⇅</span>
-                  </th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="tbody-categorias">
-                {% for categoria in categorias %}
-                <tr data-nombre="{{ categoria.nombre|lower }}" 
-                    data-orden="{{ categoria.orden|default:0 }}"
-                    data-servicios="{{ categoria.servicio_set.count }}">
-                  <td>
-                    <strong>{{ categoria.nombre }}</strong>
-                  </td>
-                  <td>
-                    {{ categoria.descripcion|default:"-"|truncatewords:15 }}
-                  </td>
-                  <td style="text-align: center;">
-                    <span class="pill" style="background: var(--azul-100); color: var(--azul-700); border-color: var(--azul-300);">
-                      {{ categoria.orden|default:0 }}
-                    </span>
-                  </td>
-                  <td style="text-align: center;">
-                    <span class="pill" style="background: var(--verde-100); color: var(--verde-600); border-color: var(--verde-600);">
-                      {{ categoria.servicio_set.count }} servicio{{ categoria.servicio_set.count|pluralize }}
-                    </span>
-                  </td>
-                  <td>
-                    <div style="display: flex; gap: 4px;">
-                      <button type="button" class="btn small secondary" 
-                              onclick="editarCategoria({{ categoria.id }})" title="Editar">
-                        ✏️
-                      </button>
-                      <button type="button" class="btn small danger" 
-                              onclick="eliminarCategoria({{ categoria.id }}, '{{ categoria.nombre }}')" title="Eliminar">
-                        🗑️
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-                {% empty %}
-                <tr id="row-sin-categorias">
-                  <td colspan="5" style="text-align: center; padding: 40px; color: var(--gris-600);">
-                    No hay categorías registradas aún.
-                    <br><br>
-                    <button type="button" class="btn" onclick="abrirNuevaCategoria()">
-                      Crear Primera Categoría
-                    </button>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          
-          <!-- Mensaje cuando no hay resultados del filtro -->
-          <div id="sin-resultados-categorias" style="display: none; text-align: center; padding: 40px; color: var(--gris-600);">
-            <div style="font-size: 3rem; margin-bottom: 12px;">🔍</div>
-            <h4 style="margin: 0 0 8px; color: var(--azul-700);">No se encontraron categorías</h4>
-            <p style="margin: 0;">Intenta ajustar la búsqueda</p>
-          </div>
-          
-          <!-- Footer con resumen y botón cerrar -->
-          <div style="display: flex; gap: 8px; justify-content: space-between; align-items: center; margin-top: 20px;">
-            <div style="color: var(--gris-600);">
-              <strong>Total categorías:</strong> {{ categorias|length }}
-            </div>
-            <button type="button" class="btn secondary" onclick="cerrarModal('modal-ver-categorias')">
-              Cerrar
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal Nueva/Editar Categoría -->
       <div id="modal-categoria" class="modal">
         <div class="modal-content">
           <div class="modal-header">
             <h3 id="modal-categoria-titulo">Nueva Categoría</h3>
             <button type="button" class="close" onclick="cerrarModal('modal-categoria')">&times;</button>
           </div>
-          
           <form id="form-categoria">
             {% csrf_token %}
             <input type="hidden" id="categoria-id" value="">
-            
-            <div class="form-group">
-              <label for="categoria-nombre">Nombre de la Categoría *</label>
-              <input type="text" id="categoria-nombre" required 
-                    placeholder="Ej: Equipo Sumergible, Sistema Eléctrico">
-            </div>
-            
-            <div class="form-group">
-              <label for="categoria-descripcion">Descripción</label>
-              <textarea id="categoria-descripcion" rows="3"
-                        placeholder="Descripción de la categoría (opcional)"></textarea>
-            </div>
-            
-            <div class="form-group">
-              <label for="categoria-orden">Orden de Visualización</label>
-              <input type="number" id="categoria-orden" min="0" value="0"
-                    placeholder="0 = Primera, 1 = Segunda, etc.">
-            </div>
-            
+            <div class="form-group"><label>Nombre *</label><input type="text" id="categoria-nombre" required></div>
+            <div class="form-group"><label>Descripción</label><textarea id="categoria-descripcion" rows="3"></textarea></div>
+            <div class="form-group"><label>Orden</label><input type="number" id="categoria-orden" min="0" value="0"></div>
             <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-              <button type="button" class="btn secondary" onclick="cerrarModalCategoria()">
-                Cancelar
-              </button>
-              <button type="submit" class="btn">
-                Guardar Categoría
-              </button>
+              <button type="button" class="btn secondary" onclick="cerrarModalCategoria()">Cancelar</button>
+              <button type="submit" class="btn">Guardar Categoría</button>
             </div>
           </form>
-        </div>
-      </div>
-
-      <!-- Modal Ver Parámetros -->
-      <div id="modal-parametros" class="modal">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3>Parámetros del Servicio</h3>
-            <button type="button" class="close" onclick="cerrarModal('modal-parametros')">&times;</button>
-          </div>
-          
-          <div id="parametros-contenido">
-            <!-- Contenido dinámico de parámetros -->
-          </div>
-          
-          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-            <button type="button" class="btn secondary" onclick="cerrarModal('modal-parametros')">
-              Cerrar
-            </button>
-            <button type="button" class="btn" onclick="editarParametros()">
-              Editar Parámetros
-            </button>
-          </div>
         </div>
       </div>
     </main>
   </div>
 
-
 <script src="{% static 'cotizaciones/js/main.js' %}"></script>
 <script>
-  // Funciones específicas para gestión de servicios
+  // ==========================================
+  // LÓGICA DE SERVICIOS (CRUD y UI)
+  // ==========================================
 
-  async function editarServicio(servicioId) {
-    try {
-      const response = await fetch(`/cotizaciones/servicio/${servicioId}/`);
-      const result = await response.json();
-      
-      if (result.success) {
-        document.getElementById('modal-servicio-titulo').textContent = 'Editar Servicio';
-        document.getElementById('servicio-id').value = servicioId;
-        
-        document.getElementById('servicio-categoria').value = result.servicio.categoria_id;
-        document.getElementById('servicio-nombre').value = result.servicio.nombre;
-        document.getElementById('servicio-descripcion').value = result.servicio.descripcion;
-        document.getElementById('servicio-precio').value = result.servicio.precio_base;
-        document.getElementById('servicio-unidad').value = result.servicio.unidad;
-        document.getElementById('servicio-parametrizable').checked = result.servicio.es_parametrizable;
-        document.getElementById('servicio-activo').checked = result.servicio.activo;
-        
-        mostrarModal('modal-servicio');
-      } else {
-        alert('Error al cargar los datos del servicio: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error cargando servicio:', error);
-      alert('Error al cargar los datos del servicio');
-    }
-  }
-  
-  async function verParametros(servicioId) {
-    try {
-      const contenido = document.getElementById('parametros-contenido');
-      contenido.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-          <p>Cargando parámetros del servicio...</p>
-        </div>
-      `;
-      
-      mostrarModal('modal-parametros');
-      
-      const response = await fetch(`/cotizaciones/servicio/${servicioId}/parametros/`);
-      const result = await response.json();
-      
-      if (result.success) {
-        if (result.parametros.length === 0) {
-          contenido.innerHTML = `
-            <div style="text-align: center; padding: 20px; color: var(--gris-600);">
-              <p>Este servicio no tiene parámetros configurados.</p>
-              <p>Los parámetros permiten personalizar el servicio con opciones como potencia, voltaje, dimensiones, etc.</p>
-              <br>
-              <button type="button" class="btn" onclick="abrirGestionParametros(${servicioId})">
-                Agregar Parámetros
-              </button>
-            </div>
-          `;
-        } else {
-          let html = `
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Parámetro</th>
-                    <th>Tipo</th>
-                    <th>Requerido</th>
-                    <th>Valor por Defecto</th>
-                    <th>Opciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-          `;
-          
-          result.parametros.forEach(param => {
-            const requerido = param.requerido ? '<span class="pill aprobada">Sí</span>' : '<span class="pill borrador">No</span>';
-            const tipo = getTipoParametroLabel(param.tipo);
-            const opciones = param.opciones_list ? param.opciones_list.join(', ') : '-';
-            
-            html += `
-              <tr>
-                <td><strong>${param.nombre}</strong></td>
-                <td>${tipo}</td>
-                <td>${requerido}</td>
-                <td>${param.valor_por_defecto || '-'}</td>
-                <td style="font-size: 0.85rem;">${opciones}</td>
-              </tr>
-            `;
-          });
-          
-          html += `
-                </tbody>
-              </table>
-            </div>
-          `;
-          
-          contenido.innerHTML = html;
-        }
-        
-        document.getElementById('modal-parametros').dataset.servicioId = servicioId;
-        
-      } else {
-        contenido.innerHTML = `
-          <div style="text-align: center; padding: 20px; color: var(--rojo-600);">
-            <p>Error al cargar los parámetros: ${result.error}</p>
-          </div>
-        `;
-      }
-      
-    } catch (error) {
-      console.error('Error cargando parámetros:', error);
-      document.getElementById('parametros-contenido').innerHTML = `
-        <div style="text-align: center; padding: 20px; color: var(--rojo-600);">
-          <p>Error al cargar los parámetros del servicio</p>
-        </div>
-      `;
-    }
-  }
+  // Inicialización: Guardar índice original para poder resetear orden
+  document.addEventListener('DOMContentLoaded', function() {
+    const filas = document.querySelectorAll('#tabla-servicios tbody tr');
+    filas.forEach((fila, index) => {
+      fila.setAttribute('data-original-index', index);
+    });
 
-  function getTipoParametroLabel(tipo) {
-    const tipos = {
-      'text': 'Texto',
-      'number': 'Número',
-      'select': 'Selección',
-      'boolean': 'Sí/No'
-    };
-    return tipos[tipo] || tipo;
-  }
-
-  function editarParametros() {
-    const servicioId = document.getElementById('modal-parametros').dataset.servicioId;
-    cerrarModal('modal-parametros');
-    window.location.href = `/cotizaciones/servicio/${servicioId}/parametros/gestionar/`;
-  }
-
-  function abrirGestionParametros(servicioId) {
-    window.location.href = `/cotizaciones/servicio/${servicioId}/parametros/gestionar/`;
-  }
-  
-  function cerrarModalServicio() {
-    document.getElementById('modal-servicio-titulo').textContent = 'Nuevo Servicio';
-    document.getElementById('servicio-id').value = '';
-    document.getElementById('form-servicio').reset();
-    document.getElementById('servicio-parametrizable').checked = false;
-    document.getElementById('servicio-activo').checked = true;
-    document.getElementById('modal-servicio').classList.remove('show');
-  }
-  
-  document.getElementById('form-servicio').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const formData = {
-      categoria_id: document.getElementById('servicio-categoria').value,
-      nombre: document.getElementById('servicio-nombre').value,
-      descripcion: document.getElementById('servicio-descripcion').value,
-      precio_base: document.getElementById('servicio-precio').value,
-      unidad: document.getElementById('servicio-unidad').value,
-      es_parametrizable: document.getElementById('servicio-parametrizable').checked,
-      activo: document.getElementById('servicio-activo').checked
-    };
-    
-    const servicioId = document.getElementById('servicio-id').value;
-    const isEditing = servicioId !== '';
-    
-    try {
-      const url = isEditing ? 
-        `/cotizaciones/servicio/${servicioId}/editar/` : 
-        '/cotizaciones/servicio/crear/';
-      
-      const method = isEditing ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(result.message);
-        cerrarModalServicio();
-        location.reload();
-      } else {
-        alert('Error: ' + result.error);
-      }
-      
-    } catch (error) {
-      console.error('Error guardando servicio:', error);
-      alert('Error al guardar el servicio');
-    }
+    initFiltrosRapidosServicios();
+    calcularKPIs(); // Calcula los números reales al cargar
   });
-  
-  document.getElementById('form-categoria').addEventListener('submit', async function(e) {
-    e.preventDefault();
+
+  // Calculadora precisa de KPIs basada en la tabla visual
+  function calcularKPIs() {
+    const filas = document.querySelectorAll('#tabla-servicios tbody tr:not(.fila-sin-datos-original)');
     
-    const categoriaId = document.getElementById('categoria-id').value;
-    const isEditing = categoriaId !== '';
+    let totalPrecio = 0;
+    let conteoInactivos = 0;
+    let conteoTotal = 0;
     
-    const formData = {
-      nombre: document.getElementById('categoria-nombre').value,
-      descripcion: document.getElementById('categoria-descripcion').value,
-      orden: document.getElementById('categoria-orden').value
-    };
-    
-    try {
-      const url = isEditing ? 
-        `/cotizaciones/categoria-servicio/${categoriaId}/editar/` : 
-        '/cotizaciones/categoria-servicio/crear/';
-      
-      const method = isEditing ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': getCSRFToken()
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(result.message);
-        cerrarModal('modal-categoria');
-        location.reload();
-      } else {
-        alert('Error: ' + result.error);
-      }
-      
-    } catch (error) {
-      console.error('Error guardando categoría:', error);
-      alert('Error al guardar la categoría');
-    }
-  });
-  
-  // Función para editar categoría
-  async function editarCategoria(categoriaId) {
-    try {
-      const response = await fetch(`/cotizaciones/categoria-servicio/${categoriaId}/`);
-      const result = await response.json();
-      
-      if (result.success) {
-        document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
-        document.getElementById('categoria-id').value = categoriaId;
-        document.getElementById('categoria-nombre').value = result.categoria.nombre;
-        document.getElementById('categoria-descripcion').value = result.categoria.descripcion || '';
-        document.getElementById('categoria-orden').value = result.categoria.orden || 0;
-        
-        cerrarModal('modal-ver-categorias');
-        mostrarModal('modal-categoria');
-      } else {
-        alert('Error al cargar los datos de la categoría: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error cargando categoría:', error);
-      alert('Error al cargar los datos de la categoría');
-    }
-  }
-  
-  // Función para eliminar categoría
-  async function eliminarCategoria(categoriaId, nombreCategoria) {
-    if (!confirm(`¿Estás seguro de eliminar la categoría "${nombreCategoria}"?\n\nEsto podría afectar a los servicios asociados.`)) {
-      return;
-    }
-    
-    try {
-      const response = await fetch(`/cotizaciones/categoria-servicio/${categoriaId}/eliminar/`, {
-        method: 'DELETE',
-        headers: {
-          'X-CSRFToken': getCSRFToken()
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        alert(result.message);
-        location.reload();
-      } else {
-        alert('Error: ' + result.error);
-      }
-      
-    } catch (error) {
-      console.error('Error eliminando categoría:', error);
-      alert('Error al eliminar la categoría');
-    }
-  }
-  
-  // Función para abrir modal de nueva categoría desde el modal de ver categorías
-  function abrirNuevaCategoria() {
-    cerrarModal('modal-ver-categorias');
-    mostrarModal('modal-categoria');
-  }
-  
-  // Limpiar formulario de categoría al cerrar
-  function cerrarModalCategoria() {
-    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
-    document.getElementById('categoria-id').value = '';
-    document.getElementById('form-categoria').reset();
-    cerrarModal('modal-categoria');
-    // Volver a abrir el modal de ver categorías
-    mostrarModal('modal-ver-categorias');
-  }
-  
-  // ===== FILTROS Y ORDENAMIENTO DEL MODAL DE CATEGORÍAS =====
-  
-  // Filtrar categorías en el modal
-  function filtrarCategorias() {
-    const busqueda = document.getElementById('filtro-categoria-nombre').value.toLowerCase();
-    const tbody = document.getElementById('tbody-categorias');
-    const filas = tbody.querySelectorAll('tr:not(#row-sin-categorias)');
-    const sinResultados = document.getElementById('sin-resultados-categorias');
-    
-    let visibles = 0;
-    
+    // Usamos un Set para contar categorías únicas presentes en la tabla
+    const categoriasUnicas = new Set();
+
     filas.forEach(fila => {
-      const nombre = fila.getAttribute('data-nombre') || '';
-      const mostrar = nombre.includes(busqueda);
-      
-      fila.style.display = mostrar ? '' : 'none';
-      if (mostrar) visibles++;
-    });
-    
-    // Mostrar u ocultar mensaje de sin resultados
-    if (visibles === 0 && filas.length > 0) {
-      sinResultados.style.display = 'block';
-      tbody.style.display = 'none';
-    } else {
-      sinResultados.style.display = 'none';
-      tbody.style.display = '';
-    }
-  }
-  
-  // Limpiar filtros de categorías
-  function limpiarFiltrosCategorias() {
-    document.getElementById('filtro-categoria-nombre').value = '';
-    filtrarCategorias();
-  }
-  
-  // Ordenar categorías en el modal
-  let ordenCategorias = {
-    columna: null,
-    ascendente: true
-  };
-  
-  function ordenarCategorias(columna) {
-    const tbody = document.getElementById('tbody-categorias');
-    const filas = Array.from(tbody.querySelectorAll('tr:not(#row-sin-categorias)'));
-    
-    // Si es la misma columna, invertir orden
-    if (ordenCategorias.columna === columna) {
-      ordenCategorias.ascendente = !ordenCategorias.ascendente;
-    } else {
-      ordenCategorias.columna = columna;
-      ordenCategorias.ascendente = true;
-    }
-    
-    // Ordenar filas
-    filas.sort((a, b) => {
-      let valorA, valorB;
-      
-      if (columna === 'nombre') {
-        valorA = a.getAttribute('data-nombre') || '';
-        valorB = b.getAttribute('data-nombre') || '';
-      } else if (columna === 'orden') {
-        valorA = parseInt(a.getAttribute('data-orden')) || 0;
-        valorB = parseInt(b.getAttribute('data-orden')) || 0;
-      } else if (columna === 'servicios') {
-        valorA = parseInt(a.getAttribute('data-servicios')) || 0;
-        valorB = parseInt(b.getAttribute('data-servicios')) || 0;
+      // 1. Inactivos
+      if (fila.dataset.estado === 'inactivo') {
+        conteoInactivos++;
       }
       
-      if (valorA < valorB) return ordenCategorias.ascendente ? -1 : 1;
-      if (valorA > valorB) return ordenCategorias.ascendente ? 1 : -1;
-      return 0;
+      // 2. Categorías
+      if (fila.dataset.categoria) {
+        categoriasUnicas.add(fila.dataset.categoria);
+      }
+
+      // 3. Promedio
+      const precio = parseFloat(fila.dataset.precio) || 0;
+      totalPrecio += precio;
+      conteoTotal++;
     });
-    
-    // Reorganizar filas en el DOM
-    filas.forEach(fila => tbody.appendChild(fila));
-    
-    // Actualizar iconos de ordenamiento
-    document.querySelectorAll('#tabla-categorias-modal thead span[id^="sort-"]').forEach(span => {
-      span.textContent = '⇅';
-    });
-    
-    const icono = document.getElementById(`sort-${columna}`);
-    if (icono) {
-      icono.textContent = ordenCategorias.ascendente ? '▲' : '▼';
+
+    // Actualizar DOM Inactivos
+    const elInactivos = document.getElementById('count-inactivos');
+    if(elInactivos) elInactivos.textContent = conteoInactivos;
+
+    // Actualizar DOM Categorías (Corrección solicitada)
+    const elCategorias = document.getElementById('count-categorias');
+    if(elCategorias && categoriasUnicas.size > 0) {
+        // Si hay datos en la tabla, usamos el conteo real de la tabla
+        elCategorias.textContent = categoriasUnicas.size; 
+    }
+
+    // Actualizar DOM Promedio
+    const elPromedio = document.getElementById('valor-promedio-display');
+    if(elPromedio) {
+      const promedio = conteoTotal > 0 ? (totalPrecio / conteoTotal) : 0;
+      elPromedio.textContent = '$' + Math.round(promedio).toLocaleString('es-ES');
     }
   }
-  
-  // Sobrescribir el cierre del modal de categoría
-  document.querySelector('#modal-categoria .close').onclick = function() {
-    cerrarModalCategoria();
-  };
-  
-  document.querySelector('#modal-servicio .close').onclick = function() {
-    cerrarModalServicio();
-  };
 
-  function toggleExportMenu(menuId) {
-    const menu = document.getElementById(menuId);
-    const allMenus = document.querySelectorAll('.export-menu');
+  // Restaurar orden original de la tabla (deshacer ordenamiento por precio)
+  function restaurarOrdenOriginal() {
+    const tbody = document.querySelector('#tabla-servicios tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr'));
     
-    allMenus.forEach(m => {
-      if (m.id !== menuId) {
-        m.style.display = 'none';
-      }
+    // Separar filas de datos de mensajes
+    const filasDatos = filas.filter(f => f.hasAttribute('data-original-index'));
+    const otrasFilas = filas.filter(f => !f.hasAttribute('data-original-index'));
+
+    // Ordenar por índice original ascendente
+    filasDatos.sort((a, b) => {
+      const idxA = parseInt(a.getAttribute('data-original-index'));
+      const idxB = parseInt(b.getAttribute('data-original-index'));
+      return idxA - idxB;
     });
-    
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+
+    filasDatos.forEach(fila => tbody.appendChild(fila));
+    otrasFilas.forEach(fila => tbody.appendChild(fila));
   }
 
-  document.addEventListener('click', function(event) {
-    if (!event.target.closest('.dropdown-export')) {
-      document.querySelectorAll('.export-menu').forEach(menu => {
-        menu.style.display = 'none';
+  // Función maestra de Reset (Limpiar todo)
+  function limpiarTodoYResetear() {
+    // 1. Limpiar inputs
+    document.getElementById('busqueda').value = '';
+    document.getElementById('categoria').value = '';
+    document.getElementById('filtro-estado').value = '';
+    
+    // 2. Quitar estilos activos de las tarjetas
+    document.querySelectorAll('.cards .card').forEach(card => {
+      card.classList.remove('active');
+    });
+
+    // 3. Restaurar orden original de filas
+    restaurarOrdenOriginal();
+
+    // 4. Aplicar filtros (que ahora mostrará todo porque los inputs están vacíos)
+    aplicarFiltros(); 
+  }
+
+  // Ordenar por precio mayor a menor
+  function ordenarPorPrecioMayorAMenor() {
+    const tbody = document.querySelector('#tabla-servicios tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr'));
+    
+    const filasDatos = filas.filter(f => f.hasAttribute('data-precio'));
+    const otrasFilas = filas.filter(f => !f.hasAttribute('data-precio'));
+
+    filasDatos.sort((a, b) => {
+      const precioA = parseFloat(a.dataset.precio) || 0;
+      const precioB = parseFloat(b.dataset.precio) || 0;
+      return precioB - precioA;
+    });
+
+    filasDatos.forEach(fila => tbody.appendChild(fila));
+    otrasFilas.forEach(fila => tbody.appendChild(fila));
+  }
+
+  // ===== LÓGICA DE TARJETAS INTELIGENTES (TOGGLE) =====
+  function initFiltrosRapidosServicios() {
+    const kpiTotal = document.querySelector('#kpi-total-servicios');
+    const kpiCategorias = document.querySelector('#kpi-categorias');
+    const kpiInactivos = document.querySelector('#kpi-inactivos');
+    const kpiPromedio = document.querySelector('#kpi-promedio');
+    const selectEstado = document.querySelector('#filtro-estado');
+    
+    function limpiarEstilosTarjetas() {
+      document.querySelectorAll('.cards .card').forEach(card => card.classList.remove('active'));
+    }
+    
+    // 1. Total Servicios: Siempre resetea todo
+    if (kpiTotal) {
+      kpiTotal.addEventListener('click', function(e) {
+        createRipple(e, this);
+        limpiarTodoYResetear();
+        this.classList.add('active'); // Opcional: dejar marcado que estamos viendo "todo"
       });
     }
-  });
-  
-  // ===== SISTEMA DE FILTROS INTERACTIVOS =====
 
+    // 2. Promedio: Ordena por precio (Toggle)
+    if (kpiPromedio) {
+      kpiPromedio.addEventListener('click', function(e) {
+        createRipple(e, this);
+        
+        // Si ya estaba activo, RESETEAMOS (Toggle Off)
+        if (this.classList.contains('active')) {
+            limpiarTodoYResetear();
+            return;
+        }
+
+        // Si no, activamos y ordenamos
+        limpiarEstilosTarjetas();
+        this.classList.add('active');
+        ordenarPorPrecioMayorAMenor();
+      });
+    }
+    
+    // 3. Inactivos: Filtra inactivos (Toggle)
+    if (kpiInactivos) {
+      kpiInactivos.addEventListener('click', function(e) {
+        createRipple(e, this);
+        
+        // Si ya estaba activo, RESETEAMOS (Toggle Off)
+        if (this.classList.contains('active')) {
+            limpiarTodoYResetear();
+            return;
+        }
+
+        // Si no, activamos y filtramos
+        limpiarEstilosTarjetas();
+        this.classList.add('active');
+        
+        // Limpiamos otros filtros primero para asegurar pureza
+        document.getElementById('busqueda').value = '';
+        document.getElementById('categoria').value = '';
+        if (selectEstado) selectEstado.value = 'inactivo';
+        
+        aplicarFiltros();
+      });
+    }
+
+    // 4. Categorías: Abre modal (sin cambios lógicos)
+    if (kpiCategorias) {
+      kpiCategorias.addEventListener('click', function(e) {
+        createRipple(e, this);
+        setTimeout(() => mostrarModal('modal-ver-categorias'), 100);
+      });
+    }
+  }
+
+  // Función estándar de filtrado (Actualizada para manejar estado visual)
   function aplicarFiltros() {
     const busqueda = document.getElementById('busqueda').value.toLowerCase();
     const categoria = document.getElementById('categoria').value;
-    const parametrizable = document.getElementById('filtro-parametrizable').value;
     const estado = document.getElementById('filtro-estado').value;
     
     const filas = document.querySelectorAll('#tabla-servicios tbody tr');
     let visibles = 0;
     
     filas.forEach(fila => {
-      if (fila.cells.length === 1) return; // Fila de "sin resultados"
+      // Ignorar filas de mensaje si existen (se manejan abajo)
+      if (!fila.hasAttribute('data-categoria')) return;
       
       const textoFila = fila.textContent.toLowerCase();
       const categoriaFila = fila.dataset.categoria;
-      const parametrizableFila = fila.dataset.parametrizable;
       const estadoFila = fila.dataset.estado;
       
       let mostrar = true;
-      
-      // Filtro de búsqueda
-      if (busqueda && !textoFila.includes(busqueda)) {
-        mostrar = false;
-      }
-      
-      // Filtro de categoría
-      if (categoria && categoriaFila !== categoria) {
-        mostrar = false;
-      }
-      
-      // Filtro de parametrizable
-      if (parametrizable && parametrizableFila !== parametrizable) {
-        mostrar = false;
-      }
-      
-      // Filtro de estado
-      if (estado && estadoFila !== estado) {
-        mostrar = false;
-      }
+      if (busqueda && !textoFila.includes(busqueda)) mostrar = false;
+      if (categoria && categoriaFila !== categoria) mostrar = false;
+      if (estado && estadoFila !== estado) mostrar = false;
       
       fila.style.display = mostrar ? '' : 'none';
       if (mostrar) visibles++;
     });
     
-    // Actualizar mensaje si no hay resultados
     actualizarMensajeSinResultados(visibles);
   }
-  
+
+  // Mensaje de Sin Resultados
   function actualizarMensajeSinResultados(visibles) {
     const tbody = document.querySelector('#tabla-servicios tbody');
     let filaMensaje = tbody.querySelector('.fila-sin-resultados');
+    const filaOriginalSinDatos = tbody.querySelector('.fila-sin-datos-original');
     
+    // Ocultar la fila original de "sin datos" si existe y estamos filtrando
+    if (filaOriginalSinDatos) filaOriginalSinDatos.style.display = 'none';
+
     if (visibles === 0) {
       if (!filaMensaje) {
         filaMensaje = document.createElement('tr');
         filaMensaje.className = 'fila-sin-resultados';
         filaMensaje.innerHTML = `
-          <td colspan="7" style="text-align: center; padding: 40px; color: var(--gris-600);">
-            No se encontraron servicios que coincidan con los filtros aplicados.
+          <td colspan="6" style="text-align: center; padding: 40px; color: var(--gris-600);">
+            No se encontraron servicios con estos filtros.
             <br><br>
-            <button type="button" class="btn secondary" onclick="limpiarFiltros()">
-              Limpiar Filtros
-            </button>
-          </td>
-        `;
+            <button type="button" class="btn secondary" onclick="limpiarTodoYResetear()">Limpiar Filtros</button>
+          </td>`;
         tbody.appendChild(filaMensaje);
       }
     } else if (filaMensaje) {
       filaMensaje.remove();
     }
   }
-  
-  function limpiarFiltros() {
-    document.getElementById('busqueda').value = '';
-    document.getElementById('categoria').value = '';
-    document.getElementById('filtro-parametrizable').value = '';
-    document.getElementById('filtro-estado').value = '';
-    
-    // Limpiar visuales de KPIs
-    document.querySelectorAll('.cards .card').forEach(card => {
-      card.classList.remove('active');
-    });
-    
-    aplicarFiltros();
-  }
-  
-  function filtrarPorCategoria(categoriaId, categoriaNombre) {
-    cerrarModal('modal-ver-categorias');
-    document.getElementById('categoria').value = categoriaId;
-    aplicarFiltros();
-    
-    // Marcar KPI de categorías como activo
-    const kpiCategorias = document.getElementById('kpi-categorias');
-    document.querySelectorAll('.cards .card').forEach(card => card.classList.remove('active'));
-    kpiCategorias.classList.add('active');
-  }
-  
-  // ===== SISTEMA DE FILTROS RÁPIDOS PARA KPIs DE SERVICIOS =====
 
-  function initFiltrosRapidosServicios() {
-    const kpiTotal = document.querySelector('#kpi-total-servicios');
-    const kpiParametrizables = document.querySelector('#kpi-parametrizables');
-    const kpiCategorias = document.querySelector('#kpi-categorias');
-    const kpiActivos = document.querySelector('#kpi-activos');
-    
-    const inputBusqueda = document.querySelector('#busqueda');
-    const selectCategoria = document.querySelector('#categoria');
-    const selectParametrizable = document.querySelector('#filtro-parametrizable');
-    const selectEstado = document.querySelector('#filtro-estado');
-    
-    if (!kpiTotal || !inputBusqueda) return;
-    
-    function limpiarFiltrosVisuales() {
-      document.querySelectorAll('.cards .card').forEach(card => {
-        card.classList.remove('active');
+  // Funciones CRUD del servidor (EDITAR / GUARDAR / ELIMINAR)
+  async function editarServicio(servicioId) {
+    try {
+      const response = await fetch(`/cotizaciones/servicio/${servicioId}/`);
+      const result = await response.json();
+      if (result.success) {
+        document.getElementById('modal-servicio-titulo').textContent = 'Editar Servicio';
+        document.getElementById('servicio-id').value = servicioId;
+        document.getElementById('servicio-categoria').value = result.servicio.categoria_id;
+        document.getElementById('servicio-nombre').value = result.servicio.nombre;
+        document.getElementById('servicio-descripcion').value = result.servicio.descripcion;
+        document.getElementById('servicio-precio').value = result.servicio.precio_base;
+        document.getElementById('servicio-unidad').value = result.servicio.unidad;
+        document.getElementById('servicio-activo').checked = result.servicio.activo;
+        mostrarModal('modal-servicio');
+      } else { alert('Error: ' + result.error); }
+    } catch (error) { console.error(error); alert('Error al cargar servicio'); }
+  }
+
+  function cerrarModalServicio() {
+    document.getElementById('modal-servicio-titulo').textContent = 'Nuevo Servicio';
+    document.getElementById('servicio-id').value = '';
+    document.getElementById('form-servicio').reset();
+    document.getElementById('servicio-activo').checked = true;
+    document.getElementById('modal-servicio').classList.remove('show');
+  }
+
+  document.getElementById('form-servicio').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const formData = {
+      categoria_id: document.getElementById('servicio-categoria').value,
+      nombre: document.getElementById('servicio-nombre').value,
+      descripcion: document.getElementById('servicio-descripcion').value,
+      precio_base: document.getElementById('servicio-precio').value,
+      unidad: document.getElementById('servicio-unidad').value,
+      es_parametrizable: false,
+      activo: document.getElementById('servicio-activo').checked
+    };
+    const servicioId = document.getElementById('servicio-id').value;
+    const isEditing = servicioId !== '';
+    try {
+      const url = isEditing ? `/cotizaciones/servicio/${servicioId}/editar/` : '/cotizaciones/servicio/crear/';
+      const method = isEditing ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+        body: JSON.stringify(formData)
       });
-    }
-    
-    function limpiarTodosFiltros() {
-      if (inputBusqueda) inputBusqueda.value = '';
-      if (selectCategoria) selectCategoria.value = '';
-      if (selectParametrizable) selectParametrizable.value = '';
-      if (selectEstado) selectEstado.value = '';
-    }
-    
-    function ejecutarFiltro() {
-      aplicarFiltros();
-    }
-    
-    // 1. Total Servicios - Limpiar todo
-    kpiTotal.addEventListener('click', function(e) {
-      createRipple(e, this);
-      if (navigator.vibrate) navigator.vibrate(10);
-      
-      const yaEstaActiva = this.classList.contains('active');
-      
-      if (yaEstaActiva) {
-        limpiarFiltrosVisuales();
-        limpiarTodosFiltros();
-        ejecutarFiltro();
-        return;
-      }
-      
-      setTimeout(() => {
-        limpiarFiltrosVisuales();
-        this.classList.add('active');
-        limpiarTodosFiltros();
-        ejecutarFiltro();
-      }, 100);
-    });
-    
-    // 2. Parametrizables - Filtrar solo parametrizables
-    kpiParametrizables.addEventListener('click', function(e) {
-      createRipple(e, this);
-      if (navigator.vibrate) navigator.vibrate(10);
-      
-      const yaEstaActiva = this.classList.contains('active');
-      
-      if (yaEstaActiva) {
-        limpiarFiltrosVisuales();
-        limpiarTodosFiltros();
-        ejecutarFiltro();
-        return;
-      }
-      
-      setTimeout(() => {
-        limpiarFiltrosVisuales();
-        this.classList.add('active');
-        limpiarTodosFiltros();
-        if (selectParametrizable) selectParametrizable.value = 'si';
-        ejecutarFiltro();
-      }, 100);
-    });
-    
-    // 3. Categorías - Mostrar modal de categorías
-    kpiCategorias.addEventListener('click', function(e) {
-      createRipple(e, this);
-      if (navigator.vibrate) navigator.vibrate(10);
-      
-      setTimeout(() => {
-        mostrarModal('modal-ver-categorias');
-      }, 100);
-    });
-    
-    // 4. Activos - Filtrar solo activos
-    kpiActivos.addEventListener('click', function(e) {
-      createRipple(e, this);
-      if (navigator.vibrate) navigator.vibrate(10);
-      
-      const yaEstaActiva = this.classList.contains('active');
-      
-      if (yaEstaActiva) {
-        limpiarFiltrosVisuales();
-        limpiarTodosFiltros();
-        ejecutarFiltro();
-        return;
-      }
-      
-      setTimeout(() => {
-        limpiarFiltrosVisuales();
-        this.classList.add('active');
-        limpiarTodosFiltros();
-        if (selectEstado) selectEstado.value = 'activo';
-        ejecutarFiltro();
-      }, 100);
-    });
+      const result = await response.json();
+      if (result.success) { alert(result.message); cerrarModalServicio(); location.reload(); }
+      else { alert('Error: ' + result.error); }
+    } catch (error) { console.error(error); alert('Error al guardar'); }
+  });
+
+  // CRUD Categorías
+  document.getElementById('form-categoria').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const categoriaId = document.getElementById('categoria-id').value;
+    const isEditing = categoriaId !== '';
+    const formData = {
+      nombre: document.getElementById('categoria-nombre').value,
+      descripcion: document.getElementById('categoria-descripcion').value,
+      orden: document.getElementById('categoria-orden').value
+    };
+    try {
+      const url = isEditing ? `/cotizaciones/categoria-servicio/${categoriaId}/editar/` : '/cotizaciones/categoria-servicio/crear/';
+      const method = isEditing ? 'PUT' : 'POST';
+      const response = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
+        body: JSON.stringify(formData)
+      });
+      const result = await response.json();
+      if (result.success) { alert(result.message); cerrarModal('modal-categoria'); location.reload(); }
+      else { alert('Error: ' + result.error); }
+    } catch (error) { console.error(error); alert('Error al guardar categoría'); }
+  });
+
+  async function editarCategoria(id) {
+    try {
+      const res = await fetch(`/cotizaciones/categoria-servicio/${id}/`);
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
+        document.getElementById('categoria-id').value = id;
+        document.getElementById('categoria-nombre').value = data.categoria.nombre;
+        document.getElementById('categoria-descripcion').value = data.categoria.descripcion || '';
+        document.getElementById('categoria-orden').value = data.categoria.orden || 0;
+        cerrarModal('modal-ver-categorias');
+        mostrarModal('modal-categoria');
+      } else alert(data.error);
+    } catch (e) { alert('Error de conexión'); }
   }
 
-  // Efecto ripple mejorado
+  async function eliminarCategoria(id, nombre) {
+    if (!confirm(`¿Eliminar categoría "${nombre}"?`)) return;
+    try {
+      const res = await fetch(`/cotizaciones/categoria-servicio/${id}/eliminar/`, { method: 'DELETE', headers: {'X-CSRFToken': getCSRFToken()} });
+      const data = await res.json();
+      if (data.success) location.reload(); else alert(data.error);
+    } catch (e) { alert('Error al eliminar'); }
+  }
+
+  function cerrarModalCategoria() {
+    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('categoria-id').value = '';
+    document.getElementById('form-categoria').reset();
+    cerrarModal('modal-categoria');
+    mostrarModal('modal-ver-categorias');
+  }
+
+  function abrirNuevaCategoria() { cerrarModal('modal-ver-categorias'); mostrarModal('modal-categoria'); }
+
+  // Utils
   function createRipple(event, element) {
     const ripple = document.createElement('span');
     const rect = element.getBoundingClientRect();
     const size = Math.max(rect.width, rect.height);
     const x = event.clientX - rect.left - size / 2;
     const y = event.clientY - rect.top - size / 2;
-    
     ripple.style.width = ripple.style.height = size + 'px';
     ripple.style.left = x + 'px';
     ripple.style.top = y + 'px';
     ripple.classList.add('ripple-effect');
-    
     element.appendChild(ripple);
-    
-    setTimeout(() => {
-      ripple.remove();
-    }, 600);
+    setTimeout(() => ripple.remove(), 600);
   }
   
-  // Event listeners para filtros
+  function toggleExportMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    document.querySelectorAll('.export-menu').forEach(m => { if(m.id!==menuId) m.style.display='none'; });
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+  document.addEventListener('click', e => { if(!e.target.closest('.dropdown-export')) document.querySelectorAll('.export-menu').forEach(m=>m.style.display='none'); });
   document.getElementById('busqueda').addEventListener('input', aplicarFiltros);
   document.getElementById('categoria').addEventListener('change', aplicarFiltros);
-  document.getElementById('filtro-parametrizable').addEventListener('change', aplicarFiltros);
   document.getElementById('filtro-estado').addEventListener('change', aplicarFiltros);
-  
-  // Inicializar cuando carga la página
-  document.addEventListener('DOMContentLoaded', function() {
-    initFiltrosRapidosServicios();
-  });
+  document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if(e.target===m) e.stopPropagation(); }));
 
-  // Evitar que los modales se cierren al hacer clic fuera
-  document.getElementById('modal-servicio').addEventListener('click', function(e) {
-    // Solo cerrar si se hace clic directamente en el fondo del modal
-    // PERO no hacemos nada aquí, dejamos que solo el botón X y Cancel cierren
-    if (e.target === this) {
-      e.stopPropagation(); // Evitar que se cierre
-    }
-  });
-
-  document.getElementById('modal-categoria').addEventListener('click', function(e) {
-    if (e.target === this) {
-      e.stopPropagation();
-    }
-  });
-
-  document.getElementById('modal-ver-categorias').addEventListener('click', function(e) {
-    if (e.target === this) {
-      e.stopPropagation();
-    }
-  });
-
-  document.getElementById('modal-parametros').addEventListener('click', function(e) {
-    if (e.target === this) {
-      e.stopPropagation();
-    }
-  });
-
+  // Funciones de filtro modal categorías
+  function filtrarCategorias() {
+    const q = document.getElementById('filtro-categoria-nombre').value.toLowerCase();
+    const rows = document.querySelectorAll('#tbody-categorias tr:not(#row-sin-categorias)');
+    let v = 0;
+    rows.forEach(r => { const n = r.dataset.nombre || ''; const show = n.includes(q); r.style.display=show?'':'none'; if(show)v++; });
+    document.getElementById('sin-resultados-categorias').style.display = (v===0 && rows.length>0) ? 'block' : 'none';
+    document.getElementById('tbody-categorias').style.display = (v===0 && rows.length>0) ? 'none' : '';
+  }
+  function limpiarFiltrosCategorias(){ document.getElementById('filtro-categoria-nombre').value=''; filtrarCategorias(); }
+  let ordCat={col:null,asc:true};
+  function ordenarCategorias(col){
+    const tbody=document.getElementById('tbody-categorias');
+    const rows=Array.from(tbody.querySelectorAll('tr:not(#row-sin-categorias)'));
+    if(ordCat.col===col) ordCat.asc=!ordCat.asc; else { ordCat.col=col; ordCat.asc=true; }
+    rows.sort((a,b)=>{
+        let vA,vB;
+        if(col==='nombre'){ vA=a.dataset.nombre||''; vB=b.dataset.nombre||''; }
+        else if(col==='orden'){ vA=parseInt(a.dataset.orden)||0; vB=parseInt(b.dataset.orden)||0; }
+        else if(col==='servicios'){ vA=parseInt(a.dataset.servicios)||0; vB=parseInt(b.dataset.servicios)||0; }
+        if(vA<vB)return ordCat.asc?-1:1; if(vA>vB)return ordCat.asc?1:-1; return 0;
+    });
+    rows.forEach(r=>tbody.appendChild(r));
+    document.querySelectorAll('#tabla-categorias-modal thead span').forEach(s=>s.textContent='⇅');
+    const ico=document.getElementById(`sort-${col}`); if(ico) ico.textContent=ordCat.asc?'▲':'▼';
+  }
 </script>
 </body>
 </html>

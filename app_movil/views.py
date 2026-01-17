@@ -67,21 +67,37 @@ def login_movil(request):
 def mis_trabajos_empleado(request):
     try:
         perfil = PerfilEmpleado.objects.get(user=request.user)
-
-        trabajos = (
-            TrabajoEmpleado.objects
-            .select_related('cotizacion', 'item_mano_obra')
-            .filter(
-                empleado=perfil,
-                cotizacion__estado='aprobada'
+        
+        # ✅ Si el usuario es admin, ve TODAS las cotizaciones aprobadas
+        if perfil.nivel_jerarquico == 'administrador':
+            trabajos = (
+                TrabajoEmpleado.objects
+                .select_related('cotizacion', 'item_mano_obra', 'empleado__user')
+                .filter(cotizacion__estado='aprobada')
+                .order_by('-fecha_inicio')
             )
-            .order_by('-fecha_inicio')
-        )
+        else:
+            # Si es empleado normal, solo ve las suyas
+            trabajos = (
+                TrabajoEmpleado.objects
+                .select_related('cotizacion', 'item_mano_obra')
+                .filter(
+                    empleado=perfil,
+                    cotizacion__estado='aprobada'
+                )
+                .order_by('-fecha_inicio')
+            )
 
         data = []
 
         for trabajo in trabajos:
             cot = trabajo.cotizacion
+            
+            # Incluir info del empleado asignado (útil para el admin)
+            empleado_info = {
+                'id': trabajo.empleado.id,
+                'nombre': trabajo.empleado.user.get_full_name() or trabajo.empleado.user.username
+            }
 
             data.append({
                 'id': trabajo.id,
@@ -102,13 +118,16 @@ def mis_trabajos_empleado(request):
                 ),
                 'horas_trabajadas': float(trabajo.horas_trabajadas or 0),
                 'observaciones': trabajo.observaciones_empleado or '',
-                'tiene_gastos': hasattr(trabajo, 'gastos')
+                'tiene_gastos': hasattr(trabajo, 'gastos'),
+                'empleado_asignado': empleado_info,  # ✅ NUEVO
+                'es_admin': perfil.nivel_jerarquico == 'administrador'  # ✅ NUEVO
             })
 
         return JsonResponse({
             'success': True,
             'total': len(data),
-            'trabajos': data
+            'trabajos': data,
+            'es_admin': perfil.nivel_jerarquico == 'administrador'  # ✅ NUEVO
         }, status=200)
 
     except PerfilEmpleado.DoesNotExist:
@@ -297,6 +316,71 @@ def obtener_evidencias_trabajo(request, trabajo_id):
             'error': str(e)
         }, status=400)
 
+@login_required
+def obtener_todas_evidencias_admin(request):
+    """API para admin - Ver TODAS las evidencias del sistema"""
+    try:
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        
+        # Solo admins pueden acceder
+        if perfil.nivel_jerarquico != 'administrador':
+            return JsonResponse({
+                'success': False,
+                'error': 'Acceso denegado. Solo administradores.'
+            }, status=403)
+        
+        # Obtener todas las evidencias
+        from app_movil.models import EvidenciaTrabajo
+        
+        evidencias = (
+            EvidenciaTrabajo.objects
+            .select_related('trabajo__empleado__user', 'cotizacion__cliente')
+            .order_by('-fecha_subida')
+        )
+        
+        # Filtrar por cotización si se especifica
+        cotizacion_id = request.GET.get('cotizacion_id')
+        if cotizacion_id:
+            evidencias = evidencias.filter(cotizacion_id=cotizacion_id)
+        
+        evidencias_data = []
+        for evidencia in evidencias:
+            dias_restantes = (evidencia.fecha_expiracion - timezone.now()).days
+            
+            evidencias_data.append({
+                'id': evidencia.id,
+                'url': request.build_absolute_uri(evidencia.imagen.url),
+                'descripcion': evidencia.descripcion or '',
+                'fecha_subida': evidencia.fecha_subida.isoformat(),
+                'fecha_expiracion': evidencia.fecha_expiracion.isoformat(),
+                'dias_restantes': dias_restantes,
+                'cotizacion': {
+                    'id': evidencia.cotizacion.id,
+                    'numero': evidencia.cotizacion.numero,
+                    'cliente': evidencia.cotizacion.cliente.nombre if evidencia.cotizacion.cliente else 'N/A'
+                },
+                'empleado': {
+                    'id': evidencia.trabajo.empleado.id,
+                    'nombre': evidencia.trabajo.empleado.user.get_full_name() or evidencia.trabajo.empleado.user.username
+                }
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'total': len(evidencias_data),
+            'evidencias': evidencias_data
+        })
+        
+    except PerfilEmpleado.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Perfil de empleado no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 @login_required
 def descargar_evidencia(request, evidencia_id):

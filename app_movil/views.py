@@ -152,7 +152,12 @@ def actualizar_trabajo_empleado(request, trabajo_id):
     """API para app móvil - Actualizar trabajo"""
     try:
         perfil_empleado = request.user.perfilempleado
-        trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
+        
+        # ✅ Admin puede actualizar cualquier trabajo
+        if perfil_empleado.cargo == 'admin':
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id)
+        else:
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
         
         data = json.loads(request.body)
         

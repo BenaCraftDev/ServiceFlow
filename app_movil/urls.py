@@ -15,6 +15,7 @@ urlpatterns = [
     path('trabajo/<int:trabajo_id>/evidencias/', views.obtener_evidencias_trabajo, name='obtener_evidencias'),
     path('evidencia/<int:evidencia_id>/descargar/', views.descargar_evidencia, name='descargar_evidencia'),
     path('admin/evidencias/', views.obtener_todas_evidencias_admin, name='admin_evidencias'),
+    path('evidencia/<int:evidencia_id>/eliminar/', views.eliminar_evidencia, name='eliminar_evidencia'),
     
     # GASTOS
     path('trabajo/<int:trabajo_id>/gastos/registrar/', views.registrar_gasto_trabajo, name='registrar_gastos'),

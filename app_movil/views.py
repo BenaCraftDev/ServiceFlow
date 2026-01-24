@@ -292,17 +292,29 @@ def obtener_evidencias_trabajo(request, trabajo_id):
     """API para app móvil - Obtener evidencias de un trabajo"""
     try:
         perfil_empleado = request.user.perfilempleado
-        trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
+        
+        # ✅ Si es admin, puede ver cualquier trabajo
+        if perfil_empleado.cargo == 'admin':
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id)
+        else:
+            # Si es empleado normal, solo ve las suyas
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
         
         evidencias = trabajo.evidencias.all().order_by('-fecha_subida')
         
         evidencias_data = []
         for evidencia in evidencias:
+            # Calcular días restantes hasta expiración
+            dias_restantes = (evidencia.fecha_expiracion - timezone.now()).days
+            
             evidencias_data.append({
                 'id': evidencia.id,
                 'url': request.build_absolute_uri(evidencia.imagen.url),
                 'descripcion': evidencia.descripcion or '',
-                'fecha_subida': evidencia.fecha_subida.isoformat()
+                'fecha_subida': evidencia.fecha_subida.isoformat(),
+                'fecha_expiracion': evidencia.fecha_expiracion.isoformat(),
+                'dias_restantes': dias_restantes,
+                'expira_pronto': dias_restantes <= 30,  # Alerta si quedan ≤30 días
             })
         
         return JsonResponse({
@@ -386,12 +398,16 @@ def obtener_todas_evidencias_admin(request):
 def descargar_evidencia(request, evidencia_id):
     """API para app móvil - Descargar evidencia específica"""
     try:
-        perfil_empleado = request.user.perfilempleado
-        evidencia = get_object_or_404(
-            EvidenciaTrabajo, 
-            id=evidencia_id,
-            trabajo__empleado=perfil_empleado
-        )
+        perfil_empleado = request.user.perfilempleado  # ← FALTABA ESTO
+        
+        if perfil_empleado.cargo == 'admin':
+            evidencia = get_object_or_404(EvidenciaTrabajo, id=evidencia_id)
+        else:
+            evidencia = get_object_or_404(
+                EvidenciaTrabajo, 
+                id=evidencia_id,
+                trabajo__empleado=perfil_empleado
+            )
         
         # Abrir y leer el archivo
         imagen_file = evidencia.imagen.open('rb')
@@ -407,6 +423,49 @@ def descargar_evidencia(request, evidencia_id):
             'error': str(e)
         }, status=400)
 
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def eliminar_evidencia(request, evidencia_id):
+    """API para admin - Eliminar evidencia manualmente"""
+    try:
+        perfil = request.user.perfilempleado
+        
+        # Solo admins pueden eliminar
+        if perfil.cargo != 'admin':
+            return JsonResponse({
+                'success': False,
+                'error': 'Acceso denegado. Solo administradores pueden eliminar evidencias.'
+            }, status=403)
+        
+        evidencia = get_object_or_404(EvidenciaTrabajo, id=evidencia_id)
+        
+        # Guardar info antes de eliminar
+        info = {
+            'id': evidencia.id,
+            'trabajo_id': evidencia.trabajo.id,
+            'descripcion': evidencia.descripcion
+        }
+        
+        # Eliminar (el método delete() del modelo se encarga del archivo físico)
+        evidencia.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Evidencia eliminada correctamente',
+            'evidencia_eliminada': info
+        })
+        
+    except PerfilEmpleado.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Perfil no encontrado'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)
 
 # ==================== GASTOS ====================
 

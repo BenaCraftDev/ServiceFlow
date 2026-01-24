@@ -519,8 +519,10 @@ def obtener_gastos_trabajo(request, trabajo_id):
     """API para app móvil - Obtener gastos de un trabajo"""
     try:
         perfil_empleado = request.user.perfilempleado
-        trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
-        
+        if perfil_empleado.cargo == 'admin':
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id)
+        else:
+            trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
         try:
             gastos = trabajo.gastos
             gastos_data = {

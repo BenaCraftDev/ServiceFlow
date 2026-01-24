@@ -302,24 +302,18 @@ def obtener_evidencias_trabajo(request, trabajo_id):
         if perfil_empleado.cargo == 'admin':
             trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id)
         else:
-            # Si es empleado normal, solo ve las suyas
             trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
         
         evidencias = trabajo.evidencias.all().order_by('-fecha_subida')
         
         evidencias_data = []
         for evidencia in evidencias:
-            # Calcular días restantes hasta expiración
-            dias_restantes = (evidencia.fecha_expiracion - timezone.now()).days
-            
             evidencias_data.append({
                 'id': evidencia.id,
                 'url': request.build_absolute_uri(evidencia.imagen.url),
                 'descripcion': evidencia.descripcion or '',
-                'fecha_subida': evidencia.fecha_subida.isoformat(),
-                'fecha_expiracion': evidencia.fecha_expiracion.isoformat(),
-                'dias_restantes': dias_restantes,
-                'expira_pronto': dias_restantes <= 30,  # Alerta si quedan ≤30 días
+                'fecha_subida': evidencia.fecha_subida.isoformat()
+                # ✅ QUITAR fecha_expiracion, dias_restantes, expira_pronto
             })
         
         return JsonResponse({

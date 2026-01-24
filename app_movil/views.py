@@ -69,7 +69,7 @@ def mis_trabajos_empleado(request):
         perfil = PerfilEmpleado.objects.get(user=request.user)
         
         # ✅ Si el usuario es admin, ve TODAS las cotizaciones aprobadas
-        if perfil.nivel_jerarquico == 'administrador':
+        if perfil.cargo == 'admin':
             trabajos = (
                 TrabajoEmpleado.objects
                 .select_related('cotizacion', 'item_mano_obra', 'empleado__user')
@@ -120,14 +120,14 @@ def mis_trabajos_empleado(request):
                 'observaciones': trabajo.observaciones_empleado or '',
                 'tiene_gastos': hasattr(trabajo, 'gastos'),
                 'empleado_asignado': empleado_info,  # ✅ NUEVO
-                'es_admin': perfil.nivel_jerarquico == 'administrador'  # ✅ NUEVO
+                'es_admin': perfil.cargo == 'admin'  # ✅ NUEVO
             })
 
         return JsonResponse({
             'success': True,
             'total': len(data),
             'trabajos': data,
-            'es_admin': perfil.nivel_jerarquico == 'administrador'  # ✅ NUEVO
+            'es_admin': perfil.cargo == 'admin'  # ✅ NUEVO
         }, status=200)
 
     except PerfilEmpleado.DoesNotExist:
@@ -323,7 +323,7 @@ def obtener_todas_evidencias_admin(request):
         perfil = PerfilEmpleado.objects.get(user=request.user)
         
         # Solo admins pueden acceder
-        if perfil.nivel_jerarquico != 'administrador':
+        if perfil.cargo != 'admin':
             return JsonResponse({
                 'success': False,
                 'error': 'Acceso denegado. Solo administradores.'

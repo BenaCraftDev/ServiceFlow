@@ -48,11 +48,13 @@ INSTALLED_APPS = [
     'cotizaciones',
     'notificaciones',
     'app_movil',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware', 
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -194,3 +196,7 @@ LOGGING = {
         },
     },
 }
+
+# CORS - Permitir acceso desde React Native
+CORS_ALLOW_ALL_ORIGINS = True  # Para desarrollo
+CORS_ALLOW_CREDENTIALS = True

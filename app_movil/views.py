@@ -298,7 +298,6 @@ def obtener_evidencias_trabajo(request, trabajo_id):
     try:
         perfil_empleado = request.user.perfilempleado
         
-        # ✅ Si es admin, puede ver cualquier trabajo
         if perfil_empleado.cargo == 'admin':
             trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id)
         else:
@@ -306,14 +305,18 @@ def obtener_evidencias_trabajo(request, trabajo_id):
         
         evidencias = trabajo.evidencias.all().order_by('-fecha_subida')
         
+        print(f"🔍 DEBUG evidencias - Trabajo ID: {trabajo_id}")
+        print(f"🔍 Total evidencias: {evidencias.count()}")
+        
         evidencias_data = []
         for evidencia in evidencias:
+            url = request.build_absolute_uri(evidencia.imagen.url)
+            print(f"  - Evidencia ID: {evidencia.id}, URL: {url}")
             evidencias_data.append({
                 'id': evidencia.id,
-                'url': request.build_absolute_uri(evidencia.imagen.url),
+                'url': url,
                 'descripcion': evidencia.descripcion or '',
                 'fecha_subida': evidencia.fecha_subida.isoformat()
-                # ✅ QUITAR fecha_expiracion, dias_restantes, expira_pronto
             })
         
         return JsonResponse({
@@ -322,6 +325,7 @@ def obtener_evidencias_trabajo(request, trabajo_id):
         })
         
     except Exception as e:
+        print(f"❌ Error obteniendo evidencias: {e}")
         return JsonResponse({
             'success': False,
             'error': str(e)

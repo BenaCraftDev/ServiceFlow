@@ -18,3 +18,4 @@ python-dotenv==1.2.1
 reportlab==4.4.6
 sqlparse==0.5.3
 tzdata==2025.2
+whitenoise==6.11.0

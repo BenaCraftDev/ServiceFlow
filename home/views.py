@@ -27,7 +27,7 @@ from django.views.decorators.csrf import csrf_exempt
 from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, Solicitud_Web
 from notificaciones.utils import crear_notificacion
 from django.core.cache import cache
-
+from cotizaciones.utils import enviar_email_con_reintentos, verificar_configuracion_email
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -143,65 +143,48 @@ def recuperar_password(request):
             
     return render(request, 'home/recuperar_password.html')
 
-def reset_password(request, uidb64, token):
-    """Vista para restablecer la contraseña con el token"""
-    try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
-    
-    if user is not None and default_token_generator.check_token(user, token):
-        if request.method == 'POST':
-            password1 = request.POST.get('password1')
-            password2 = request.POST.get('password2')
-            
-            if password1 and password2:
-                if password1 == password2:
-                    # Validaciones básicas de contraseña
-                    if len(password1) < 8:
-                        messages.error(request, 'La contraseña debe tener al menos 8 caracteres.')
-                    elif not any(char.isdigit() for char in password1):
-                        messages.error(request, 'La contraseña debe contener al menos un número.')
-                    elif not any(char.isupper() for char in password1):
-                        messages.error(request, 'La contraseña debe contener al menos una mayúscula.')
-                    elif not any(char.islower() for char in password1):
-                        messages.error(request, 'La contraseña debe contener al menos una minúscula.')
-                    else:
-                        # Cambiar contraseña
-                        user.set_password(password1)
-                        user.save()
-                        messages.success(
-                            request, 
-                            'Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión.'
-                        )
-                        return redirect('home:login')
-                else:
-                    messages.error(request, 'Las contraseñas no coinciden.')
-            else:
-                messages.error(request, 'Por favor completa ambos campos.')
+def recuperar_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        user = User.objects.filter(email=email).first()
         
-        return render(request, 'home/reset_password.html', {
-            'validlink': True,
-            'uidb64': uidb64,
-            'token': token
-        })
-    else:
-        messages.error(
-            request, 
-            'El enlace de recuperación es inválido o ha expirado. Por favor solicita uno nuevo.'
-        )
-        return redirect('home:recuperar_password')
+        if user:
+            try:
+                # 1. Generar tokens de seguridad
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                base_url = request.build_absolute_uri('/')[:-1]
+                url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
+                
+                # 2. Preparar el contenido
+                # Si no tienes el modelo ConfiguracionEmpresa a mano, cámbialo por un string
+                subject = "Restablecer Contraseña"
+                context = {'user': user, 'url_reset': url_reset}
+                html_message = render_to_string('home/emails/reset_password_email.html', context)
+                
+                # 3. Envío directo usando la configuración de settings.py
+                # Esto es lo que suele fallar si el puerto 587 está bloqueado
+                send_mail(
+                    subject,
+                    f"Usa este enlace: {url_reset}", # Mensaje en texto plano
+                    settings.EMAIL_HOST_USER,
+                    [email],
+                    html_message=html_message,
+                    fail_silently=False,
+                )
+                
+                messages.success(request, '✅ Enlace enviado. Revisa tu bandeja de entrada.')
+                return redirect('home:login')
 
+            except Exception as e:
+                # Esto evita el Error 500 y te dice qué pasó en la consola
+                print(f"DEBUG ERROR: {str(e)}") 
+                messages.error(request, f'❌ Error técnico: {str(e)}')
+        else:
+            messages.success(request, 'Si el correo existe, recibirás instrucciones.')
+            return redirect('home:login')
 
-
-
-
-
-
-
-
- # Asegúrate de que la ruta sea correcta
+    return render(request, 'home/recuperar_password.html')
 
 @csrf_exempt
 def solicitar_servicio_publico(request):

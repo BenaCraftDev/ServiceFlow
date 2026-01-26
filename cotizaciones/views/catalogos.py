@@ -545,7 +545,26 @@ def eliminar_servicio(request, servicio_id):
             'error': str(e)
         })
 
-# === Crud Parametros === 
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["POST"])
+def toggle_estado_servicio(request, servicio_id):
+    try:
+        servicio = get_object_or_404(ServicioBase, id=servicio_id)
+        # Cambia al valor opuesto
+        servicio.activo = not servicio.activo
+        servicio.save()
+        
+        estado_texto = "Activo" if servicio.activo else "Inactivo"
+        return JsonResponse({
+            'success': True,
+            'nuevo_estado': servicio.activo,
+            'message': f'Servicio marcado como {estado_texto}'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+# === Crud Categoria Servicios === 
 
 @login_required
 @requiere_gerente_o_superior
@@ -573,6 +592,69 @@ def crear_categoria_servicio(request):
             'success': False,
             'error': str(e)
         })
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["DELETE"])
+def eliminar_categoria_servicio(request, categoria_id):
+    """Eliminar categoría de servicio vía AJAX"""
+    try:
+        categoria = get_object_or_404(CategoriaServicio, pk=categoria_id)
+        
+        # Cambiamos .servicios.exists() por .serviciobase_set.exists()
+        if categoria.serviciobase_set.exists(): 
+            # Si tiene servicios, hacemos un "Soft Delete"
+            categoria.activo = False
+            categoria.save()
+            message = 'Categoría desactivada porque tiene servicios asociados'
+        else:
+            # Si está vacía, se puede borrar de la DB
+            categoria.delete()
+            message = 'Categoría eliminada exitosamente'
+        
+        return JsonResponse({
+            'success': True,
+            'message': message
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+@login_required
+@requiere_gerente_o_superior
+@require_http_methods(["GET", "PUT"])
+def editar_categoria_servicio(request, categoria_id):
+    categoria = get_object_or_404(CategoriaServicio, id=categoria_id)
+
+    if request.method == "GET":
+        return JsonResponse({
+            'success': True,
+            'categoria': {
+                'nombre': categoria.nombre,
+                'descripcion': categoria.descripcion,
+                'orden': categoria.orden
+            }
+        })
+
+    # Si es PUT (Guardar)
+    try:
+        data = json.loads(request.body)
+        categoria.nombre = data.get('nombre')
+        categoria.descripcion = data.get('descripcion', '')
+        categoria.orden = data.get('orden', 0)
+        categoria.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': 'Categoría actualizada exitosamente'
+        })
+    except Exception as e:
+        # Devolvemos el error como JSON, no como HTML
+        return JsonResponse({
+            'success': False, 
+            'error': str(e)
+        }, status=400)
+# === Crud Parametros === 
 
 @login_required
 @requiere_gerente_o_superior

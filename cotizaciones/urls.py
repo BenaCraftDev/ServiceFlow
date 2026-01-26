@@ -70,8 +70,11 @@ urlpatterns = [
     path('servicio/<int:servicio_id>/', views.obtener_servicio, name='obtener_servicio'),
     path('servicio/<int:servicio_id>/editar/', views.editar_servicio, name='editar_servicio'),
     path('servicio/<int:servicio_id>/eliminar/', views.eliminar_servicio, name='eliminar_servicio'),
+    path('servicio/<int:servicio_id>/toggle-estado/', views.toggle_estado_servicio, name='toggle_estado_servicio'),
     # Gestión de categorías
     path('categoria-servicio/crear/', views.crear_categoria_servicio, name='crear_categoria_servicio'),
+    path('categoria-servicio/<int:categoria_id>/eliminar/', views.eliminar_categoria_servicio, name='eliminar_categoria_servicio'),
+    path('categoria-servicio/<int:categoria_id>/', views.editar_categoria_servicio, name='editar_categoria_servicio'),
 
     # Parámetros de servicios
     path('servicio/<int:servicio_id>/parametros/', views.obtener_parametros_servicio, name='obtener_parametros_servicio'),
@@ -125,7 +128,6 @@ urlpatterns = [
     path('tipos-trabajo/<int:tipo_id>/editar/', views.editar_tipo_trabajo, name='editar_tipo_trabajo'),
     path('tipos-trabajo/<int:tipo_id>/datos/', views.obtener_datos_tipo_trabajo, name='obtener_datos_tipo_trabajo'),
     path('tipos-trabajo/<int:tipo_id>/eliminar/', views.eliminar_tipo_trabajo, name='eliminar_tipo_trabajo'),
-    path('tipos-trabajo/exportar/', views.exportar_tipos_trabajo, name='exportar_tipos_trabajo'),
 
     # Vista de empleados - Sus trabajos
     path('mis-trabajos/', views.mis_trabajos_empleado, name='mis_trabajos_empleado'),
@@ -143,6 +145,8 @@ urlpatterns = [
     path('servicios/exportar/', views.exportar_servicios, name='exportar_servicios'),
     path('materiales/exportar/', views.exportar_materiales, name='exportar_materiales'),
     path('cotizaciones/exportar/', views.exportar_cotizaciones, name='exportar_cotizaciones'),
+    path('tipos-trabajo/exportar/', views.exportar_tipos_trabajo, name='exportar_tipos_trabajo'),
+    path('seguimiento-trabajos/exportar/', views.exportar_trabajos, name='exportar_trabajos'),
 
     # Sistema de Email
     path('<int:pk>/enviar-email/', views.enviar_cotizacion_email, name='enviar_email'),
@@ -161,7 +165,6 @@ urlpatterns = [
     path('api/agenda-trabajos/', views.obtener_agenda_trabajos, name='obtener_agenda_trabajos'),
     path('seguimiento-trabajos/', views.seguimiento_trabajos_aprobados, name='seguimiento_trabajos'),
     path('seguimiento-trabajos/<int:cotizacion_id>/trabajo/<int:trabajo_id>/detalle/', views.obtener_detalle_trabajo, name='detalle_trabajo'),
-    path('seguimiento-trabajos/exportar/', views.exportar_trabajos, name='exportar_trabajos'),
 
     # Sistema de Préstamos
     path('prestamos/', views.lista_prestamos, name='lista_prestamos'),

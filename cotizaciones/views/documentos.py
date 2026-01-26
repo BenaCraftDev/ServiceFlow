@@ -1,3 +1,4 @@
+import io
 import json
 import csv
 from decimal import Decimal
@@ -22,6 +23,10 @@ from notificaciones.models import Notificacion
 from notificaciones.utils import crear_notificacion
 from home.models import PerfilEmpleado
 from ..utils_mantenimiento import verificar_mantenimientos_materiales
+from django.http import HttpResponse
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+from openpyxl.utils import get_column_letter
 
 
 @login_required
@@ -912,9 +917,9 @@ def exportar_materiales_excel(materiales):
         ws.cell(row=row, column=1, value=material.codigo).border = border
         ws.cell(row=row, column=2, value=material.nombre).border = border
         ws.cell(row=row, column=3, value=material.descripcion or '').border = border
-        ws.cell(row=row, column=4, value=material.categoria or '').border = border
+        ws.cell(row=row, column=4, value=material.categoria.nombre if material.categoria else '').border = border
         ws.cell(row=row, column=5, value=float(material.precio_unitario)).border = border
-        ws.cell(row=row, column=6, value=material.unidad).border = border
+        ws.cell(row=row, column=6, value=str(material.unidad) if material.unidad else '').border = border
         ws.cell(row=row, column=7, value='Activo' if material.activo else 'Inactivo').border = border
     
     # Ajustar ancho de columnas

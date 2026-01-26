@@ -97,77 +97,50 @@ def logout_view(request):
     return response
 
 def recuperar_password(request):
-    """Vista para solicitar recuperación de contraseña"""
     if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
+        email = request.POST.get('email')
+        user = User.objects.filter(email=email).first()
         
-        try:
-            user = User.objects.get(email=email)
-            
-            # Verificar que tenga perfil de empleado activo
-            try:
-                perfil = PerfilEmpleado.objects.get(user=user)
-                if not perfil.activo:
-                    messages.error(request, 'Tu cuenta está desactivada. Contacta al administrador.')
-                    return render(request, 'home/recuperar_password.html')
-            except PerfilEmpleado.DoesNotExist:
-                messages.error(request, 'No se encontró un perfil de empleado asociado a este correo.')
-                return render(request, 'home/recuperar_password.html')
-            
-            # Generar token y uid
+        if user:
+            # Generar datos para el enlace
             token = default_token_generator.make_token(user)
             uid = urlsafe_base64_encode(force_bytes(user.pk))
+            base_url = request.build_absolute_uri('/')[:-1]
+            # La URL que el usuario clickeará
+            url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
             
-            # Crear enlace de recuperación
-            reset_url = request.build_absolute_uri(
-                reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})
+            # Contexto para el template de email
+            context_email = {
+                'user': user,
+                'url_reset': url_reset,
+                'config_empresa': ConfiguracionEmpresa.get_config(),
+            }
+            
+            # Renderizar el HTML del correo
+            html_content = render_to_string('home/emails/reset_password_email.html', context_email)
+            subject = f"Restablecer Contraseña - {ConfiguracionEmpresa.get_config().nombre}"
+            
+            # USAR TU FUNCIÓN ROBUSTA DE REINTENTOS
+            exito, mensaje = enviar_email_con_reintentos(
+                subject=subject,
+                html_content=html_content,
+                recipient_list=[email],
+                max_intentos=3,
+                timeout_segundos=20,
+                fail_silently=False
             )
             
-            # Preparar email
-            subject = 'Recuperación de Contraseña - Panel de Empleados'
-            message = f"""
-Hola {user.get_full_name() or user.username},
-
-Has solicitado restablecer tu contraseña para el Panel de Empleados.
-
-Haz clic en el siguiente enlace para crear una nueva contraseña:
-{reset_url}
-
-Este enlace expirará en 24 horas.
-
-Si no solicitaste este cambio, puedes ignorar este correo de forma segura.
-
-Saludos,
-Equipo de Administración
-            """
+            if exito:
+                messages.success(request, '✅ Se ha enviado un enlace a tu correo.')
+                return redirect('home:login')
+            else:
+                logger.error(f"Error SMTP en recuperación: {mensaje}")
+                messages.error(request, '❌ No se pudo conectar con el servicio externo de correo.')
+        else:
+            # Por seguridad, no confirmamos si el email existe o no
+            messages.success(request, 'Si el correo existe en nuestro sistema, recibirás un enlace pronto.')
+            return redirect('home:login')
             
-            # Enviar email
-            try:
-                send_mail(
-                    subject,
-                    message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    fail_silently=False,
-                )
-                messages.success(
-                    request, 
-                    'Se ha enviado un enlace de recuperación a tu correo electrónico. Por favor revisa tu bandeja de entrada.'
-                )
-            except Exception as e:
-                messages.error(
-                    request, 
-                    'Error al enviar el correo. Por favor contacta al administrador.'
-                )
-                print(f"Error al enviar email: {str(e)}")
-            
-        except User.DoesNotExist:
-            # Por seguridad, mostramos el mismo mensaje aunque el usuario no exista
-            messages.success(
-                request, 
-                'Si el correo existe en nuestro sistema, recibirás un enlace de recuperación.'
-            )
-    
     return render(request, 'home/recuperar_password.html')
 
 def reset_password(request, uidb64, token):
@@ -358,6 +331,7 @@ def panel_empleados(request):
             funciones_disponibles = [
                 {'nombre': 'Gestión de Usuarios', 'url': 'home:gestion_usuarios', 'icono': '👥'},
                 {'nombre': 'Sistema de Cotizaciones', 'url': 'cotizaciones:dashboard', 'icono': '📊'},
+                {'nombre': 'Tipos de Trabajos', 'url': 'cotizaciones:dashboard', 'icono': '⛏'},
                 {'nombre': 'Gestión de Clientes', 'url': 'cotizaciones:gestionar_clientes', 'icono': '👤'},
                 {'nombre': 'Catálogo de Servicios', 'url': 'cotizaciones:gestionar_servicios', 'icono': '🔧'},
                 {'nombre': 'Catálogo de Materiales', 'url': 'cotizaciones:gestionar_materiales', 'icono': '📦'},
@@ -365,6 +339,7 @@ def panel_empleados(request):
                 {'nombre': 'Reportes Generales', 'url': 'cotizaciones:reportes_dashboard', 'icono': '📈'},
                 {'nombre': 'Seguimiento de Trabajos', 'url': 'cotizaciones:seguimiento_trabajos', 'icono': '🔄'},
                 {'nombre': 'Prestamos', 'url': 'cotizaciones:lista_prestamos', 'icono': '🧰'},
+                {'nombre': 'Solicitudes Web', 'url': 'cotizaciones:lista_solicitudes_web', 'icono': '🌐'},
             ]
         elif perfil.es_gerente_o_superior():
             funciones_disponibles = [

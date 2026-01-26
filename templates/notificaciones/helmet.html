@@ -4,7 +4,7 @@
 <div class="topbar">
     <div class="logo">
         <i data-lucide="bar-chart-3"></i>
-        <span>Panel de Reportes</span>
+        <a href="{% url 'home:panel_empleados' %}"> ServiceFlow</a>
     </div>
     <div class="spacer"></div>
     <div class="user-menu">
@@ -26,7 +26,6 @@
     <aside class="sidebar" aria-label="Navegación del panel">
         <h3>☰ Navegación</h3>
         <nav class="nav">
-            <a href="{% url 'home:panel_empleados' %}">🏠 Panel Principal</a>
             <a href="{% url 'home:gestion_usuarios' %}">👥 Usuarios</a>
             <a href="{% url 'cotizaciones:dashboard' %}">📊 Menú Cotizaciones</a>
             <a href="{% url 'cotizaciones:gestionar_tipos_trabajo' %}">⛏ Tipos de Trabajos</a>
@@ -39,7 +38,7 @@
             <a href="{% url 'cotizaciones:reportes_dashboard' %}" >📈 Reportes Generales</a>
             <a href="{% url 'cotizaciones:seguimiento_trabajos' %}">🔄 Seguimiento Trabajos</a>
             <a href="{% url 'cotizaciones:lista_prestamos' %}">🧰 Prestamos</a>
-            <a href="{% url 'cotizaciones:lista_solicitudes_web' %}">📧 Solicitudes Web</a>
+            <a href="{% url 'cotizaciones:lista_solicitudes_web' %}">🌐 Solicitudes Web</a>
             <!-- <hr style="margin: 8px 0; border: none; border-top: 1px solid var(--gris-300);">
             <a href="{% url 'cotizaciones:feedbacks_pendientes' %}">📬 Feedbacks Pendientes</a> -->
         </nav>

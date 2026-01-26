@@ -130,9 +130,14 @@
               <td><strong>${{ servicio.precio_base|floatformat:0 }}</strong></td>
               <td>{{ servicio.unidad }}</td>
               <td>
-                <span class="pill {% if servicio.activo %}activo{% else %}inactivo{% endif %}">
-                  {% if servicio.activo %}Activo{% else %}Inactivo{% endif %}
-                </span>
+                <button type="button" 
+                        class="btn-pill-toggle" 
+                        onclick="toggleEstadoServicio({{ servicio.id }}, {{ servicio.activo|yesno:'true,false' }})"
+                        style="background: none; border: none; cursor: pointer; padding: 0;">
+                  <span class="pill {% if servicio.activo %}activo{% else %}inactivo{% endif %}">
+                    {% if servicio.activo %}Activo{% else %}Inactivo{% endif %}
+                  </span>
+                </button>
               </td>
               <td>
                 <div style="display: flex; gap: 4px;">
@@ -524,6 +529,34 @@
   }
 
   // Funciones CRUD del servidor (EDITAR / GUARDAR / ELIMINAR)
+  async function toggleEstadoServicio(id, estadoActual) {
+    // Opcional: Confirmación rápida
+    const nuevoEstadoTxt = estadoActual ? 'desactivar' : 'activar';
+    if (!confirm(`¿Deseas ${nuevoEstadoTxt} este servicio?`)) return;
+
+    try {
+        const response = await fetch(`/cotizaciones/servicio/${id}/toggle-estado/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCSRFToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Recargamos para actualizar los KPIs de "Inactivos" y los estilos
+            location.reload(); 
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('No se pudo cambiar el estado');
+    }
+}
+
   async function editarServicio(servicioId) {
     try {
       const response = await fetch(`/cotizaciones/servicio/${servicioId}/`);
@@ -579,26 +612,51 @@
 
   // CRUD Categorías
   document.getElementById('form-categoria').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const categoriaId = document.getElementById('categoria-id').value;
-    const isEditing = categoriaId !== '';
-    const formData = {
-      nombre: document.getElementById('categoria-nombre').value,
-      descripcion: document.getElementById('categoria-descripcion').value,
-      orden: document.getElementById('categoria-orden').value
-    };
-    try {
-      const url = isEditing ? `/cotizaciones/categoria-servicio/${categoriaId}/editar/` : '/cotizaciones/categoria-servicio/crear/';
-      const method = isEditing ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken() },
-        body: JSON.stringify(formData)
-      });
-      const result = await response.json();
-      if (result.success) { alert(result.message); cerrarModal('modal-categoria'); location.reload(); }
-      else { alert('Error: ' + result.error); }
-    } catch (error) { console.error(error); alert('Error al guardar categoría'); }
+      e.preventDefault();
+      const categoriaId = document.getElementById('categoria-id').value;
+      const isEditing = categoriaId !== '';
+      
+      const formData = {
+          nombre: document.getElementById('categoria-nombre').value,
+          descripcion: document.getElementById('categoria-descripcion').value,
+          orden: document.getElementById('categoria-orden').value
+      };
+
+      try {
+          // IMPORTANTE: Asegúrate de que la URL termine en /
+          const url = isEditing 
+              ? `/cotizaciones/categoria-servicio/${categoriaId}/` 
+              : '/cotizaciones/categoria-servicio/crear/';
+          
+          const method = isEditing ? 'PUT' : 'POST';
+
+          const response = await fetch(url, {
+              method: method,
+              headers: { 
+                  'Content-Type': 'application/json', 
+                  'X-CSRFToken': getCSRFToken() // Verifica que esta función obtenga el token
+              },
+              body: JSON.stringify(formData)
+          });
+
+          // Si la respuesta no es OK (ej. error 500), lanzamos error antes de parsear JSON
+          if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Error del servidor:", errorText);
+              throw new Error("El servidor respondió con un error (posiblemente HTML)");
+          }
+
+          const result = await response.json();
+          if (result.success) { 
+              alert(result.message); 
+              location.reload(); 
+          } else { 
+              alert('Error: ' + result.error); 
+          }
+      } catch (error) { 
+          console.error(error); 
+          alert('Error al guardar: ' + error.message); 
+      }
   });
 
   async function editarCategoria(id) {
@@ -617,14 +675,35 @@
     } catch (e) { alert('Error de conexión'); }
   }
 
-  async function eliminarCategoria(id, nombre) {
-    if (!confirm(`¿Eliminar categoría "${nombre}"?`)) return;
-    try {
-      const res = await fetch(`/cotizaciones/categoria-servicio/${id}/eliminar/`, { method: 'DELETE', headers: {'X-CSRFToken': getCSRFToken()} });
-      const data = await res.json();
-      if (data.success) location.reload(); else alert(data.error);
-    } catch (e) { alert('Error al eliminar'); }
+async function eliminarCategoria(categoriaId, nombreCategoria) {
+  // Confirmación profesional
+  if (!confirm(`¿Estás seguro de eliminar la categoría "${nombreCategoria}"?\n\nEsto podría afectar a los servicios asociados.`)) {
+    return;
   }
+  
+  try {
+    // La URL debe apuntar a categoria-servicio
+    const response = await fetch(`/cotizaciones/categoria-servicio/${categoriaId}/eliminar/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': getCSRFToken() // Asegúrate de que esta función exista
+      }
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      alert(result.message);
+      location.reload(); // Recarga para actualizar la tabla y los KPIs
+    } else {
+      alert('Error: ' + result.error);
+    }
+    
+  } catch (error) {
+    console.error('Error eliminando categoría:', error);
+    alert('Error al eliminar la categoría');
+  }
+}
 
   function cerrarModalCategoria() {
     document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';

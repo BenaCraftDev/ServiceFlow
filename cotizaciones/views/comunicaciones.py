@@ -224,3 +224,4 @@ def enviar_cotizacion_email(request, pk):
         'config_email_valida': config_valida,
     }
     return render(request, 'cotizaciones/emails/enviar_email.html', context)
+

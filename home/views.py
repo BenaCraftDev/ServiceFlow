@@ -98,53 +98,6 @@ def logout_view(request):
 
 def recuperar_password(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        user = User.objects.filter(email=email).first()
-        
-        if user:
-            # Generar datos para el enlace
-            token = default_token_generator.make_token(user)
-            uid = urlsafe_base64_encode(force_bytes(user.pk))
-            base_url = request.build_absolute_uri('/')[:-1]
-            # La URL que el usuario clickeará
-            url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
-            
-            # Contexto para el template de email
-            context_email = {
-                'user': user,
-                'url_reset': url_reset,
-                'config_empresa': ConfiguracionEmpresa.get_config(),
-            }
-            
-            # Renderizar el HTML del correo
-            html_content = render_to_string('home/emails/reset_password_email.html', context_email)
-            subject = f"Restablecer Contraseña - {ConfiguracionEmpresa.get_config().nombre}"
-            
-            # USAR TU FUNCIÓN ROBUSTA DE REINTENTOS
-            exito, mensaje = enviar_email_con_reintentos(
-                subject=subject,
-                html_content=html_content,
-                recipient_list=[email],
-                max_intentos=3,
-                timeout_segundos=20,
-                fail_silently=False
-            )
-            
-            if exito:
-                messages.success(request, '✅ Se ha enviado un enlace a tu correo.')
-                return redirect('home:login')
-            else:
-                logger.error(f"Error SMTP en recuperación: {mensaje}")
-                messages.error(request, '❌ No se pudo conectar con el servicio externo de correo.')
-        else:
-            # Por seguridad, no confirmamos si el email existe o no
-            messages.success(request, 'Si el correo existe en nuestro sistema, recibirás un enlace pronto.')
-            return redirect('home:login')
-            
-    return render(request, 'home/recuperar_password.html')
-
-def recuperar_password(request):
-    if request.method == 'POST':
         email = request.POST.get('email', '').strip()
         user = User.objects.filter(email=email).first()
         
@@ -185,6 +138,30 @@ def recuperar_password(request):
             return redirect('home:login')
 
     return render(request, 'home/recuperar_password.html')
+
+def reset_password(request, uidb64, token):
+    try:
+        # Decodificar el ID del usuario
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    # Validar que el token sea correcto para este usuario
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            form = SetPasswordForm(user, request.POST)
+            if form.is_valid():
+                form.save()
+                messages.success(request, '✅ Tu contraseña ha sido restablecida. Ya puedes iniciar sesión.')
+                return redirect('home:login')
+        else:
+            form = SetPasswordForm(user)
+        
+        return render(request, 'home/reset_password_confirm.html', {'form': form})
+    else:
+        messages.error(request, '❌ El enlace de restablecimiento es inválido o ha expirado.')
+        return redirect('home:recuperar_password')
 
 @csrf_exempt
 def solicitar_servicio_publico(request):

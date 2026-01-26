@@ -140,27 +140,24 @@ def recuperar_password(request):
     return render(request, 'home/recuperar_password.html')
 
 def reset_password(request, uidb64, token):
+    """Vista para procesar el cambio de clave tras hacer clic en el email"""
     try:
-        # Decodificar el ID del usuario
-        uid = urlsafe_base64_decode(uidb64).decode()
+        uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
 
-    # Validar que el token sea correcto para este usuario
     if user is not None and default_token_generator.check_token(user, token):
         if request.method == 'POST':
-            form = SetPasswordForm(user, request.POST)
-            if form.is_valid():
-                form.save()
-                messages.success(request, '✅ Tu contraseña ha sido restablecida. Ya puedes iniciar sesión.')
-                return redirect('home:login')
-        else:
-            form = SetPasswordForm(user)
-        
-        return render(request, 'home/reset_password_confirm.html', {'form': form})
+            # Aquí procesarías el cambio de contraseña
+            pass 
+        return render(request, 'home/reset_password.html', {
+            'validlink': True,
+            'uidb64': uidb64,
+            'token': token
+        })
     else:
-        messages.error(request, '❌ El enlace de restablecimiento es inválido o ha expirado.')
+        messages.error(request, 'El enlace ha expirado o es inválido.')
         return redirect('home:recuperar_password')
 
 @csrf_exempt

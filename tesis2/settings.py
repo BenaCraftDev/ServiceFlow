@@ -170,8 +170,8 @@ EMAIL_HOST = 'smtp.resend.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'resend'
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL')
+EMAIL_HOST_PASSWORD = 're_HMF8LkGF_PkdVHbHUA2xHywReQGGkejLU'
+DEFAULT_FROM_EMAIL = 'cotizaciones@gatwo.xyz'
 
 # Timeout para emails
 EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 30))

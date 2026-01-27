@@ -167,8 +167,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Email con Gmail
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.resend.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
 EMAIL_HOST_USER = 'resend'
 EMAIL_HOST_PASSWORD = 're_HMF8LkGF_PkdVHbHUA2xHywReQGGkejLU'
 DEFAULT_FROM_EMAIL = 'cotizaciones@gatwo.xyz'

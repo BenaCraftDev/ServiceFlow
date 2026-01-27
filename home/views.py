@@ -120,7 +120,7 @@ def recuperar_password(request):
                 send_mail(
                     subject,
                     f"Usa este enlace: {url_reset}", # Mensaje en texto plano
-                    settings.EMAIL_HOST_USER,
+                    settings.DEFAULT_FROM_EMAIL,
                     [email],
                     html_message=html_message,
                     fail_silently=False,

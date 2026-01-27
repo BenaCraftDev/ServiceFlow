@@ -381,6 +381,40 @@ def recuperar_password(request):
     return render(request, 'home/recuperar_password.html')
 
 def reset_password(request, uidb64, token):
+    """Vista que guarda la nueva contraseña y maneja las alertas correctamente"""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            # SetPasswordForm valida longitud, coincidencia y seguridad
+            form = SetPasswordForm(user, request.POST)
+            
+            if form.is_valid():
+                form.save()
+                # ÉXITO: Usamos palabras clave que tu login.html ya sabe detectar
+                messages.success(request, '🎉 Éxito: Contraseña actualizada. Ya puedes iniciar sesión.')
+                return redirect('home:login')
+            else:
+                # ERROR: AQUÍ ESTÁ LA CORRECCIÓN.
+                # En lugar de 'pass', extraemos los errores y creamos una alerta por cada uno.
+                # Así tu HTML mostrará "Las contraseñas no coinciden" o "Es muy corta".
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        messages.error(request, f"⚠️ {error}")
+        else:
+            form = SetPasswordForm(user)
+        
+        return render(request, 'home/reset_password.html', {
+            'form': form,
+            'validlink': True 
+        })
+    else:
+        messages.error(request, '❌ El enlace ya expiró o es inválido. Solicita uno nuevo.')
+        return redirect('home:recuperar_password')
     """Vista que guarda la nueva contraseña"""
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))

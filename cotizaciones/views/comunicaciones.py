@@ -3,10 +3,10 @@ import os
 import uuid
 import json
 import csv
-from .forms_empleados import *
-from .forms_prestamos import *
-from .models import *
-from .forms import *
+from ..forms_empleados import *
+from ..forms_prestamos import *
+from ..models import *
+from ..forms import *
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -35,7 +35,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
-from .utils_mantenimiento import verificar_mantenimientos_materiales
+from ..utils_mantenimiento import verificar_mantenimientos_materiales
 import socket
 import logging
 from time import sleep

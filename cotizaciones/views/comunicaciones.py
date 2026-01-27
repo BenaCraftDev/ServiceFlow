@@ -41,6 +41,7 @@ from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.urls import reverse
 from django.template.loader import render_to_string  # Importamos la función que SÍ funciona
+from django.contrib.auth.forms import SetPasswordForm
 
 logger = logging.getLogger(__name__)
 
@@ -810,52 +811,80 @@ def recuperar_password(request):
         
         if user:
             try:
-                # 1. Generar Tokens (Lógica estándar de Django)
+                # 1. Generar Tokens
                 token = default_token_generator.make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
-                
-                # 2. Construir URL
                 base_url = request.build_absolute_uri('/')[:-1]
                 url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
                 
-                # 3. Renderizar el HTML del correo
-                # IMPORTANTE: Asegúrate de tener este archivo o cambia la ruta a uno que exista
-                subject = "Restablecer Contraseña - ServiceFlow"
+                # 2. Renderizar HTML Profesional
+                subject = f"Recuperación de Clave - {user.username}"
                 context = {
-                    'user': user, 
+                    'user': user,  # Pasamos el usuario para que salga el nombre
                     'url_reset': url_reset
                 }
                 
-                # Usa un template específico para emails, no el formulario web
-                try:
-                    html_content = render_to_string('home/emails/reset_password_email.html', context)
-                except Exception:
-                    # Fallback simple si no has creado el template bonito aún
-                    html_content = f"<p>Hola {user.username}, para cambiar tu clave haz clic aquí: <a href='{url_reset}'>Restablecer</a></p>"
+                html_content = render_to_string('home/emails/reset_password_email.html', context)
 
-                # 4. ENVIAR USANDO LA FUNCIÓN QUE FUNCIONA (IGUAL QUE EN COTIZACIONES)
+                # 3. Enviar con tu función robusta
                 exito, mensaje = enviar_email_con_reintentos(
                     subject=subject,
                     html_content=html_content,
                     recipient_list=[email],
-                    max_intentos=3,           # Mismo parámetros que en cotizaciones
-                    timeout_segundos=20,      # Mismo timeout
+                    max_intentos=3,
                     fail_silently=False
                 )
 
                 if exito:
-                    messages.success(request, '✅ Enlace enviado. Revisa tu correo.')
-                    return redirect('home:login')
+                    # FEEDBACK CLARO: No redirigimos al login directo, mostramos éxito aquí mismo o login con mensaje
+                    messages.success(request, f'✅ ¡Listo! Hemos enviado las instrucciones a {email}. Revisa tu bandeja de entrada.')
+                    return redirect('home:login') # Al login para que espere el correo
                 else:
-                    # Si falla la función auxiliar, mostramos el error que ella devolvió
-                    messages.error(request, f'❌ No se pudo enviar el correo: {mensaje}')
-            
+                    messages.error(request, f'Error al enviar: {mensaje}')
+
             except Exception as e:
-                print(f"ERROR CRITICO: {e}")
-                messages.error(request, 'Ocurrió un error inesperado al procesar la solicitud.')
+                print(f"ERROR: {e}")
+                messages.error(request, 'Error técnico al procesar la solicitud.')
         else:
-            # Por seguridad, no decimos si el usuario existe o no
-            messages.success(request, 'Si el correo existe, recibirás instrucciones.')
+            # Seguridad: Mensaje genérico aunque no exista
+            messages.success(request, 'Si el correo está registrado, recibirás instrucciones en breve.')
             return redirect('home:login')
 
     return render(request, 'home/recuperar_password.html')
+
+def reset_password(request, uidb64, token):
+    """Vista que recibe al usuario desde el correo y cambia la clave"""
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    # Verificar que el usuario existe y el token es válido
+    if user is not None and default_token_generator.check_token(user, token):
+        
+        if request.method == 'POST':
+            # AQUÍ OCURRE LA MAGIA
+            form = SetPasswordForm(user, request.POST)
+            
+            if form.is_valid():
+                form.save() # ESTO ES LO QUE GUARDA LA NUEVA CLAVE ENCRIPTADA
+                
+                # Mensaje de éxito rotundo
+                messages.success(request, '🎉 ¡Tu contraseña ha sido cambiada exitosamente! Ya puedes iniciar sesión.')
+                return redirect('home:login')
+            else:
+                # Si las claves no coinciden o son muy cortas, mostramos errores
+                for error in form.errors.values():
+                    messages.error(request, error)
+        else:
+            form = SetPasswordForm(user)
+        
+        return render(request, 'home/reset_password.html', {
+            'form': form,
+            'validlink': True 
+        })
+    else:
+        messages.error(request, '❌ El enlace de recuperación es inválido o ya fue utilizado.')
+        return redirect('home:recuperar_password')
+

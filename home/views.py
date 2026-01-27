@@ -28,7 +28,7 @@ from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, Solicitud_Web
 from notificaciones.utils import crear_notificacion
 from django.core.cache import cache
 from cotizaciones.utils import enviar_email_con_reintentos, verificar_configuracion_email
-from cotizaciones.views.comunicaciones import recuperar_password
+from cotizaciones.views.comunicaciones import recuperar_password, reset_password
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -96,27 +96,6 @@ def logout_view(request):
     response['Expires'] = '0'
     
     return response
-
-def reset_password(request, uidb64, token):
-    """Vista para procesar el cambio de clave tras hacer clic en el email"""
-    try:
-        uid = force_str(urlsafe_base64_decode(uidb64))
-        user = User.objects.get(pk=uid)
-    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        user = None
-
-    if user is not None and default_token_generator.check_token(user, token):
-        if request.method == 'POST':
-            # Aquí procesarías el cambio de contraseña
-            pass 
-        return render(request, 'home/reset_password.html', {
-            'validlink': True,
-            'uidb64': uidb64,
-            'token': token
-        })
-    else:
-        messages.error(request, 'El enlace ha expirado o es inválido.')
-        return redirect('home:recuperar_password')
 
 @csrf_exempt
 def solicitar_servicio_publico(request):

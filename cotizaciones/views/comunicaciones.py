@@ -869,12 +869,17 @@ def reset_password(request, uidb64, token):
             
             if form.is_valid():
                 form.save()
-                messages.success(request, '🎉 ¡Contraseña actualizada! Inicia sesión con tu nueva clave.')
+                # Usamos palabras clave "Éxito" y "actualizada" para que el filtro del login las deje pasar
+                messages.success(request, '✅ Éxito: Tu contraseña ha sido actualizada. Inicia sesión ahora.')
                 return redirect('home:login')
             else:
-                # NO usamos messages.error aquí para evitar el spam de alertas.
-                # Dejamos que el template renderice 'form.errors' de forma bonita.
-                pass 
+                # AQUÍ ESTABA EL ERROR: Antes tenías 'pass', por eso no salía nada.
+                # Ahora iteramos los errores y los mostramos.
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        # Filtramos mensajes técnicos feos si es necesario, 
+                        # pero Django suele dar mensajes claros aquí.
+                        messages.error(request, f"⚠️ {error}")
         else:
             form = SetPasswordForm(user)
         

@@ -113,7 +113,7 @@ def recuperar_password(request):
                 # Si no tienes el modelo ConfiguracionEmpresa a mano, cámbialo por un string
                 subject = "Restablecer Contraseña"
                 context = {'user': user, 'url_reset': url_reset}
-                html_message = render_to_string('home/emails/reset_password_email.html', context)
+                html_message = render_to_string('home/recuperar_password.html', context)
                 
                 # 3. Envío directo usando la configuración de settings.py
                 # Esto es lo que suele fallar si el puerto 587 está bloqueado

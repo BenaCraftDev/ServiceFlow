@@ -23,6 +23,7 @@ from notificaciones.utils import crear_notificacion
 from home.models import PerfilEmpleado
 from ..utils_mantenimiento import verificar_mantenimientos_materiales
 
+
 @login_required
 @requiere_gerente_o_superior
 def crear_cotizacion(request):

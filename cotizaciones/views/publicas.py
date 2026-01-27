@@ -1,5 +1,6 @@
 import json
 import csv
+import logging # <--- FALTABA ESTO
 from decimal import Decimal
 from datetime import datetime, timedelta
 from django.shortcuts import render, get_object_or_404, redirect
@@ -13,6 +14,7 @@ from django.db.models import Q, Count, Sum, Avg
 from django.utils import timezone
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.contrib.auth.models import User # <--- FALTABA ESTO
 from ..models import *
 from ..forms import *
 from ..forms_empleados import *
@@ -22,7 +24,10 @@ from notificaciones.models import Notificacion
 from notificaciones.utils import crear_notificacion
 from home.models import PerfilEmpleado
 from ..utils_mantenimiento import verificar_mantenimientos_materiales
+from .comunicaciones import enviar_email_con_reintentos 
 
+# Configurar Logger
+logger = logging.getLogger(__name__) # <--- FALTABA ESTO
 
 def ver_cotizacion_publica(request, token):
     """Vista pública de cotización sin login"""
@@ -71,7 +76,7 @@ def responder_cotizacion(request, token, accion):
         if accion == 'aprobar':
             cotizacion.estado = 'aprobada'
             mensaje_cliente = '✅ Su aprobación ha sido registrada exitosamente'
-            mensaje_admin = f'✅ Cliente aprobó cotización {cotizacion.numero}'
+            # mensaje_admin = f'✅ Cliente aprobó cotización {cotizacion.numero}' # No se usa variable localmente
             
             # Configurar notificación de aprobación
             tipo_notificacion = 'success'
@@ -82,7 +87,7 @@ def responder_cotizacion(request, token, accion):
             cotizacion.estado = 'rechazada'
             cotizacion.motivo_rechazo = comentarios
             mensaje_cliente = '❌ Su rechazo ha sido registrado'
-            mensaje_admin = f'❌ Cliente rechazó cotización {cotizacion.numero}'
+            # mensaje_admin = f'❌ Cliente rechazó cotización {cotizacion.numero}'
             
             # Configurar notificación de rechazo
             tipo_notificacion = 'error'
@@ -92,7 +97,7 @@ def responder_cotizacion(request, token, accion):
         elif accion == 'modificar':
             cotizacion.estado = 'requiere_cambios'
             mensaje_cliente = '📝 Su solicitud de cambios ha sido registrada'
-            mensaje_admin = f'📝 Cliente solicita cambios en cotización {cotizacion.numero}'
+            # mensaje_admin = f'📝 Cliente solicita cambios en cotización {cotizacion.numero}'
             
             # Configurar notificación de cambios
             tipo_notificacion = 'warning'

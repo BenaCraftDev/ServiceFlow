@@ -175,7 +175,7 @@ EMAIL_HOST_PASSWORD = 're_HMF8LkGF_PkdVHbHUA2xHywReQGGkejLU'
 DEFAULT_FROM_EMAIL = 'cotizaciones@gatwo.xyz'
 
 # Timeout para emails
-EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', 30))
+EMAIL_TIMEOUT = 60
 
 # Logging para emails
 LOGGING = {

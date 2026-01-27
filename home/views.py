@@ -28,6 +28,7 @@ from cotizaciones.models import Cotizacion, Cliente, TipoTrabajo, Solicitud_Web
 from notificaciones.utils import crear_notificacion
 from django.core.cache import cache
 from cotizaciones.utils import enviar_email_con_reintentos, verificar_configuracion_email
+from cotizaciones.views.comunicaciones import recuperar_password
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -95,49 +96,6 @@ def logout_view(request):
     response['Expires'] = '0'
     
     return response
-
-def recuperar_password(request):
-    if request.method == 'POST':
-        email = request.POST.get('email', '').strip()
-        user = User.objects.filter(email=email).first()
-        
-        if user:
-            try:
-                # 1. Generar tokens de seguridad
-                token = default_token_generator.make_token(user)
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                base_url = request.build_absolute_uri('/')[:-1]
-                url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
-                
-                # 2. Preparar el contenido
-                # Si no tienes el modelo ConfiguracionEmpresa a mano, cámbialo por un string
-                subject = "Restablecer Contraseña"
-                context = {'user': user, 'url_reset': url_reset}
-                html_message = render_to_string('home/recuperar_password.html', context)
-                
-                # 3. Envío directo usando la configuración de settings.py
-                # Esto es lo que suele fallar si el puerto 587 está bloqueado
-                send_mail(
-                    subject,
-                    f"Usa este enlace: {url_reset}", # Mensaje en texto plano
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email],
-                    html_message=html_message,
-                    fail_silently=False,
-                )
-                
-                messages.success(request, '✅ Enlace enviado. Revisa tu bandeja de entrada.')
-                return redirect('home:login')
-
-            except Exception as e:
-                # Esto evita el Error 500 y te dice qué pasó en la consola
-                print(f"DEBUG ERROR: {str(e)}") 
-                messages.error(request, f'❌ Error técnico: {str(e)}')
-        else:
-            messages.success(request, 'Si el correo existe, recibirás instrucciones.')
-            return redirect('home:login')
-
-    return render(request, 'home/recuperar_password.html')
 
 def reset_password(request, uidb64, token):
     """Vista para procesar el cambio de clave tras hacer clic en el email"""

@@ -36,6 +36,11 @@ import socket
 import logging
 from time import sleep
 from smtplib import SMTPException
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.urls import reverse
+from django.template.loader import render_to_string  # Importamos la función que SÍ funciona
 
 logger = logging.getLogger(__name__)
 
@@ -797,3 +802,60 @@ def enviar_cotizacion_email(request, pk):
         'cotizacion': cotizacion,
         'email_sugerido': email_sugerido,
     })
+
+def recuperar_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        user = User.objects.filter(email=email).first()
+        
+        if user:
+            try:
+                # 1. Generar Tokens (Lógica estándar de Django)
+                token = default_token_generator.make_token(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                
+                # 2. Construir URL
+                base_url = request.build_absolute_uri('/')[:-1]
+                url_reset = f"{base_url}{reverse('home:reset_password', kwargs={'uidb64': uid, 'token': token})}"
+                
+                # 3. Renderizar el HTML del correo
+                # IMPORTANTE: Asegúrate de tener este archivo o cambia la ruta a uno que exista
+                subject = "Restablecer Contraseña - ServiceFlow"
+                context = {
+                    'user': user, 
+                    'url_reset': url_reset
+                }
+                
+                # Usa un template específico para emails, no el formulario web
+                try:
+                    html_content = render_to_string('home/emails/reset_password_email.html', context)
+                except Exception:
+                    # Fallback simple si no has creado el template bonito aún
+                    html_content = f"<p>Hola {user.username}, para cambiar tu clave haz clic aquí: <a href='{url_reset}'>Restablecer</a></p>"
+
+                # 4. ENVIAR USANDO LA FUNCIÓN QUE FUNCIONA (IGUAL QUE EN COTIZACIONES)
+                exito, mensaje = enviar_email_con_reintentos(
+                    subject=subject,
+                    html_content=html_content,
+                    recipient_list=[email],
+                    max_intentos=3,           # Mismo parámetros que en cotizaciones
+                    timeout_segundos=20,      # Mismo timeout
+                    fail_silently=False
+                )
+
+                if exito:
+                    messages.success(request, '✅ Enlace enviado. Revisa tu correo.')
+                    return redirect('home:login')
+                else:
+                    # Si falla la función auxiliar, mostramos el error que ella devolvió
+                    messages.error(request, f'❌ No se pudo enviar el correo: {mensaje}')
+            
+            except Exception as e:
+                print(f"ERROR CRITICO: {e}")
+                messages.error(request, 'Ocurrió un error inesperado al procesar la solicitud.')
+        else:
+            # Por seguridad, no decimos si el usuario existe o no
+            messages.success(request, 'Si el correo existe, recibirás instrucciones.')
+            return redirect('home:login')
+
+    return render(request, 'home/recuperar_password.html')

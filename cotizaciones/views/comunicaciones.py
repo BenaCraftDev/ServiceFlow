@@ -824,7 +824,7 @@ def recuperar_password(request):
                     'url_reset': url_reset
                 }
                 
-                html_content = render_to_string('home/emails/reset_password_email.html', context)
+                html_content = render_to_string('home/reset_password_email.html', context)
 
                 # 3. Enviar con tu función robusta
                 exito, mensaje = enviar_email_con_reintentos(

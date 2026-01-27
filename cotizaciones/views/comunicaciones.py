@@ -855,30 +855,26 @@ def recuperar_password(request):
     return render(request, 'home/recuperar_password.html')
 
 def reset_password(request, uidb64, token):
-    """Vista que recibe al usuario desde el correo y cambia la clave"""
+    """Vista que guarda la nueva contraseña"""
     try:
         uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
 
-    # Verificar que el usuario existe y el token es válido
     if user is not None and default_token_generator.check_token(user, token):
-        
         if request.method == 'POST':
-            # AQUÍ OCURRE LA MAGIA
+            # SetPasswordForm maneja la validación de contraseñas de Django
             form = SetPasswordForm(user, request.POST)
             
             if form.is_valid():
-                form.save() # ESTO ES LO QUE GUARDA LA NUEVA CLAVE ENCRIPTADA
-                
-                # Mensaje de éxito rotundo
-                messages.success(request, '🎉 ¡Tu contraseña ha sido cambiada exitosamente! Ya puedes iniciar sesión.')
+                form.save()
+                messages.success(request, '🎉 ¡Contraseña actualizada! Inicia sesión con tu nueva clave.')
                 return redirect('home:login')
             else:
-                # Si las claves no coinciden o son muy cortas, mostramos errores
-                for error in form.errors.values():
-                    messages.error(request, error)
+                # NO usamos messages.error aquí para evitar el spam de alertas.
+                # Dejamos que el template renderice 'form.errors' de forma bonita.
+                pass 
         else:
             form = SetPasswordForm(user)
         
@@ -887,6 +883,5 @@ def reset_password(request, uidb64, token):
             'validlink': True 
         })
     else:
-        messages.error(request, '❌ El enlace de recuperación es inválido o ya fue utilizado.')
+        messages.error(request, '❌ El enlace ya expiró o es inválido. Solicita uno nuevo.')
         return redirect('home:recuperar_password')
-

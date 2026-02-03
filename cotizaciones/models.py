@@ -1116,47 +1116,6 @@ class HistorialPrestamo(models.Model):
         """Duración real del préstamo"""
         return (self.fecha_devuelto - self.fecha_prestamo).days
 
-
-
-
-
-
-
-
-
-    """Historial de préstamos devueltos"""
-    
-    material_codigo = models.CharField(max_length=50)
-    material_nombre = models.CharField(max_length=200)
-    
-    prestado_a = models.CharField(max_length=200)
-    
-    fecha_prestamo = models.DateField()
-    fecha_devolucion = models.DateField(verbose_name='Fecha esperada de devolución')
-    fecha_devuelto = models.DateField(verbose_name='Fecha real de devolución')
-    
-    observaciones = models.TextField(blank=True, null=True)
-    
-    usuario_registro = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True
-    )
-    
-    fecha_registro = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-fecha_devuelto']
-        verbose_name = 'Historial de Préstamo'
-        verbose_name_plural = 'Historial de Préstamos'
-    
-    def __str__(self):
-        return f"{self.material_codigo} - {self.prestado_a} ({self.fecha_devuelto})"
-    
-    def duracion_dias(self):
-        """Duración real del préstamo"""
-        return (self.fecha_devuelto - self.fecha_prestamo).day
-
 class Solicitud_Web(models.Model):
     """
     Modelo INDEPENDIENTE para solicitudes desde la web pública.

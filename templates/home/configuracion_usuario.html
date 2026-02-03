@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <link rel="stylesheet" href="{% static 'css/pages/panel.css' %}">
     <style>
+        /* ... (Estilos CSS existentes se mantienen igual) ... */
         :root {
             --bg-primary: #ffffff;
             --bg-secondary: #f8f9fa;
@@ -123,106 +124,6 @@
             font-size: 14px;
         }
 
-        .switch-container {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 15px;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .switch-info {
-            flex: 1;
-        }
-
-        .switch-info strong {
-            display: block;
-            margin-bottom: 4px;
-            color: var(--text-primary);
-        }
-
-        .switch-info small {
-            color: var(--text-secondary);
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 26px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: 0.4s;
-            border-radius: 26px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: 0.4s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: #046de5;
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(24px);
-        }
-
-        .theme-preview {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .theme-option {
-            padding: 20px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .theme-option:hover {
-            border-color: #046de5;
-            transform: translateY(-2px);
-        }
-
-        .theme-option.selected {
-            border-color: #046de5;
-            background: rgba(4, 109, 229, 0.1);
-        }
-
-        .theme-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-
         .btn-save {
             background: linear-gradient(to bottom, #046de5, #4c9dfa);
             color: white;
@@ -238,7 +139,7 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(4, 109, 229, 0.3);
         }
-
+        
         .font-preview {
             margin-top: 15px;
             padding: 20px;
@@ -279,197 +180,76 @@
         {% endif %}
 
         <div class="config-tabs">
-            <button class="config-tab active" data-tab="apariencia">Apariencia</button>
-            <button class="config-tab" data-tab="herramientas">Herramientas</button>
-            <button class="config-tab" data-tab="notificaciones">Notificaciones</button>
-            <button class="config-tab" data-tab="preferencias">Preferencias</button>
+            {% if perfil.es_gerente_o_superior %}
+            <button class="config-tab active" type="button" data-tab="empresa" style="color: #d63384;">Empresa</button>
+            {% endif %}
         </div>
 
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
 
-            <!-- Apariencia -->
-            <div class="config-section active" data-section="apariencia">
+            {% if perfil.es_gerente_o_superior %}
+            <div class="config-section active" data-section="empresa">
                 <div class="config-card">
-                    <h3>Tema de Color</h3>
-                    <div class="theme-preview">
-                        <div class="theme-option {% if config.tema == 'light' %}selected{% endif %}" 
-                             onclick="selectTheme('light')">
-                            <div class="theme-icon">☀️</div>
-                            <strong>Claro</strong>
-                            <input type="radio" name="tema" value="light" 
-                                   {% if config.tema == 'light' %}checked{% endif %} style="display:none;">
-                        </div>
-                        <div class="theme-option {% if config.tema == 'dark' %}selected{% endif %}" 
-                             onclick="selectTheme('dark')">
-                            <div class="theme-icon">🌙</div>
-                            <strong>Oscuro</strong>
-                            <input type="radio" name="tema" value="dark" 
-                                   {% if config.tema == 'dark' %}checked{% endif %} style="display:none;">
-                        </div>
-                        <div class="theme-option {% if config.tema == 'auto' %}selected{% endif %}" 
-                             onclick="selectTheme('auto')">
-                            <div class="theme-icon">🔄</div>
-                            <strong>Automático</strong>
-                            <input type="radio" name="tema" value="auto" 
-                                   {% if config.tema == 'auto' %}checked{% endif %} style="display:none;">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="config-card">
-                    <h3>Tamaño de Fuente</h3>
-                    <div class="config-group">
-                        <select name="tamano_fuente" id="fontSizeSelect" onchange="previewFontSize(this.value)">
-                            <option value="small" {% if config.tamano_fuente == 'small' %}selected{% endif %}>Pequeño</option>
-                            <option value="medium" {% if config.tamano_fuente == 'medium' %}selected{% endif %}>Mediano</option>
-                            <option value="large" {% if config.tamano_fuente == 'large' %}selected{% endif %}>Grande</option>
-                        </select>
-                        <div class="font-preview">
-                            <p>Vista previa del texto con el tamaño seleccionado.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="config-card">
-                    <h3>Idioma</h3>
-                    <div class="config-group">
-                        <select name="idioma">
-                            <option value="es" {% if config.idioma == 'es' %}selected{% endif %}>Español</option>
-                            <option value="en" {% if config.idioma == 'en' %}selected{% endif %}>English</option>
-                        </select>
-                        <small class="description">El cambio de idioma se aplicará en futuras versiones</small>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Herramientas -->
-            <div class="config-section" data-section="herramientas">
-                <div class="config-card">
-                    <h3>Herramientas Habilitadas</h3>
+                    <h3>Datos de la Empresa</h3>
                     <p style="margin-bottom: 20px; color: var(--text-secondary);">
-                        Activa o desactiva las herramientas que deseas ver en tu panel
+                        Esta información aparecerá en los encabezados de las cotizaciones y documentos.
                     </p>
 
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Calculadora</strong>
-                            <small>Calculadora rápida integrada</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="herramienta_calculadora" 
-                                   {% if config.herramienta_calculadora %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="config-group">
+                        <label>Nombre de la Empresa</label>
+                        <input type="text" name="empresa_nombre" value="{{ config_empresa.nombre }}" style="width: 100%; max-width: 500px;">
                     </div>
 
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Bloc de Notas</strong>
-                            <small>Toma notas rápidas desde cualquier lugar</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="herramienta_notas" 
-                                   {% if config.herramienta_notas %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="config-group">
+                        <label>Descripción / Slogan</label>
+                        <span class="description">Acepta saltos de línea. Se muestra bajo el nombre.</span>
+                        <textarea name="empresa_descripcion" rows="4" 
+                            style="width: 100%; max-width: 500px; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-primary); color: var(--text-primary);">{{ config_empresa.descripcion }}</textarea>
                     </div>
 
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Recordatorios</strong>
-                            <small>Crea y gestiona recordatorios</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="herramienta_recordatorios" 
-                                   {% if config.herramienta_recordatorios %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
+                    <div class="config-group">
+                        <label>Dirección</label>
+                        <input type="text" name="empresa_direccion" value="{{ config_empresa.direccion }}" style="width: 100%; max-width: 500px;">
                     </div>
 
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Conversor de Unidades</strong>
-                            <small>Convierte entre diferentes unidades de medida</small>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 520px;">
+                        <div class="config-group">
+                            <label>Teléfono(s)</label>
+                            <input type="text" name="empresa_telefono" value="{{ config_empresa.telefono }}">
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" name="herramienta_conversor" 
-                                   {% if config.herramienta_conversor %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
+
+                        <div class="config-group">
+                            <label>Email Corporativo</label>
+                            <input type="email" name="empresa_email" value="{{ config_empresa.email }}">
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <label>Logo (Opcional)</label>
+                        {% if config_empresa.logo %}
+                            <div style="margin-bottom: 10px;">
+                                <img src="{{ config_empresa.logo.url }}" alt="Logo actual" style="max-height: 50px;">
+                            </div>
+                        {% endif %}
+                        <input type="file" name="empresa_logo" accept="image/*" style="border: none; padding-left: 0;">
+                    </div>
+
+                    <div style="margin-top: 30px; padding: 20px; border: 1px dashed var(--border-color); border-radius: 8px; background: #f8f9fa;">
+                        <label style="margin-bottom: 15px; display: block;">Vista Previa del Encabezado:</label>
+                        
+                        <div class="empresa-header" style="text-align: center;">
+                            <h1 style="margin: 0; color: #333; font-size: 24px;">{{ config_empresa.nombre }}</h1>
+                            <div style="white-space: pre-line; margin: 10px 0; color: #666;">{{ config_empresa.descripcion }}</div>
+                            <div style="font-size: 14px; color: #444;">
+                                {{ config_empresa.direccion }}<br>
+                                TELÉFONOS {{ config_empresa.telefono }} / EMAIL {{ config_empresa.email }}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Notificaciones -->
-            <div class="config-section" data-section="notificaciones">
-                <div class="config-card">
-                    <h3>Preferencias de Notificaciones</h3>
-                    
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Notificaciones por Email</strong>
-                            <small>Recibe notificaciones importantes en tu correo</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="notificaciones_email" 
-                                   {% if config.notificaciones_email %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Notificaciones del Sistema</strong>
-                            <small>Muestra alertas y notificaciones en el panel</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="notificaciones_sistema" 
-                                   {% if config.notificaciones_sistema %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Preferencias -->
-            <div class="config-section" data-section="preferencias">
-                <div class="config-card">
-                    <h3>Preferencias de Visualización</h3>
-                    
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Mostrar Tutorial Inicial</strong>
-                            <small>Muestra el tutorial al iniciar sesión</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="mostrar_tutorial" 
-                                   {% if config.mostrar_tutorial %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="switch-container">
-                        <div class="switch-info">
-                            <strong>Sidebar Compacta</strong>
-                            <small>Muestra el menú lateral en modo compacto</small>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" name="compactar_sidebar" 
-                                   {% if config.compactar_sidebar %}checked{% endif %}>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="config-group" style="margin-top: 20px;">
-                        <label>Items por Página</label>
-                        <span class="description">Cantidad de elementos a mostrar en tablas y listados</span>
-                        <input type="number" name="items_por_pagina" 
-                               value="{{ config.items_por_pagina }}" 
-                               min="5" max="100" step="5">
-                    </div>
-                </div>
-            </div>
+            {% endif %}
 
             <div style="text-align: right; margin-top: 30px;">
                 <button type="submit" class="btn-save">
@@ -489,28 +269,12 @@
                 document.querySelectorAll('.config-section').forEach(s => s.classList.remove('active'));
                 
                 this.classList.add('active');
-                document.querySelector(`[data-section="${targetTab}"]`).classList.add('active');
+                const targetSection = document.querySelector(`[data-section="${targetTab}"]`);
+                if (targetSection) {
+                    targetSection.classList.add('active');
+                }
             });
         });
-
-        // Theme selection
-        function selectTheme(theme) {
-            document.querySelectorAll('.theme-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-            
-            document.querySelector(`input[value="${theme}"]`).checked = true;
-            
-            // Preview theme
-            document.documentElement.setAttribute('data-theme', theme);
-        }
-
-        // Font size preview
-        function previewFontSize(size) {
-            document.body.className = document.body.className.replace(/font-\w+/, '');
-            document.body.classList.add(`font-${size}`);
-        }
 
         // Apply theme on load
         document.addEventListener('DOMContentLoaded', function() {

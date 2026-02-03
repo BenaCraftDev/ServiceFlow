@@ -29,6 +29,9 @@ from notificaciones.utils import crear_notificacion
 from django.core.cache import cache
 from cotizaciones.utils import enviar_email_con_reintentos, verificar_configuracion_email
 from cotizaciones.views.comunicaciones import recuperar_password, reset_password
+from cotizaciones.models import ConfiguracionEmpresa
+from .models import PerfilEmpleado, ConfiguracionUsuario
+
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -669,44 +672,69 @@ def mi_perfil(request):
 
 @login_required
 def configuracion_usuario(request):
-    """Vista para configuraciones personales del usuario"""
-    from .models import ConfiguracionUsuario
+    """Vista para configuraciones personales del usuario y de la Empresa (si es admin)"""
     
-    # Obtener o crear configuración
+    # 1. Obtener configuración de usuario
     config = ConfiguracionUsuario.obtener_o_crear(request.user)
     
+    # 2. Obtener perfil para verificar permisos
+    try:
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+    except PerfilEmpleado.DoesNotExist:
+        perfil = None
+
+    # 3. Obtener configuración de empresa
+    config_empresa = ConfiguracionEmpresa.get_config()
+    
     if request.method == 'POST':
-        # Actualizar apariencia
+        # --- GUARDAR CONFIGURACIÓN DE USUARIO (Código existente) ---
         config.tema = request.POST.get('tema', 'light')
         config.tamano_fuente = request.POST.get('tamano_fuente', 'medium')
         config.idioma = request.POST.get('idioma', 'es')
-        
-        # Actualizar notificaciones
         config.notificaciones_email = request.POST.get('notificaciones_email') == 'on'
         config.notificaciones_sistema = request.POST.get('notificaciones_sistema') == 'on'
-        
-        # Actualizar herramientas
         config.herramienta_calculadora = request.POST.get('herramienta_calculadora') == 'on'
         config.herramienta_notas = request.POST.get('herramienta_notas') == 'on'
         config.herramienta_recordatorios = request.POST.get('herramienta_recordatorios') == 'on'
         config.herramienta_conversor = request.POST.get('herramienta_conversor') == 'on'
-        
-        # Actualizar preferencias
         config.mostrar_tutorial = request.POST.get('mostrar_tutorial') == 'on'
         config.compactar_sidebar = request.POST.get('compactar_sidebar') == 'on'
         
-        items = request.POST.get('items_por_pagina', '15')
         try:
-            config.items_por_pagina = int(items)
+            config.items_por_pagina = int(request.POST.get('items_por_pagina', '15'))
         except ValueError:
             config.items_por_pagina = 15
         
         config.save()
-        messages.success(request, 'Configuración guardada exitosamente.')
+
+        # --- GUARDAR CONFIGURACIÓN DE EMPRESA (Nuevo código) ---
+        # Solo si el usuario es Gerente, Director o Admin
+        if perfil and perfil.es_gerente_o_superior():
+            # Verificamos si vienen datos de empresa en el POST
+            if 'empresa_nombre' in request.POST:
+                config_empresa.nombre = request.POST.get('empresa_nombre')
+                config_empresa.descripcion = request.POST.get('empresa_descripcion')
+                config_empresa.direccion = request.POST.get('empresa_direccion')
+                config_empresa.telefono = request.POST.get('empresa_telefono')
+                config_empresa.email = request.POST.get('empresa_email')
+                
+                # Opcional: Si deseas permitir subir logo (requiere enctype="multipart/form-data" en el form HTML)
+                if 'empresa_logo' in request.FILES:
+                    config_empresa.logo = request.FILES['empresa_logo']
+                
+                config_empresa.save()
+                messages.success(request, 'Configuración de Empresa actualizada correctamente.')
+            else:
+                messages.success(request, 'Configuración personal guardada exitosamente.')
+        else:
+            messages.success(request, 'Configuración personal guardada exitosamente.')
+            
         return redirect('home:configuracion_usuario')
     
     context = {
         'config': config,
+        'perfil': perfil,           # Necesario para el template
+        'config_empresa': config_empresa, # Necesario para el template
     }
     return render(request, 'home/configuracion_usuario.html', context)
 

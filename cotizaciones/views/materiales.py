@@ -631,7 +631,7 @@ def eliminar_prestamo(request, pk):
     
     try:
         from django.utils import timezone
-        from .models import HistorialPrestamo
+        from ..models import HistorialPrestamo
         
         prestamo = get_object_or_404(PrestamoMaterial, pk=pk)
         material_codigo = prestamo.material.codigo
@@ -716,45 +716,7 @@ def obtener_historial(request):
     """Obtiene el historial de préstamos"""
     
     try:
-        from .models import HistorialPrestamo
-        
-        historial = HistorialPrestamo.objects.all().order_by('-fecha_devuelto')
-        
-        data = []
-        for item in historial:
-            data.append({
-                'id': item.id,
-                'material_codigo': item.material_codigo,
-                'material_nombre': item.material_nombre,
-                'prestado_a': item.prestado_a,
-                'fecha_prestamo': item.fecha_prestamo.isoformat(),
-                'fecha_devolucion': item.fecha_devolucion.isoformat(),
-                'fecha_devuelto': item.fecha_devuelto.isoformat() if item.fecha_devuelto else None,
-                'duracion_dias': item.duracion_dias(),
-                'observaciones': item.observaciones or ''
-            })
-        
-        return JsonResponse({
-            'success': True,
-            'historial': data
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        })
-
-
-
-
-
-
-
-    """Obtiene el historial de préstamos"""
-    
-    try:
-        from .models import HistorialPrestamo
+        from ..models import HistorialPrestamo
         
         historial = HistorialPrestamo.objects.all().order_by('-fecha_devuelto')
         

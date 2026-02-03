@@ -169,6 +169,7 @@ urlpatterns = [
     # Sistema de Préstamos
     path('prestamos/', views.lista_prestamos, name='lista_prestamos'),
     path('prestamos/crear/', views.crear_prestamo, name='crear_prestamo'),
+    path('prestamos/historial/', views.obtener_historial, name='obtener_historial'),
     path('prestamos/<int:pk>/datos/', views.obtener_datos_prestamo, name='obtener_datos_prestamo'),
     path('prestamos/<int:pk>/editar/', views.editar_prestamo, name='editar_prestamo'),
     path('prestamos/<int:pk>/eliminar/', views.eliminar_prestamo, name='eliminar_prestamo'),

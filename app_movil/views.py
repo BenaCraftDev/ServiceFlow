@@ -227,21 +227,26 @@ def completar_trabajo_empleado(request, trabajo_id):
 
 
 # ==================== EVIDENCIAS ====================
-
 @login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def subir_evidencia_trabajo(request, trabajo_id):
-    """API para app móvil - Subir foto de evidencia"""
+    """API para app móvil - Subir foto de evidencia a Cloudinary"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         perfil_empleado = request.user.perfilempleado
         trabajo = get_object_or_404(TrabajoEmpleado, id=trabajo_id, empleado=perfil_empleado)
+        
+        logger.info(f"📸 Subiendo evidencia para trabajo {trabajo_id}")
         
         data = json.loads(request.body)
         imagen_base64 = data.get('imagen')
         descripcion = data.get('descripcion', '')
         
         if not imagen_base64:
+            logger.error("❌ No se proporcionó imagen")
             return JsonResponse({
                 'success': False,
                 'error': 'No se proporcionó imagen'
@@ -254,7 +259,9 @@ def subir_evidencia_trabajo(request, trabajo_id):
                 imagen_base64 = imagen_base64.split('base64,')[1]
             
             imagen_data = base64.b64decode(imagen_base64)
+            logger.info(f"✅ Imagen decodificada: {len(imagen_data)} bytes")
         except Exception as e:
+            logger.error(f"❌ Error decodificando imagen: {str(e)}")
             return JsonResponse({
                 'success': False,
                 'error': f'Error decodificando imagen: {str(e)}'
@@ -264,8 +271,12 @@ def subir_evidencia_trabajo(request, trabajo_id):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'evidencias_trabajos/{trabajo_id}/evidencia_{timestamp}.jpg'
         
-        # Guardar archivo
+        logger.info(f"📁 Guardando como: {filename}")
+        
+        # Guardar archivo (Cloudinary lo maneja automáticamente via DEFAULT_FILE_STORAGE)
         path = default_storage.save(filename, ContentFile(imagen_data))
+        
+        logger.info(f"✅ Archivo guardado en: {path}")
         
         # Crear registro de evidencia
         evidencia = EvidenciaTrabajo.objects.create(
@@ -274,27 +285,36 @@ def subir_evidencia_trabajo(request, trabajo_id):
             descripcion=descripcion
         )
         
+        # Obtener URL de Cloudinary
+        imagen_url = evidencia.imagen.url if evidencia.imagen else None
+        
+        logger.info(f"✅ Evidencia creada ID: {evidencia.id}")
+        logger.info(f"🔗 URL Cloudinary: {imagen_url}")
+        
         return JsonResponse({
             'success': True,
             'message': 'Evidencia subida correctamente',
             'evidencia': {
                 'id': evidencia.id,
-                'url': request.build_absolute_uri(evidencia.imagen.url),
+                'url': imagen_url,  # URL directa de Cloudinary
                 'descripcion': evidencia.descripcion,
                 'fecha_subida': evidencia.fecha_subida.isoformat()
             }
         })
         
     except Exception as e:
+        logger.error(f"❌ Error general: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
         }, status=400)
 
-
 @login_required
 def obtener_evidencias_trabajo(request, trabajo_id):
-    """API para app móvil - Obtener evidencias de un trabajo"""
+    """API para app móvil - Obtener evidencias de un trabajo desde Cloudinary"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         perfil_empleado = request.user.perfilempleado
         
@@ -305,16 +325,20 @@ def obtener_evidencias_trabajo(request, trabajo_id):
         
         evidencias = trabajo.evidencias.all().order_by('-fecha_subida')
         
-        print(f"🔍 DEBUG evidencias - Trabajo ID: {trabajo_id}")
-        print(f"🔍 Total evidencias: {evidencias.count()}")
+        logger.info(f"🔍 Obteniendo evidencias - Trabajo ID: {trabajo_id}")
+        logger.info(f"🔍 Total evidencias: {evidencias.count()}")
         
         evidencias_data = []
         for evidencia in evidencias:
-            url = request.build_absolute_uri(evidencia.imagen.url)
-            print(f"  - Evidencia ID: {evidencia.id}, URL: {url}")
+            # URL directa de Cloudinary (no necesita build_absolute_uri)
+            url = evidencia.imagen.url if evidencia.imagen else None
+            
+            logger.info(f"  ✅ Evidencia ID: {evidencia.id}")
+            logger.info(f"  🔗 URL Cloudinary: {url}")
+            
             evidencias_data.append({
                 'id': evidencia.id,
-                'url': url,
+                'url': url,  # URL directa de Cloudinary
                 'descripcion': evidencia.descripcion or '',
                 'fecha_subida': evidencia.fecha_subida.isoformat()
             })
@@ -325,7 +349,7 @@ def obtener_evidencias_trabajo(request, trabajo_id):
         })
         
     except Exception as e:
-        print(f"❌ Error obteniendo evidencias: {e}")
+        logger.error(f"❌ Error obteniendo evidencias: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -334,6 +358,9 @@ def obtener_evidencias_trabajo(request, trabajo_id):
 @login_required
 def obtener_todas_evidencias_admin(request):
     """API para admin - Ver TODAS las evidencias del sistema"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         perfil = PerfilEmpleado.objects.get(user=request.user)
         
@@ -345,34 +372,34 @@ def obtener_todas_evidencias_admin(request):
             }, status=403)
         
         # Obtener todas las evidencias
-        from app_movil.models import EvidenciaTrabajo
-        
         evidencias = (
             EvidenciaTrabajo.objects
-            .select_related('trabajo__empleado__user', 'cotizacion__cliente')
+            .select_related('trabajo__empleado__user', 'trabajo__cotizacion__cliente')
             .order_by('-fecha_subida')
         )
         
-        # Filtrar por cotización si se especifica
-        cotizacion_id = request.GET.get('cotizacion_id')
-        if cotizacion_id:
-            evidencias = evidencias.filter(cotizacion_id=cotizacion_id)
+        # Filtrar por trabajo si se especifica
+        trabajo_id = request.GET.get('trabajo_id')
+        if trabajo_id:
+            evidencias = evidencias.filter(trabajo_id=trabajo_id)
+        
+        logger.info(f"🔍 Admin obteniendo {evidencias.count()} evidencias")
         
         evidencias_data = []
         for evidencia in evidencias:
-            dias_restantes = (evidencia.fecha_expiracion - timezone.now()).days
+            # Calcular días desde subida (ya que no hay fecha_expiracion)
+            dias_desde_subida = (timezone.now() - evidencia.fecha_subida).days
             
             evidencias_data.append({
                 'id': evidencia.id,
-                'url': request.build_absolute_uri(evidencia.imagen.url),
+                'url': evidencia.imagen.url if evidencia.imagen else None,  # URL Cloudinary
                 'descripcion': evidencia.descripcion or '',
                 'fecha_subida': evidencia.fecha_subida.isoformat(),
-                'fecha_expiracion': evidencia.fecha_expiracion.isoformat(),
-                'dias_restantes': dias_restantes,
-                'cotizacion': {
-                    'id': evidencia.cotizacion.id,
-                    'numero': evidencia.cotizacion.numero,
-                    'cliente': evidencia.cotizacion.cliente.nombre if evidencia.cotizacion.cliente else 'N/A'
+                'dias_desde_subida': dias_desde_subida,
+                'trabajo': {
+                    'id': evidencia.trabajo.id,
+                    'cotizacion_numero': evidencia.trabajo.cotizacion.numero if evidencia.trabajo.cotizacion else 'N/A',
+                    'cliente': evidencia.trabajo.cotizacion.cliente.nombre if evidencia.trabajo.cotizacion and evidencia.trabajo.cotizacion.cliente else 'N/A'
                 },
                 'empleado': {
                     'id': evidencia.trabajo.empleado.id,
@@ -392,6 +419,7 @@ def obtener_todas_evidencias_admin(request):
             'error': 'Perfil de empleado no encontrado'
         }, status=404)
     except Exception as e:
+        logger.error(f"❌ Error obteniendo evidencias admin: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -399,9 +427,12 @@ def obtener_todas_evidencias_admin(request):
 
 @login_required
 def descargar_evidencia(request, evidencia_id):
-    """API para app móvil - Descargar evidencia específica"""
+    """API para app móvil - Descargar evidencia desde Cloudinary"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
-        perfil_empleado = request.user.perfilempleado  # ← FALTABA ESTO
+        perfil_empleado = request.user.perfilempleado
         
         if perfil_empleado.cargo == 'admin':
             evidencia = get_object_or_404(EvidenciaTrabajo, id=evidencia_id)
@@ -412,15 +443,26 @@ def descargar_evidencia(request, evidencia_id):
                 trabajo__empleado=perfil_empleado
             )
         
-        # Abrir y leer el archivo
-        imagen_file = evidencia.imagen.open('rb')
-        response = HttpResponse(imagen_file.read(), content_type='image/jpeg')
-        response['Content-Disposition'] = f'attachment; filename="evidencia_{evidencia.id}.jpg"'
-        imagen_file.close()
+        logger.info(f"📥 Descargando evidencia {evidencia_id}")
         
-        return response
+        # Retornar URL de descarga directa de Cloudinary
+        if evidencia.imagen:
+            download_url = evidencia.imagen.url
+            logger.info(f"🔗 URL descarga: {download_url}")
+            
+            return JsonResponse({
+                'success': True,
+                'download_url': download_url,
+                'filename': f'evidencia_{evidencia.id}.jpg'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Evidencia sin imagen'
+            }, status=404)
         
     except Exception as e:
+        logger.error(f"❌ Error descargando evidencia: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
@@ -430,28 +472,44 @@ def descargar_evidencia(request, evidencia_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def eliminar_evidencia(request, evidencia_id):
-    """API para admin - Eliminar evidencia manualmente"""
+    """API para admin y empleados - Eliminar evidencia de Cloudinary"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     try:
         perfil = request.user.perfilempleado
+        evidencia = get_object_or_404(EvidenciaTrabajo, id=evidencia_id)
         
-        # Solo admins pueden eliminar
-        if perfil.cargo != 'admin':
+        # Verificar permisos: admin o dueño del trabajo
+        if perfil.cargo != 'admin' and evidencia.trabajo.empleado != perfil:
             return JsonResponse({
                 'success': False,
-                'error': 'Acceso denegado. Solo administradores pueden eliminar evidencias.'
+                'error': 'Acceso denegado. Solo puedes eliminar tus propias evidencias.'
             }, status=403)
         
-        evidencia = get_object_or_404(EvidenciaTrabajo, id=evidencia_id)
+        logger.info(f"🗑️ Eliminando evidencia ID: {evidencia_id}")
+        logger.info(f"📁 Archivo: {evidencia.imagen.name if evidencia.imagen else 'Sin archivo'}")
         
         # Guardar info antes de eliminar
         info = {
             'id': evidencia.id,
             'trabajo_id': evidencia.trabajo.id,
-            'descripcion': evidencia.descripcion
+            'descripcion': evidencia.descripcion,
+            'url': evidencia.imagen.url if evidencia.imagen else None
         }
         
-        # Eliminar (el método delete() del modelo se encarga del archivo físico)
+        # Eliminar archivo de Cloudinary
+        if evidencia.imagen:
+            try:
+                # Cloudinary elimina automáticamente via default_storage
+                evidencia.imagen.delete(save=False)
+                logger.info(f"✅ Archivo eliminado de Cloudinary")
+            except Exception as e:
+                logger.warning(f"⚠️ No se pudo eliminar archivo de Cloudinary: {e}")
+        
+        # Eliminar registro de base de datos
         evidencia.delete()
+        logger.info(f"✅ Evidencia {evidencia_id} eliminada de BD")
         
         return JsonResponse({
             'success': True,
@@ -465,10 +523,12 @@ def eliminar_evidencia(request, evidencia_id):
             'error': 'Perfil no encontrado'
         }, status=404)
     except Exception as e:
+        logger.error(f"❌ Error eliminando evidencia: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': str(e)
         }, status=400)
+
 
 # ==================== GASTOS ====================
 

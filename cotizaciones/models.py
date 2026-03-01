@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.utils import timezone
 from datetime import datetime, timedelta
 import uuid
+from cloudinary.models import CloudinaryField
 
 class CategoriaMaterial(models.Model):
     nombre = models.CharField(max_length=100)
@@ -1340,22 +1341,25 @@ class EvidenciaTrabajo(models.Model):
         on_delete=models.CASCADE,
         related_name='evidencias'
     )
-    imagen = models.ImageField(
-        upload_to='evidencias_trabajos/%Y/%m/%d/',
+
+    imagen = CloudinaryField(   # 👈 CAMBIO AQUÍ
+        'image',
         help_text='Foto de evidencia del trabajo'
     )
+
     descripcion = models.TextField(
         blank=True,
         null=True,
         help_text='Descripción de la evidencia'
     )
+
     fecha_subida = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-fecha_subida']
         verbose_name = 'Evidencia de Trabajo'
         verbose_name_plural = 'Evidencias de Trabajos'
-    
+
     def __str__(self):
         return f"Evidencia {self.id} - Trabajo {self.trabajo.id}"
 

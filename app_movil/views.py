@@ -254,7 +254,6 @@ def subir_evidencia_trabajo(request, trabajo_id):
         
         # Decodificar base64
         try:
-            # Remover el prefijo data:image/...;base64, si existe
             if 'base64,' in imagen_base64:
                 imagen_base64 = imagen_base64.split('base64,')[1]
             
@@ -269,24 +268,19 @@ def subir_evidencia_trabajo(request, trabajo_id):
         
         # Generar nombre de archivo
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'evidencias_trabajos/{trabajo_id}/evidencia_{timestamp}.jpg'
+        filename = f'evidencia_{trabajo_id}_{timestamp}.jpg'
         
         logger.info(f"📁 Guardando como: {filename}")
         
-        # Guardar archivo (Cloudinary lo maneja automáticamente via DEFAULT_FILE_STORAGE)
-        path = default_storage.save(filename, ContentFile(imagen_data))
-        
-        logger.info(f"✅ Archivo guardado en: {path}")
-        
-        # Crear registro de evidencia
-        evidencia = EvidenciaTrabajo.objects.create(
+        # Crear evidencia y guardar imagen directamente en CloudinaryField
+        evidencia = EvidenciaTrabajo(
             trabajo=trabajo,
-            imagen=path,
             descripcion=descripcion
         )
+        evidencia.imagen.save(filename, ContentFile(imagen_data), save=True)
         
         # Obtener URL de Cloudinary
-        imagen_url = evidencia.imagen.url if evidencia.imagen else None
+        imagen_url = evidencia.imagen.url
         
         logger.info(f"✅ Evidencia creada ID: {evidencia.id}")
         logger.info(f"🔗 URL Cloudinary: {imagen_url}")
@@ -296,7 +290,7 @@ def subir_evidencia_trabajo(request, trabajo_id):
             'message': 'Evidencia subida correctamente',
             'evidencia': {
                 'id': evidencia.id,
-                'url': imagen_url,  # URL directa de Cloudinary
+                'url': imagen_url,
                 'descripcion': evidencia.descripcion,
                 'fecha_subida': evidencia.fecha_subida.isoformat()
             }

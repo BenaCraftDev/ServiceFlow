@@ -754,3 +754,64 @@ def eliminar_notificacion(request, notificacion_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+# ==================== PUSH NOTIFICATIONS ====================
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def registrar_push_token(request):
+    """Guarda el Expo Push Token del dispositivo del empleado"""
+    try:
+        data = json.loads(request.body)
+        token = data.get('token', '').strip()
+
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token vacío'}, status=400)
+
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        perfil.expo_push_token = token
+        perfil.save()
+
+        return JsonResponse({'success': True, 'message': 'Token registrado'})
+
+    except PerfilEmpleado.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
+    """
+    Envía una notificación push a un empleado via Expo Push API.
+    """
+    import urllib.request
+
+    token = perfil_empleado.expo_push_token
+    if not token or not token.startswith('ExponentPushToken'):
+        return
+
+    payload = json.dumps({
+        'to': token,
+        'title': titulo,
+        'body': mensaje,
+        'sound': 'default',
+        'priority': 'high',
+    }).encode('utf-8')
+
+    try:
+        req = urllib.request.Request(
+            'https://exp.host/--/api/v2/push/send',
+            data=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resultado = json.loads(resp.read().decode())
+            print(f"✅ Push enviado a {perfil_empleado.nombre_completo}: {resultado}")
+    except Exception as e:
+        print(f"❌ Error enviando push a {perfil_empleado.nombre_completo}: {e}")

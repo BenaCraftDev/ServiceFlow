@@ -1,4 +1,3 @@
-# app_movil/urls.py
 from django.urls import path
 from . import views
 
@@ -27,4 +26,7 @@ urlpatterns = [
     path('notificacion/<int:notificacion_id>/marcar-leida/', views.marcar_notificacion_leida, name='marcar_notificacion_leida'),
     path('notificaciones/marcar-todas-leidas/', views.marcar_todas_notificaciones_leidas, name='marcar_todas_leidas'),
     path('notificacion/<int:notificacion_id>/eliminar/', views.eliminar_notificacion, name='eliminar_notificacion'),
+
+    # PUSH NOTIFICATIONS
+    path('push/registrar-token/', views.registrar_push_token, name='registrar_push_token'),
 ]

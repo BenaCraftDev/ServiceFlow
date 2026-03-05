@@ -22,6 +22,7 @@ from notificaciones.models import Notificacion
 from notificaciones.utils import crear_notificacion
 from home.models import PerfilEmpleado
 from ..utils_mantenimiento import verificar_mantenimientos_materiales
+from app_movil.views import enviar_push_a_empleado
 
 @login_required
 def mis_trabajos_empleado(request):
@@ -246,8 +247,6 @@ def agregar_empleado_mano_obra(request, cotizacion_pk, item_pk):
         data = json.loads(request.body)
         empleado_id = data.get('empleado_id')
         
-        # ASEGURAR QUE LAS HORAS SEAN NUMÉRICAS:
-        # Intentamos obtener horas_asignadas, si no viene o es vacío, usamos las del item_mano_obra
         try:
             horas_asignadas = float(data.get('horas_asignadas', 0))
             if horas_asignadas <= 0:
@@ -260,7 +259,6 @@ def agregar_empleado_mano_obra(request, cotizacion_pk, item_pk):
         
         valor_final = horas_asignadas if horas_asignadas > 0 else float(item_mano_obra.horas or 1.0)
 
-        # Verificar si ya está asignado
         if ItemManoObraEmpleado.objects.filter(item_mano_obra=item_mano_obra, empleado=empleado).exists():
             return JsonResponse({
                 'success': False,
@@ -276,24 +274,46 @@ def agregar_empleado_mano_obra(request, cotizacion_pk, item_pk):
                 observaciones=observaciones
             )
             
-            # 2. Crear registro en TrabajoEmpleado para la vista del empleado
-            # FORZAMOS el guardado de horas_estimadas aquí
+            # 2. Crear registro en TrabajoEmpleado
             trabajo = TrabajoEmpleado.objects.create(
                 empleado=empleado,
                 cotizacion=cotizacion,
                 item_mano_obra=item_mano_obra,
-                horas_estimadas=valor_final, # <--- Este es el campo clave
+                horas_estimadas=valor_final,
                 observaciones_empleado=observaciones,
                 defaults={
                     'estado': 'pendiente',
-                    'horas_estimadas': item_mano_obra.horas,  # <--- ESTA ES LA LÍNEA QUE FALTA
+                    'horas_estimadas': item_mano_obra.horas,
                 }
-            ) 
+            )
+
+            # 3. Crear notificación en BD
+            try:
+                Notificacion.objects.create(
+                    usuario=empleado.user,
+                    titulo="Nueva tarea asignada",
+                    mensaje=f"Se te asignó trabajo en cotización {cotizacion.numero}: {item_mano_obra.descripcion}",
+                    tipo='nueva_tarea',
+                    url=f'/cotizaciones/{cotizacion.pk}/',
+                )
+            except Exception as e:
+                print(f"⚠️ Error creando notificación: {e}")
+
+            # 4. Enviar push notification
+            try:
+                from app_movil.views import enviar_push_a_empleado
+                enviar_push_a_empleado(
+                    empleado,
+                    "Nueva tarea asignada 📋",
+                    f"Cotización {cotizacion.numero}: {item_mano_obra.descripcion}"
+                )
+            except Exception as e:
+                print(f"⚠️ Error enviando push: {e}")
         
         return JsonResponse({
             'success': True,
             'asignacion_id': asignacion.id,
-            'horas_guardadas': horas_asignadas, # Enviamos esto para debugear en el navegador
+            'horas_guardadas': horas_asignadas,
             'message': f'{empleado.nombre_completo} asignado con {horas_asignadas} hrs.'
         })
         

@@ -233,6 +233,7 @@ def completar_trabajo_empleado(request, trabajo_id):
 def subir_evidencia_trabajo(request, trabajo_id):
     """API para app móvil - Subir foto de evidencia a Cloudinary"""
     import logging
+    import cloudinary.uploader
     logger = logging.getLogger(__name__)
     
     try:
@@ -246,44 +247,40 @@ def subir_evidencia_trabajo(request, trabajo_id):
         descripcion = data.get('descripcion', '')
         
         if not imagen_base64:
-            logger.error("❌ No se proporcionó imagen")
-            return JsonResponse({
-                'success': False,
-                'error': 'No se proporcionó imagen'
-            }, status=400)
+            return JsonResponse({'success': False, 'error': 'No se proporcionó imagen'}, status=400)
         
         # Decodificar base64
         try:
             if 'base64,' in imagen_base64:
                 imagen_base64 = imagen_base64.split('base64,')[1]
-            
             imagen_data = base64.b64decode(imagen_base64)
             logger.info(f"✅ Imagen decodificada: {len(imagen_data)} bytes")
         except Exception as e:
-            logger.error(f"❌ Error decodificando imagen: {str(e)}")
-            return JsonResponse({
-                'success': False,
-                'error': f'Error decodificando imagen: {str(e)}'
-            }, status=400)
+            return JsonResponse({'success': False, 'error': f'Error decodificando imagen: {str(e)}'}, status=400)
         
-        # Generar nombre de archivo
+        # Subir directamente a Cloudinary
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'evidencia_{trabajo_id}_{timestamp}.jpg'
+        public_id = f'evidencias_trabajos/{trabajo_id}/evidencia_{timestamp}'
         
-        logger.info(f"📁 Guardando como: {filename}")
+        resultado = cloudinary.uploader.upload(
+            imagen_data,
+            public_id=public_id,
+            resource_type='image',
+            format='jpg'
+        )
         
-        # Crear evidencia y guardar imagen directamente en CloudinaryField
-        evidencia = EvidenciaTrabajo(
+        imagen_url = resultado.get('secure_url')
+        cloudinary_public_id = resultado.get('public_id')
+        logger.info(f"✅ Subida a Cloudinary OK: {imagen_url}")
+        
+        # Crear registro en BD con el public_id de Cloudinary
+        evidencia = EvidenciaTrabajo.objects.create(
             trabajo=trabajo,
+            imagen=cloudinary_public_id,
             descripcion=descripcion
         )
-        evidencia.imagen.save(filename, ContentFile(imagen_data), save=True)
-        
-        # Obtener URL de Cloudinary
-        imagen_url = evidencia.imagen.url
         
         logger.info(f"✅ Evidencia creada ID: {evidencia.id}")
-        logger.info(f"🔗 URL Cloudinary: {imagen_url}")
         
         return JsonResponse({
             'success': True,
@@ -298,10 +295,7 @@ def subir_evidencia_trabajo(request, trabajo_id):
         
     except Exception as e:
         logger.error(f"❌ Error general: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 @login_required
 def obtener_evidencias_trabajo(request, trabajo_id):

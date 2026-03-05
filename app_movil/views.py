@@ -282,6 +282,13 @@ def subir_evidencia_trabajo(request, trabajo_id):
         
         logger.info(f"✅ Evidencia creada ID: {evidencia.id}")
         
+        # Verificar almacenamiento después de cada subida (en background)
+        try:
+            from app_movil.cloudinary_monitor import verificar_y_gestionar_almacenamiento
+            verificar_y_gestionar_almacenamiento()
+        except Exception as e:
+            logger.warning(f"⚠️ Error verificando almacenamiento: {e}")
+        
         return JsonResponse({
             'success': True,
             'message': 'Evidencia subida correctamente',
@@ -516,6 +523,23 @@ def eliminar_evidencia(request, evidencia_id):
             'error': str(e)
         }, status=400)
 
+@login_required
+def verificar_almacenamiento_cloudinary(request):
+    """Endpoint para verificar y gestionar almacenamiento de Cloudinary"""
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        if perfil.cargo != 'admin':
+            return JsonResponse({'success': False, 'error': 'Solo administradores'}, status=403)
+
+        from app_movil.cloudinary_monitor import verificar_y_gestionar_almacenamiento
+        resultado = verificar_y_gestionar_almacenamiento()
+
+        return JsonResponse({'success': True, 'resultado': resultado})
+    except Exception as e:
+        logger.error(f"❌ Error verificando almacenamiento: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 # ==================== GASTOS ====================
 

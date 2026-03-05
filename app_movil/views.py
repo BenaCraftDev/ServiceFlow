@@ -462,6 +462,7 @@ def descargar_evidencia(request, evidencia_id):
 def eliminar_evidencia(request, evidencia_id):
     """API para admin y empleados - Eliminar evidencia de Cloudinary"""
     import logging
+    import cloudinary.uploader
     logger = logging.getLogger(__name__)
     
     try:
@@ -476,24 +477,22 @@ def eliminar_evidencia(request, evidencia_id):
             }, status=403)
         
         logger.info(f"🗑️ Eliminando evidencia ID: {evidencia_id}")
-        logger.info(f"📁 Archivo: {evidencia.imagen.name if evidencia.imagen else 'Sin archivo'}")
         
         # Guardar info antes de eliminar
         info = {
             'id': evidencia.id,
             'trabajo_id': evidencia.trabajo.id,
             'descripcion': evidencia.descripcion,
-            'url': evidencia.imagen.url if evidencia.imagen else None
         }
         
-        # Eliminar archivo de Cloudinary
+        # Eliminar archivo de Cloudinary usando public_id
         if evidencia.imagen:
             try:
-                # Cloudinary elimina automáticamente via default_storage
-                evidencia.imagen.delete(save=False)
-                logger.info(f"✅ Archivo eliminado de Cloudinary")
+                public_id = evidencia.imagen.public_id
+                cloudinary.uploader.destroy(public_id, resource_type='image')
+                logger.info(f"✅ Archivo eliminado de Cloudinary: {public_id}")
             except Exception as e:
-                logger.warning(f"⚠️ No se pudo eliminar archivo de Cloudinary: {e}")
+                logger.warning(f"⚠️ No se pudo eliminar de Cloudinary: {e}")
         
         # Eliminar registro de base de datos
         evidencia.delete()

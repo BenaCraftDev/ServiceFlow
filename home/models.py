@@ -103,6 +103,12 @@ class PerfilEmpleado(models.Model):
         null=True,
         verbose_name="Salario"
     )
+    expo_push_token = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name="Token Push Notificaciones"
+    )
     fecha_creacion = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Fecha de Creación"

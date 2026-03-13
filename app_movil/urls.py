@@ -32,4 +32,7 @@ urlpatterns = [
 
     # PUSH NOTIFICATIONS
     path('push/registrar-token/', views.registrar_push_token, name='registrar_push_token'),
+    path('notificaciones/', views.api_obtener_notificaciones, name='api_notificaciones'),
+    path('notificacion/<int:notificacion_id>/marcar-leida/', views.api_marcar_notificacion_leida, name='api_marcar_leida'),
+    path('notificaciones/marcar-todas-leidas/', views.api_marcar_todas_leidas, name='api_marcar_todas_leidas'),
 ]

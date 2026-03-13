@@ -16,6 +16,7 @@ import json
 import base64
 from datetime import datetime
 import logging
+from notificaciones.models import Notificacion
 
 logger = logging.getLogger(__name__)
 
@@ -895,3 +896,33 @@ def registrar_push_token(request):
         return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+@jwt_required
+def api_obtener_notificaciones(request):
+    notificaciones = Notificacion.objects.filter(usuario=request.user)
+    data = [{
+        'id': n.id,
+        'titulo': n.titulo,
+        'mensaje': n.mensaje,
+        'tipo': n.tipo,
+        'leida': n.leida,
+        'fecha_creacion': n.fecha_creacion.isoformat(),
+    } for n in notificaciones]
+    return JsonResponse({'notificaciones': data})
+
+@jwt_required
+def api_marcar_notificacion_leida(request, notificacion_id):
+    try:
+        n = Notificacion.objects.get(id=notificacion_id, usuario=request.user)
+        n.marcar_como_leida()
+        return JsonResponse({'success': True})
+    except Notificacion.DoesNotExist:
+        return JsonResponse({'success': False}, status=404)
+
+@jwt_required
+def api_marcar_todas_leidas(request):
+    from django.utils import timezone
+    Notificacion.objects.filter(usuario=request.user, leida=False).update(
+        leida=True, fecha_leida=timezone.now()
+    )
+    return JsonResponse({'success': True})

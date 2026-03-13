@@ -1,6 +1,3 @@
-# app_movil/views.py
-# API REST para la aplicación móvil
-
 from django.http import JsonResponse, HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
@@ -815,3 +812,67 @@ def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
             print(f"✅ Push enviado a {perfil_empleado.nombre_completo}: {resultado}")
     except Exception as e:
         print(f"❌ Error enviando push a {perfil_empleado.nombre_completo}: {e}")
+
+# ==================== PUSH NOTIFICATIONS ====================
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def registrar_push_token(request):
+    """API para app móvil - Registrar token de push notifications"""
+    try:
+        data = json.loads(request.body)
+        token = data.get('token')
+
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token requerido'}, status=400)
+
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        perfil.expo_push_token = token
+        perfil.save()
+
+        return JsonResponse({'success': True, 'message': 'Token registrado correctamente'})
+
+    except PerfilEmpleado.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
+    """Helper - Enviar push notification a un empleado via Expo"""
+    import urllib.request
+    import urllib.error
+
+    try:
+        token = perfil_empleado.expo_push_token
+        if not token:
+            print(f"⚠️ Empleado {perfil_empleado} no tiene push token")
+            return False
+
+        payload = json.dumps({
+            "to": token,
+            "title": titulo,
+            "body": mensaje,
+            "sound": "default",
+            "priority": "high",
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://exp.host/--/api/v2/push/send",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=10) as response:
+            resultado = json.loads(response.read().decode("utf-8"))
+            print(f"✅ Push enviado a {perfil_empleado}: {resultado}")
+            return True
+
+    except Exception as e:
+        print(f"❌ Error enviando push a {perfil_empleado}: {e}")
+        return False

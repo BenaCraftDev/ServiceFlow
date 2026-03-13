@@ -1,22 +1,43 @@
-from django.http import JsonResponse, HttpResponse
-from django.contrib.auth.decorators import login_required
+# app_movil/views.py
+from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.core.files.base import ContentFile
-from django.core.files.storage import default_storage
 from django.db.models import Sum, Q
+from django.contrib.auth import authenticate, login
 from cotizaciones.models import TrabajoEmpleado, EvidenciaTrabajo, GastoTrabajo
 from home.models import PerfilEmpleado
 from notificaciones.models import Notificacion
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from functools import wraps
 import json
 import base64
 from datetime import datetime
+import logging
 
-from django.contrib.auth import authenticate, login
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# HELPER: Autenticación JWT para vistas basadas en funciones
+# ============================================================
+def jwt_required(view_func):
+    """Decorador que reemplaza @jwt_required usando JWT"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        auth = JWTAuthentication()
+        try:
+            result = auth.authenticate(request)
+            if result is None:
+                return JsonResponse({'success': False, 'error': 'Token requerido'}, status=401)
+            request.user, _ = result
+        except (InvalidToken, TokenError) as e:
+            return JsonResponse({'success': False, 'error': 'Token inválido o expirado'}, status=401)
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
 
 @csrf_exempt
@@ -60,7 +81,7 @@ def login_movil(request):
 # ==================== TRABAJOS ====================
 
 @csrf_exempt
-@login_required
+@jwt_required
 def mis_trabajos_empleado(request):
     try:
         perfil = PerfilEmpleado.objects.get(user=request.user)
@@ -142,7 +163,7 @@ def mis_trabajos_empleado(request):
 
 
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def actualizar_trabajo_empleado(request, trabajo_id):
@@ -197,7 +218,7 @@ def actualizar_trabajo_empleado(request, trabajo_id):
         }, status=400)
 
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def completar_trabajo_empleado(request, trabajo_id):
@@ -224,7 +245,7 @@ def completar_trabajo_empleado(request, trabajo_id):
 
 
 # ==================== EVIDENCIAS ====================
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def subir_evidencia_trabajo(request, trabajo_id):
@@ -301,7 +322,7 @@ def subir_evidencia_trabajo(request, trabajo_id):
         logger.error(f"❌ Error general: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
-@login_required
+@jwt_required
 def obtener_evidencias_trabajo(request, trabajo_id):
     """API para app móvil - Obtener evidencias de un trabajo desde Cloudinary"""
     import logging
@@ -347,7 +368,7 @@ def obtener_evidencias_trabajo(request, trabajo_id):
             'error': str(e)
         }, status=400)
 
-@login_required
+@jwt_required
 def obtener_todas_evidencias_admin(request):
     """API para admin - Ver TODAS las evidencias del sistema"""
     import logging
@@ -417,7 +438,7 @@ def obtener_todas_evidencias_admin(request):
             'error': str(e)
         }, status=400)
 
-@login_required
+@jwt_required
 def descargar_evidencia(request, evidencia_id):
     """API para app móvil - Descargar evidencia desde Cloudinary"""
     import logging
@@ -460,7 +481,7 @@ def descargar_evidencia(request, evidencia_id):
             'error': str(e)
         }, status=400)
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def eliminar_evidencia(request, evidencia_id):
@@ -520,7 +541,7 @@ def eliminar_evidencia(request, evidencia_id):
             'error': str(e)
         }, status=400)
 
-@login_required
+@jwt_required
 def verificar_almacenamiento_cloudinary(request):
     """Endpoint para verificar y gestionar almacenamiento de Cloudinary"""
     import logging
@@ -540,7 +561,7 @@ def verificar_almacenamiento_cloudinary(request):
 
 # ==================== GASTOS ====================
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def registrar_gasto_trabajo(request, trabajo_id):
@@ -585,7 +606,7 @@ def registrar_gasto_trabajo(request, trabajo_id):
         }, status=400)
 
 
-@login_required
+@jwt_required
 def obtener_gastos_trabajo(request, trabajo_id):
     """API para app móvil - Obtener gastos de un trabajo"""
     try:
@@ -622,7 +643,7 @@ def obtener_gastos_trabajo(request, trabajo_id):
 
 # ==================== NOTIFICACIONES ====================
 
-@login_required
+@jwt_required
 def obtener_notificaciones_empleado(request):
     """API para app móvil - Obtener notificaciones del empleado"""
     try:
@@ -662,7 +683,7 @@ def obtener_notificaciones_empleado(request):
         }, status=400)
 
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def marcar_notificacion_leida(request, notificacion_id):
@@ -696,7 +717,7 @@ def marcar_notificacion_leida(request, notificacion_id):
         }, status=400)
 
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def marcar_todas_notificaciones_leidas(request):
@@ -720,7 +741,7 @@ def marcar_todas_notificaciones_leidas(request):
         }, status=400)
 
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def eliminar_notificacion(request, notificacion_id):
@@ -755,7 +776,7 @@ def eliminar_notificacion(request, notificacion_id):
 
 # ==================== PUSH NOTIFICATIONS ====================
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def registrar_push_token(request):
@@ -815,7 +836,7 @@ def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
 
 # ==================== PUSH NOTIFICATIONS ====================
 
-@login_required
+@jwt_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def registrar_push_token(request):
@@ -876,3 +897,96 @@ def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
     except Exception as e:
         print(f"❌ Error enviando push a {perfil_empleado}: {e}")
         return False
+
+# ==================== LOGIN JWT ====================
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def login_movil_jwt(request):
+    """Login para app móvil - Devuelve tokens JWT"""
+    try:
+        # Aceptar tanto FormData como JSON
+        if request.content_type and 'application/json' in request.content_type:
+            data = json.loads(request.body)
+            username = data.get('username')
+            password = data.get('password')
+        else:
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+
+        if not username or not password:
+            return JsonResponse({
+                'success': False,
+                'error': 'Usuario y contraseña son obligatorios'
+            }, status=400)
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is None:
+            return JsonResponse({
+                'success': False,
+                'error': 'Credenciales incorrectas'
+            }, status=401)
+
+        if not user.is_active:
+            return JsonResponse({
+                'success': False,
+                'error': 'Usuario inactivo'
+            }, status=401)
+
+        # Generar tokens JWT
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        # Obtener datos del perfil
+        try:
+            perfil = PerfilEmpleado.objects.get(user=user)
+            nombre = user.get_full_name() or user.username
+            cargo = perfil.cargo
+        except PerfilEmpleado.DoesNotExist:
+            nombre = user.username
+            cargo = None
+
+        logger.info(f"✅ Login JWT exitoso: {username}")
+
+        return JsonResponse({
+            'success': True,
+            'access': access_token,
+            'refresh': refresh_token,
+            'usuario': {
+                'username': user.username,
+                'nombre': nombre,
+                'email': user.email,
+                'cargo': cargo,
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"❌ Error en login JWT: {e}", exc_info=True)
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def refresh_token_movil(request):
+    """Renovar access token usando refresh token"""
+    try:
+        data = json.loads(request.body)
+        refresh_token = data.get('refresh')
+
+        if not refresh_token:
+            return JsonResponse({'success': False, 'error': 'Refresh token requerido'}, status=400)
+
+        refresh = RefreshToken(refresh_token)
+        access_token = str(refresh.access_token)
+
+        return JsonResponse({
+            'success': True,
+            'access': access_token,
+        })
+
+    except TokenError as e:
+        return JsonResponse({'success': False, 'error': 'Token inválido o expirado'}, status=401)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

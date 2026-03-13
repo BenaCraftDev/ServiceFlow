@@ -2,6 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 import os
+from datetime import timedelta  # ← AGREGADO para JWT
 
 
 # Configuración para Railway
@@ -51,6 +52,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'cloudinary_storage',  # ← NUEVO
     'cloudinary',          # ← NUEVO
+    'rest_framework',               # ← AGREGADO para JWT
+    'rest_framework_simplejwt',     # ← AGREGADO para JWT
 ]
 
 MIDDLEWARE = [
@@ -224,3 +227,23 @@ cloudinary.config(
 
 # Usar Cloudinary como almacenamiento por defecto
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# ============================================================
+# DJANGO REST FRAMEWORK + JWT  ← AGREGADO
+# ============================================================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}

@@ -1,11 +1,10 @@
-# app_movil/views.py
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db.models import Sum, Q
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate
 from cotizaciones.models import TrabajoEmpleado, EvidenciaTrabajo, GastoTrabajo
 from home.models import PerfilEmpleado
 from notificaciones.models import Notificacion
@@ -39,42 +38,6 @@ def jwt_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-
-@csrf_exempt
-def login_movil(request):
-    if request.method != 'POST':
-        return JsonResponse({
-            'success': False,
-            'error': 'Método no permitido'
-        }, status=405)
-
-    usuario = request.POST.get('username')
-    contrasena = request.POST.get('password')
-
-    if not usuario or not contrasena:
-        return JsonResponse({
-            'success': False,
-            'error': 'Usuario y contraseña son obligatorios'
-        }, status=400)
-
-    user = authenticate(request, username=usuario, password=contrasena)
-
-    if user is None:
-        # ❌ LOGIN INCORRECTO
-        return JsonResponse({
-            'success': False,
-            'error': 'Credenciales incorrectas'
-        }, status=401)
-
-    # ✅ LOGIN CORRECTO
-    login(request, user)
-
-    return JsonResponse({
-        'success': True,
-        'usuario': {
-            'username': user.username
-        }
-    }, status=200)
 
 
 
@@ -774,90 +737,7 @@ def eliminar_notificacion(request, notificacion_id):
         }, status=400)
 
 
-# ==================== PUSH NOTIFICATIONS ====================
 
-@jwt_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def registrar_push_token(request):
-    """Guarda el Expo Push Token del dispositivo del empleado"""
-    try:
-        data = json.loads(request.body)
-        token = data.get('token', '').strip()
-
-        if not token:
-            return JsonResponse({'success': False, 'error': 'Token vacío'}, status=400)
-
-        perfil = PerfilEmpleado.objects.get(user=request.user)
-        perfil.expo_push_token = token
-        perfil.save()
-
-        return JsonResponse({'success': True, 'message': 'Token registrado'})
-
-    except PerfilEmpleado.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
-
-
-def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
-    """
-    Envía una notificación push a un empleado via Expo Push API.
-    """
-    import urllib.request
-
-    token = perfil_empleado.expo_push_token
-    if not token or not token.startswith('ExponentPushToken'):
-        return
-
-    payload = json.dumps({
-        'to': token,
-        'title': titulo,
-        'body': mensaje,
-        'sound': 'default',
-        'priority': 'high',
-    }).encode('utf-8')
-
-    try:
-        req = urllib.request.Request(
-            'https://exp.host/--/api/v2/push/send',
-            data=payload,
-            headers={
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            resultado = json.loads(resp.read().decode())
-            print(f"✅ Push enviado a {perfil_empleado.nombre_completo}: {resultado}")
-    except Exception as e:
-        print(f"❌ Error enviando push a {perfil_empleado.nombre_completo}: {e}")
-
-# ==================== PUSH NOTIFICATIONS ====================
-
-@jwt_required
-@csrf_exempt
-@require_http_methods(["POST"])
-def registrar_push_token(request):
-    """API para app móvil - Registrar token de push notifications"""
-    try:
-        data = json.loads(request.body)
-        token = data.get('token')
-
-        if not token:
-            return JsonResponse({'success': False, 'error': 'Token requerido'}, status=400)
-
-        perfil = PerfilEmpleado.objects.get(user=request.user)
-        perfil.expo_push_token = token
-        perfil.save()
-
-        return JsonResponse({'success': True, 'message': 'Token registrado correctamente'})
-
-    except PerfilEmpleado.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 def enviar_push_a_empleado(perfil_empleado, titulo, mensaje):
@@ -990,3 +870,28 @@ def refresh_token_movil(request):
         return JsonResponse({'success': False, 'error': 'Token inválido o expirado'}, status=401)
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# ==================== PUSH NOTIFICATIONS ====================
+
+@jwt_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def registrar_push_token(request):
+    """Guarda el Expo Push Token del dispositivo del empleado"""
+    try:
+        data = json.loads(request.body)
+        token = data.get('token', '').strip()
+
+        if not token:
+            return JsonResponse({'success': False, 'error': 'Token vacío'}, status=400)
+
+        perfil = PerfilEmpleado.objects.get(user=request.user)
+        perfil.expo_push_token = token
+        perfil.save()
+
+        return JsonResponse({'success': True, 'message': 'Token registrado'})
+
+    except PerfilEmpleado.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Perfil no encontrado'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
